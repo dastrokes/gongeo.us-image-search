@@ -1,0 +1,10 @@
+numpy>=2.0.0
+pandas>=2.2.0
+Pillow>=10.4.0
+pyarrow>=18.0.0
+python-dotenv>=1.0.0
+requests>=2.32.0
+torch>=2.5.0
+transformers>=4.46.0
+tqdm>=4.67.0
+upstash-vector>=0.8.0
