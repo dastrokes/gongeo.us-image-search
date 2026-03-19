@@ -212,22 +212,28 @@ def sync_documents(
 def build_filter_expression(request: QueryRequest) -> str | None:
     clauses: list[str] = []
 
-    if request.type:
-        escaped = [value.replace("'", "\\'") for value in request.type]
-        clauses.append("(" + " OR ".join(f"type = '{value}'" for value in escaped) + ")")
-    if request.quality:
+    if request.item_type:
+        escaped = [value.replace("'", "\\'") for value in request.item_type]
         clauses.append(
-            "(" + " OR ".join(f"quality = {value}" for value in request.quality) + ")"
-        )
-    if request.obtain_type:
-        clauses.append(
-            "(" + " OR ".join(f"obtain_type = {value}" for value in request.obtain_type) + ")"
+            "(" + " OR ".join(f"item_type = '{value}'" for value in escaped) + ")"
         )
     if request.colors:
         escaped = [value.replace("'", "\\'") for value in request.colors]
         clauses.append(
             "("
-            + " OR ".join(f"dominant_colors CONTAINS '{value}'" for value in escaped)
+            + " OR ".join(
+                [
+                    *(f"dominant_colors CONTAINS '{value}'" for value in escaped),
+                    *(f"accent_colors CONTAINS '{value}'" for value in escaped),
+                ]
+            )
+            + ")"
+        )
+    if request.facets:
+        escaped = [value.replace("'", "\\'") for value in request.facets]
+        clauses.append(
+            "("
+            + " OR ".join(f"accepted_facets CONTAINS '{value}'" for value in escaped)
             + ")"
         )
 
@@ -254,12 +260,11 @@ def query_upstash(request: QueryRequest, config: UpstashConfig) -> list[QueryRes
             QueryResult(
                 item_id=int(metadata.get("item_id")),
                 score=float(getattr(match, "score", 0.0)),
-                name=str(metadata.get("name", "")),
-                type=str(metadata.get("type", "unknown")),
-                quality=metadata.get("quality"),
-                obtain_type=metadata.get("obtain_type"),
+                item_type=str(metadata.get("item_type", "unknown")),
                 dominant_colors=list(metadata.get("dominant_colors", [])),
                 accent_colors=list(metadata.get("accent_colors", [])),
+                accepted_facets=list(metadata.get("accepted_facets", [])),
+                search_terms=list(metadata.get("search_terms", [])),
             )
         )
     return results

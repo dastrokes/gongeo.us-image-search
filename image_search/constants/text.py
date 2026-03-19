@@ -60,3 +60,9 @@ OUTERWEAR_GARMENT_PATTERNS: tuple[str, ...] = (
     r"\bshawl\b",
     r"\bblazer\b",
 )
+
+DRESS_GARMENT_PATTERNS: tuple[str, ...] = (
+    r"\bdress\b",
+    r"\bgown\b",
+    r"\bonesie\b",
+)

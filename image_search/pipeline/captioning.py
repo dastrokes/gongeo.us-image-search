@@ -19,6 +19,7 @@ from image_search.constants.settings import (
 from image_search.constants.text import (
     BOTTOM_GARMENT_PATTERNS,
     CAPTION_NOISE_TERMS,
+    DRESS_GARMENT_PATTERNS,
     FLORENCE_DETAIL_PROMPT,
     LOW_SIGNAL_VISUAL_PATTERN,
     OUTERWEAR_GARMENT_PATTERNS,
@@ -71,6 +72,10 @@ class FlorenceCaptioner:
             re.search(pattern, normalized) for pattern in BOTTOM_GARMENT_PATTERNS
         ):
             return True
+        if item_type in {"outerwear", "tops", "bottoms", "socks", "shoes"} and any(
+            re.search(pattern, normalized) for pattern in DRESS_GARMENT_PATTERNS
+        ):
+            return True
 
         if item_type != "hair" and COLOR_ONLY_PATTERN.fullmatch(normalized):
             return True
@@ -82,11 +87,19 @@ class FlorenceCaptioner:
             elif item_type == "outerwear":
                 blocked_patterns = TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS
             elif item_type == "tops":
-                blocked_patterns = BOTTOM_GARMENT_PATTERNS
+                blocked_patterns = BOTTOM_GARMENT_PATTERNS + DRESS_GARMENT_PATTERNS
             elif item_type in {"bottoms", "socks", "shoes"}:
-                blocked_patterns = TOP_GARMENT_PATTERNS + OUTERWEAR_GARMENT_PATTERNS
+                blocked_patterns = (
+                    TOP_GARMENT_PATTERNS
+                    + OUTERWEAR_GARMENT_PATTERNS
+                    + DRESS_GARMENT_PATTERNS
+                )
             elif item_type not in APPAREL_TYPES and item_type != "hair":
-                blocked_patterns = TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS
+                blocked_patterns = (
+                    TOP_GARMENT_PATTERNS
+                    + BOTTOM_GARMENT_PATTERNS
+                    + DRESS_GARMENT_PATTERNS
+                )
         elif profile.blocked_patterns_icon:
             blocked_patterns = profile.blocked_patterns_icon
 

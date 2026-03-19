@@ -6,8 +6,6 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-import pandas as pd
-
 from image_search.models.schemas import EvaluationMetrics, EvaluationQuery, QueryRequest
 from image_search.search.upstash import UpstashConfig, query_upstash
 
@@ -27,6 +25,18 @@ def load_evaluation_queries(path: str | Path) -> list[EvaluationQuery]:
     return queries
 
 
+def load_search_documents(path: str | Path) -> list[dict[str, object]]:
+    documents: list[dict[str, object]] = []
+    with Path(path).open("r", encoding="utf-8") as handle:
+        for line in handle:
+            payload = json.loads(line)
+            metadata = dict(payload.get("metadata", {}))
+            metadata["item_id"] = int(metadata.get("item_id", payload.get("id", 0)))
+            metadata["search_text"] = str(payload.get("data", ""))
+            documents.append(metadata)
+    return documents
+
+
 def _tokenize(value: str) -> list[str]:
     normalized = "".join(char.lower() if char.isalnum() else " " for char in value)
     return [token for token in normalized.split() if token]
@@ -34,23 +44,33 @@ def _tokenize(value: str) -> list[str]:
 
 def lexical_baseline(
     query: str,
-    metadata: pd.DataFrame,
+    documents: list[dict[str, object]],
     limit: int,
     filters: dict[str, list[object]],
 ) -> list[int]:
-    filtered = metadata
-    if filters.get("type"):
-        filtered = filtered[filtered["type"].isin(filters["type"])]
-    if filters.get("quality"):
-        filtered = filtered[filtered["quality"].isin(filters["quality"])]
-    if filters.get("obtain_type"):
-        filtered = filtered[filtered["obtain_type"].isin(filters["obtain_type"])]
+    filtered = documents
+    if filters.get("item_type"):
+        requested = {str(value) for value in filters["item_type"]}
+        filtered = [row for row in filtered if str(row.get("item_type")) in requested]
+    elif filters.get("type"):
+        requested = {str(value) for value in filters["type"]}
+        filtered = [row for row in filtered if str(row.get("item_type")) in requested]
     if filters.get("colors"):
-        requested_colors = set(str(value) for value in filters["colors"])
-        filtered = filtered[
-            filtered["dominant_colors"].apply(
-                lambda values: bool(requested_colors.intersection(values or []))
+        requested_colors = {str(value) for value in filters["colors"]}
+        filtered = [
+            row
+            for row in filtered
+            if requested_colors.intersection(
+                {str(value) for value in row.get("dominant_colors", [])}
+                | {str(value) for value in row.get("accent_colors", [])}
             )
+        ]
+    if filters.get("facets"):
+        requested_facets = {str(value) for value in filters["facets"]}
+        filtered = [
+            row
+            for row in filtered
+            if requested_facets.intersection({str(value) for value in row.get("accepted_facets", [])})
         ]
 
     query_tokens = set(_tokenize(query))
@@ -58,10 +78,24 @@ def lexical_baseline(
         (
             (
                 int(row["item_id"]),
-                len(query_tokens.intersection(_tokenize(str(row["name"])))),
-                str(row["name"]).lower(),
+                len(
+                    query_tokens.intersection(
+                        _tokenize(
+                            " ".join(
+                                [
+                                    str(row.get("item_type", "")),
+                                    " ".join(str(value) for value in row.get("accepted_facets", []) or []),
+                                    " ".join(str(value) for value in row.get("search_terms", []) or []),
+                                    " ".join(str(value) for value in row.get("dominant_colors", []) or []),
+                                    " ".join(str(value) for value in row.get("accent_colors", []) or []),
+                                ]
+                            )
+                        )
+                    )
+                ),
+                str(row.get("item_type", "")).lower(),
             )
-            for _, row in filtered.iterrows()
+            for row in filtered
         ),
         key=lambda entry: (entry[1], entry[2]),
         reverse=True,
@@ -112,7 +146,7 @@ def evaluate_queries(
     limit: int = 10,
 ) -> dict[str, object]:
     queries = load_evaluation_queries(queries_path)
-    metadata = pd.read_parquet(metadata_path)
+    documents = load_search_documents(metadata_path)
 
     semantic_rows: list[dict[str, float]] = []
     lexical_rows: list[dict[str, float]] = []
@@ -125,10 +159,9 @@ def evaluate_queries(
         request = QueryRequest(
             q=evaluation_query.query,
             limit=limit,
-            type=[str(value) for value in filters.get("type", [])],
-            quality=[int(value) for value in filters.get("quality", [])],
-            obtain_type=[int(value) for value in filters.get("obtain_type", [])],
+            item_type=[str(value) for value in filters.get("item_type", filters.get("type", []))],
             colors=[str(value) for value in filters.get("colors", [])],
+            facets=[str(value) for value in filters.get("facets", [])],
         )
 
         semantic_started = time.perf_counter()
@@ -137,7 +170,7 @@ def evaluate_queries(
         semantic_latencies_ms.append(semantic_latency)
 
         semantic_ids = [result.item_id for result in semantic_results]
-        lexical_ids = lexical_baseline(evaluation_query.query, metadata, limit, filters)
+        lexical_ids = lexical_baseline(evaluation_query.query, documents, limit, filters)
 
         semantic_metric_row = {
             "recall_at_10": _recall_at_k(semantic_ids, expected, limit),

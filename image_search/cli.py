@@ -47,6 +47,56 @@ def _default_output_root() -> Path:
     return PROJECT_ROOT / "reports" / "index"
 
 
+def _cleanup_stale_outputs(output_root: Path) -> None:
+    for filename in (
+        "item-official-metadata.jsonl",
+        "item-documents.jsonl",
+        "item-metadata.parquet",
+    ):
+        try:
+            (output_root / filename).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _manifest_needs_regen(manifest_path: Path) -> bool:
+    if not manifest_path.exists():
+        return True
+    try:
+        with manifest_path.open("r", encoding="utf-8") as handle:
+            first_line = handle.readline().strip()
+    except OSError:
+        return True
+    if not first_line:
+        return True
+    try:
+        payload = json.loads(first_line)
+    except json.JSONDecodeError:
+        return True
+    required_fields = {
+        "item_id",
+        "type",
+        "icon_path",
+        "overview_path",
+        "has_icon",
+        "has_overview",
+        "source_version",
+    }
+    deprecated_fields = {
+        "name",
+        "quality",
+        "obtain_type",
+        "style_scores",
+        "style_key",
+        "label_ids",
+        "label_keys",
+        "category_tag",
+        "version_area",
+        "gallery_score",
+    }
+    return not required_fields.issubset(payload) or bool(deprecated_fields.intersection(payload))
+
+
 def _load_caption_cache(captions_path: Path) -> dict[int, dict]:
     cache: dict[int, dict] = {}
     if not captions_path.exists():
@@ -64,33 +114,10 @@ def _load_caption_cache(captions_path: Path) -> dict[int, dict]:
     return cache
 
 
-def _load_document_cache(documents_path: Path) -> dict[int, dict]:
-    cache: dict[int, dict] = {}
-    if not documents_path.exists():
-        return cache
-    with documents_path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                payload = json.loads(line)
-                raw_id = payload.get("item_id", payload.get("id"))
-                if raw_id is None:
-                    raw_id = (payload.get("metadata") or {}).get("item_id")
-                if raw_id is None:
-                    continue
-                cache[int(raw_id)] = payload
-            except Exception:
-                pass
-    return cache
-
-
-def _is_complete_cached_record(caption: dict, document: dict) -> bool:
+def _is_complete_cached_caption(caption: dict) -> bool:
     failed_modalities = caption.get("failed_modalities") or []
     visual = str(caption.get("visual", "")).strip()
-    data = str(document.get("data", "")).strip()
-    item_type = str((document.get("metadata") or {}).get("type", "")).strip()
+    item_type = ""
 
     def _is_type_only(value: object) -> bool:
         if not item_type:
@@ -101,36 +128,48 @@ def _is_complete_cached_record(caption: dict, document: dict) -> bool:
         parts = [part.strip() for part in text.split(",") if part.strip()]
         return bool(parts) and all(part == item_type for part in parts)
 
-    if failed_modalities or _is_type_only(caption.get("icon_caption")):
+    if failed_modalities:
         return False
-    if _is_type_only(caption.get("overview_caption")) or _is_type_only(visual):
+    if not visual:
         return False
-    return bool(visual and data)
+    if _is_type_only(caption.get("icon_caption")) or _is_type_only(caption.get("overview_caption")):
+        return False
+    return not _is_type_only(visual)
 
 
 def run_build_index(args: argparse.Namespace) -> int:
-    import pandas as pd
-
     from image_search.models.schemas import (
         BuildSummary,
         CaptionRecord,
         ManifestRecord,
-        MetadataRecord,
     )
     from image_search.pipeline.captioning import CaptionerConfig, FlorenceCaptioner
     from image_search.pipeline.color_tags import tag_item_colors
     from image_search.pipeline.documents import build_document_record
     from image_search.pipeline.manifest import build_manifest
+    from image_search.pipeline.taxonomy import (
+        build_item_input,
+        build_metadata_record,
+        build_review_records,
+        build_structured_candidates,
+        build_tag_assignments,
+        build_taxonomy_concepts,
+        build_visual_features,
+    )
 
     output_root = Path(args.output_root or _default_output_root())
     manifest_path = output_root / "item-manifest.jsonl"
     captions_path = output_root / "item-captions-debug.jsonl"
-    documents_path = output_root / "item-documents.jsonl"
-    metadata_path = output_root / "item-metadata.parquet"
+    taxonomy_concepts_path = output_root / "taxonomy-concepts.jsonl"
+    visual_features_path = output_root / "item-visual-features.jsonl"
+    structured_candidates_path = output_root / "item-structured-candidates.jsonl"
+    assignments_path = output_root / "item-tag-assignments.jsonl"
+    review_path = output_root / "item-review-queue.jsonl"
+    search_documents_path = output_root / "item-search-documents.jsonl"
     summary_path = output_root / "build-summary.json"
     started_at = datetime.now(timezone.utc)
 
-    if not args.regen_manifest and manifest_path.exists():
+    if not args.regen_manifest and manifest_path.exists() and not _manifest_needs_regen(manifest_path):
         print(f"Loading existing manifest from {manifest_path} ...")
         manifest_records: list[ManifestRecord] = []
         with manifest_path.open("r", encoding="utf-8") as handle:
@@ -156,11 +195,10 @@ def run_build_index(args: argparse.Namespace) -> int:
         _write_jsonl(manifest_path, [record.to_dict() for record in manifest_records])
 
     caption_cache = _load_caption_cache(captions_path)
-    document_cache = _load_document_cache(documents_path)
     already_done = {
         item_id
-        for item_id in (set(caption_cache) & set(document_cache))
-        if _is_complete_cached_record(caption_cache[item_id], document_cache[item_id])
+        for item_id in set(caption_cache)
+        if _is_complete_cached_caption(caption_cache[item_id])
     }
     if already_done:
         print(f"Resuming: {len(already_done)} items already captioned, skipping them.")
@@ -180,55 +218,32 @@ def run_build_index(args: argparse.Namespace) -> int:
 
     caption_fail_count = 0
     output_root.mkdir(parents=True, exist_ok=True)
+    _cleanup_stale_outputs(output_root)
 
-    with captions_path.open("a", encoding="utf-8") as captions_handle, documents_path.open(
-        "a", encoding="utf-8"
-    ) as documents_handle:
-        batch_size = captioner.config.batch_size
-        for batch_start in range(0, len(pending), batch_size):
-            batch = pending[batch_start : batch_start + batch_size]
-            captions = captioner.caption_records_batch(batch)
+    batch_size = captioner.config.batch_size
+    for batch_start in range(0, len(pending), batch_size):
+        batch = pending[batch_start : batch_start + batch_size]
+        captions = captioner.caption_records_batch(batch)
 
-            for record, caption in zip(batch, captions):
-                color_tags = tag_item_colors(
-                    record.overview_path,
-                    record.icon_path,
-                    record.type,
-                    caption.visual,
-                )
+        for record, caption in zip(batch, captions):
+            if caption.failed_modalities:
+                caption_fail_count += 1
+            caption_cache[record.item_id] = caption.to_dict()
 
-                if caption.failed_modalities:
-                    caption_fail_count += 1
+        done_so_far = len(already_done) + batch_start + len(batch)
+        print(f"  captioned {done_so_far}/{len(manifest_records)}", flush=True)
 
-                metadata = MetadataRecord(
-                    item_id=record.item_id,
-                    name=record.name,
-                    type=record.type,
-                    quality=record.quality,
-                    obtain_type=record.obtain_type,
-                    icon_path=record.icon_path,
-                    overview_path=record.overview_path,
-                    dominant_colors=color_tags.dominant_colors,
-                    accent_colors=color_tags.accent_colors,
-                    has_icon=record.has_icon,
-                    has_overview=record.has_overview,
-                    source_version=record.source_version,
-                )
+    caption_rows: list[dict[str, object]] = []
+    visual_feature_rows: list[dict[str, object]] = []
+    candidate_rows: list[dict[str, object]] = []
+    assignment_rows: list[dict[str, object]] = []
+    review_rows: list[dict[str, object]] = []
+    search_document_rows: list[dict[str, object]] = []
+    concept_rows = [record.to_dict() for record in build_taxonomy_concepts()]
+    accepted_tag_count = 0
+    review_tag_count = 0
+    suppressed_tag_count = 0
 
-                document = build_document_record(metadata, caption)
-                captions_handle.write(json.dumps(caption.to_dict(), ensure_ascii=False) + "\n")
-                captions_handle.flush()
-                documents_handle.write(json.dumps(document.to_dict(), ensure_ascii=False) + "\n")
-                documents_handle.flush()
-
-                caption_cache[record.item_id] = caption.to_dict()
-                document_cache[record.item_id] = document.to_dict()
-
-            done_so_far = len(already_done) + batch_start + len(batch)
-            print(f"  captioned {done_so_far}/{len(manifest_records)}", flush=True)
-
-    metadata_records: list[MetadataRecord] = []
-    document_records: list[dict[str, object]] = []
     for record in manifest_records:
         caption_payload = caption_cache.get(record.item_id)
         if caption_payload is None:
@@ -240,38 +255,65 @@ def run_build_index(args: argparse.Namespace) -> int:
             record.type,
             caption.visual,
         )
-        metadata = MetadataRecord(
+        item_input = build_item_input(record)
+        visual_features = build_visual_features(
             item_id=record.item_id,
-            name=record.name,
-            type=record.type,
-            quality=record.quality,
-            obtain_type=record.obtain_type,
-            icon_path=record.icon_path,
-            overview_path=record.overview_path,
-            dominant_colors=color_tags.dominant_colors,
-            accent_colors=color_tags.accent_colors,
-            has_icon=record.has_icon,
-            has_overview=record.has_overview,
-            source_version=record.source_version,
+            item_type=record.type,
+            caption_icon=caption.icon_caption,
+            caption_overview=caption.overview_caption,
+            caption_visual=caption.visual,
+            color_tags=color_tags,
         )
-        metadata_records.append(metadata)
-        document_records.append(build_document_record(metadata, caption).to_dict())
+        structured_candidates = build_structured_candidates(
+            item_input=item_input,
+            visual_features=visual_features,
+        )
+        assignments = build_tag_assignments(
+            item_input=item_input,
+            visual_features=visual_features,
+            model_version=captioner.model_id,
+            candidates=structured_candidates,
+        )
+        reviews = build_review_records(assignments)
+        metadata = build_metadata_record(item_input, visual_features, assignments)
+        document = build_document_record(metadata, visual_features, assignments)
 
-    pd.DataFrame([record.to_dict() for record in metadata_records]).to_parquet(
-        metadata_path,
-        index=False,
-    )
-    _write_jsonl(documents_path, document_records)
+        caption_rows.append(caption.to_dict())
+        visual_feature_rows.append(visual_features.to_dict())
+        candidate_rows.extend(candidate.to_dict() for candidate in structured_candidates)
+        assignment_rows.extend(assignment.to_dict() for assignment in assignments)
+        review_rows.extend(review.to_dict() for review in reviews)
+        search_document_rows.append(document.to_dict())
+
+        for assignment in assignments:
+            if assignment.status == "accepted":
+                accepted_tag_count += 1
+            elif assignment.status == "review":
+                review_tag_count += 1
+            elif assignment.status == "suppressed":
+                suppressed_tag_count += 1
+
+    _write_jsonl(captions_path, caption_rows)
+    _write_jsonl(taxonomy_concepts_path, concept_rows)
+    _write_jsonl(visual_features_path, visual_feature_rows)
+    _write_jsonl(structured_candidates_path, candidate_rows)
+    _write_jsonl(assignments_path, assignment_rows)
+    _write_jsonl(review_path, review_rows)
+    _write_jsonl(search_documents_path, search_document_rows)
 
     finished_at = datetime.now(timezone.utc)
     summary = BuildSummary(
         caption_model_id=captioner.model_id,
         upstash_embedding_model=DEFAULT_EMBEDDING_MODEL,
-        item_count=len(metadata_records),
+        item_count=len(search_document_rows),
         skipped_count=int(manifest_stats["skipped_count"]),
         missing_icon_count=int(manifest_stats["missing_icon_count"]),
         missing_overview_count=int(manifest_stats["missing_overview_count"]),
         caption_fail_count=caption_fail_count,
+        taxonomy_concept_count=len(concept_rows),
+        accepted_tag_count=accepted_tag_count,
+        review_tag_count=review_tag_count,
+        suppressed_tag_count=suppressed_tag_count,
         build_started_at=started_at.isoformat(),
         build_finished_at=finished_at.isoformat(),
         duration_seconds=(finished_at - started_at).total_seconds(),
@@ -327,10 +369,9 @@ def run_query_upstash(args: argparse.Namespace) -> int:
     request = QueryRequest(
         q=args.q,
         limit=args.limit,
-        type=args.type or [],
-        quality=args.quality or [],
-        obtain_type=args.obtain_type or [],
+        item_type=args.item_type or [],
         colors=args.color or [],
+        facets=args.facet or [],
     )
     results = query_upstash(request, config)
     print(
@@ -339,12 +380,11 @@ def run_query_upstash(args: argparse.Namespace) -> int:
                 {
                     "item_id": result.item_id,
                     "score": result.score,
-                    "name": result.name,
-                    "type": result.type,
-                    "quality": result.quality,
-                    "obtain_type": result.obtain_type,
+                    "item_type": result.item_type,
                     "dominant_colors": result.dominant_colors,
                     "accent_colors": result.accent_colors,
+                    "accepted_facets": result.accepted_facets,
+                    "search_terms": result.search_terms,
                 }
                 for result in results
             ],
@@ -401,7 +441,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_parser = subparsers.add_parser("sync-upstash", help="Upsert documents into Upstash")
     sync_parser.add_argument(
         "--documents-path",
-        default=str(_default_output_root() / "item-documents.jsonl"),
+        default=str(_default_output_root() / "item-search-documents.jsonl"),
     )
     sync_parser.add_argument("--batch-size", type=int, default=100)
     sync_parser.add_argument("--rest-url", default=None)
@@ -419,10 +459,9 @@ def build_parser() -> argparse.ArgumentParser:
     query_parser = subparsers.add_parser("query-upstash", help="Query Upstash with raw text")
     query_parser.add_argument("--q", required=True)
     query_parser.add_argument("--limit", type=int, default=20)
-    query_parser.add_argument("--type", action="append")
-    query_parser.add_argument("--quality", type=int, action="append")
-    query_parser.add_argument("--obtain-type", type=int, action="append")
+    query_parser.add_argument("--item-type", "--type", action="append", dest="item_type")
     query_parser.add_argument("--color", action="append")
+    query_parser.add_argument("--facet", action="append")
     query_parser.add_argument("--rest-url", default=None)
     query_parser.add_argument("--rest-token", default=None)
     query_parser.add_argument("--embedding-model", default=DEFAULT_EMBEDDING_MODEL)
@@ -432,7 +471,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument("--queries", required=True)
     evaluate_parser.add_argument(
         "--metadata-path",
-        default=str(_default_output_root() / "item-metadata.parquet"),
+        default=str(_default_output_root() / "item-search-documents.jsonl"),
     )
     evaluate_parser.add_argument("--limit", type=int, default=10)
     evaluate_parser.add_argument(

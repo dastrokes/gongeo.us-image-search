@@ -31,10 +31,6 @@ class ManifestPaths:
     sync_report_path: Path
 
     @property
-    def locale_path(self) -> Path:
-        return self.tracker_root / "app" / "locales" / "en" / "item.json"
-
-    @property
     def item_image_root(self) -> Path:
         return self.tracker_root / "public" / "images" / "items"
 
@@ -45,10 +41,6 @@ class ManifestPaths:
     @property
     def item_config_path(self) -> Path:
         return self.config_root / "item" / "TbItem.json"
-
-    @property
-    def item_extra_path(self) -> Path:
-        return self.config_root / "item" / "TbItemExtra.json"
 
     @property
     def minor_type_path(self) -> Path:
@@ -113,9 +105,7 @@ def build_manifest(
     )
 
     sync_report = _load_json(paths.sync_report_path)
-    locale_data = _load_json(paths.locale_path)
     item_config = _load_json(paths.item_config_path)
-    item_extras = _load_json(paths.item_extra_path)
     minor_type_info = _load_json(paths.minor_type_path)
     items = sync_report.get("syncedDetails", {}).get("items", [])
 
@@ -142,18 +132,7 @@ def build_manifest(
             continue
 
         item_payload = item_config.get(str(item_id))
-        item_extra = item_extras.get(str(item_id), {})
-
-        locale_key = f"item.{item_id}.name"
-        name = (
-            locale_data.get(locale_key)
-            or raw.get("name")
-            or (item_payload or {}).get("name")
-            or ""
-        ).strip()
         item_type = _resolve_item_type(item_payload, minor_type_info)
-        quality = item_payload.get("quality") if item_payload else None
-        obtain_type = item_extra.get("obtain_type")
 
         icon_path = _find_image_path(paths.item_icon_root, item_id)
         overview_path = _find_image_path(paths.item_image_root, item_id)
@@ -165,17 +144,14 @@ def build_manifest(
         if not has_overview:
             stats["missing_overview_count"] += 1
 
-        if not (has_icon or has_overview or name):
+        if not (has_icon or has_overview):
             stats["skipped_count"] += 1
             continue
 
         manifest.append(
             ManifestRecord(
                 item_id=item_id,
-                name=name,
                 type=item_type,
-                quality=int(quality) if quality is not None else None,
-                obtain_type=int(obtain_type) if obtain_type is not None else None,
                 icon_path=str(icon_path or ""),
                 overview_path=str(overview_path or ""),
                 has_icon=has_icon,
