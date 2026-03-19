@@ -2,6 +2,18 @@
 
 Offline caption generation and Upstash-backed semantic item search for Infinity Nikki items.
 
+## Layout
+
+Core code now lives under `image_search/`:
+
+- `image_search/constants/` for prompts, defaults, and shared hardcoded vocabulary
+- `image_search/models/` for schemas and item type profiles
+- `image_search/pipeline/` for manifest, captioning, document, and color-tag generation
+- `image_search/search/` for Upstash sync and evaluation
+- `image_search/vision/` for palette extraction
+
+Root `cli.py` and `generate_manifest.py` stay as thin compatibility entrypoints.
+
 ## What it builds
 
 `build-index` reads:
@@ -57,3 +69,6 @@ python cli.py evaluate --queries path/to/queries.jsonl
 - `style_key`, score tags, and scoring props are excluded from indexed text.
 - Explicit filters are passed to Upstash metadata filtering. Natural-language-to-filter parsing is not part of v1.
 - Indexed metadata now separates `dominant_colors` from `accent_colors`; `--color` filters only match `dominant_colors`.
+- Extraction policy treats the overview image as authoritative for silhouette, length, placement, layering, and item identity.
+- Extraction policy treats the icon image as authoritative for trim, closures, embroidery, small motifs, ornaments, and tiny accent colors.
+- Known type-label drift is handled in profiles where practical: `pendants` may surface bag or garter-like accessories, and `faceDecorations` may include eyewear.

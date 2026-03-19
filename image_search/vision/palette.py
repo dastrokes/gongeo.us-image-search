@@ -5,19 +5,8 @@ from pathlib import Path
 
 from PIL import Image
 
-
-NEUTRAL_LABELS = {"white", "gray", "silver", "black"}
-UPPER_FOCUS_TYPES = {
-    "hair",
-    "hairAccessories",
-    "headwear",
-    "earrings",
-    "neckwear",
-    "bracelets",
-    "chokers",
-    "faceDecorations",
-    "pendants",
-}
+from image_search.constants.colors import NEUTRAL_COLOR_LABELS
+from image_search.constants.items import UPPER_FOCUS_TYPES
 
 
 def _is_skin_like(red: int, green: int, blue: int) -> bool:
@@ -121,7 +110,8 @@ def _prepare_image(image: Image.Image, item_type: str | None = None) -> Image.Im
 
 
 def extract_dominant_colors(
-    image_path: str | Path | None, item_type: str | None = None
+    image_path: str | Path | None,
+    item_type: str | None = None,
 ) -> list[str]:
     if not image_path:
         return []
@@ -134,16 +124,13 @@ def extract_dominant_colors(
     has_transparency = alpha_min < 255 and alpha_max > 0
 
     for red, green, blue, alpha in image.getdata():
-        if alpha < 40:
-            continue
-        if _is_skin_like(red, green, blue):
+        if alpha < 40 or _is_skin_like(red, green, blue):
             continue
         label = _rgb_to_label((red, green, blue))
-        if not has_transparency and label in {"white", "gray"}:
-            if max(red, green, blue) > 220:
-                continue
+        if not has_transparency and label in {"white", "gray"} and max(red, green, blue) > 220:
+            continue
         labels[label] += 1
-        if label not in NEUTRAL_LABELS:
+        if label not in NEUTRAL_COLOR_LABELS:
             colorful_pixel_count += 1
 
     if not labels:
@@ -167,8 +154,8 @@ def extract_dominant_colors(
 
     if (
         primary_label != secondary_label
-        and primary_label not in NEUTRAL_LABELS
-        and secondary_label not in NEUTRAL_LABELS
+        and primary_label not in NEUTRAL_COLOR_LABELS
+        and secondary_label not in NEUTRAL_COLOR_LABELS
         and colorful_pixel_count > 0
         and primary_ratio < 0.72
         and secondary_ratio > 0.18

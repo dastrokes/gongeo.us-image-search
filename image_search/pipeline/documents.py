@@ -2,14 +2,9 @@ from __future__ import annotations
 
 import re
 
-from schemas import CaptionRecord, DocumentRecord, MetadataRecord
-from type_profiles import is_visual_term_relevant
-
-LOW_SIGNAL_VISUAL_PATTERN = re.compile(
-    r"\b(?:playful|feminine|dreamlike|sophisticated|summery|detailed|delicate|"
-    r"stand out|overall look|adding a touch|touch of sparkle|subtle sheen|"
-    r"soft|silky|sparkle|elegance|elegant|relaxed fit)\b"
-)
+from image_search.constants.text import LOW_SIGNAL_VISUAL_PATTERN
+from image_search.models.schemas import CaptionRecord, DocumentRecord, MetadataRecord
+from image_search.models.type_profiles import is_visual_term_relevant
 
 
 def _word_count(term: str) -> int:
@@ -63,7 +58,8 @@ def build_document_text(metadata: MetadataRecord, caption: CaptionRecord) -> str
 
 
 def build_document_record(
-    metadata: MetadataRecord, caption: CaptionRecord
+    metadata: MetadataRecord,
+    caption: CaptionRecord,
 ) -> DocumentRecord:
     return DocumentRecord(
         id=metadata.item_id,

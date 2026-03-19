@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from schemas import EvaluationMetrics, EvaluationQuery, QueryRequest
-from upstash_sync import UpstashConfig, query_upstash
+from image_search.models.schemas import EvaluationMetrics, EvaluationQuery, QueryRequest
+from image_search.search.upstash import UpstashConfig, query_upstash
 
 
 def load_evaluation_queries(path: str | Path) -> list[EvaluationQuery]:
@@ -28,12 +28,15 @@ def load_evaluation_queries(path: str | Path) -> list[EvaluationQuery]:
 
 
 def _tokenize(value: str) -> list[str]:
-    normalized = "".join(ch.lower() if ch.isalnum() else " " for ch in value)
+    normalized = "".join(char.lower() if char.isalnum() else " " for char in value)
     return [token for token in normalized.split() if token]
 
 
 def lexical_baseline(
-    query: str, metadata: pd.DataFrame, limit: int, filters: dict[str, list[object]]
+    query: str,
+    metadata: pd.DataFrame,
+    limit: int,
+    filters: dict[str, list[object]],
 ) -> list[int]:
     filtered = metadata
     if filters.get("type"):
@@ -51,7 +54,6 @@ def lexical_baseline(
         ]
 
     query_tokens = set(_tokenize(query))
-
     ranked = sorted(
         (
             (

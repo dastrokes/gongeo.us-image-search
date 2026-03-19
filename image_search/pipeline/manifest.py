@@ -6,65 +6,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from schemas import ManifestRecord
-
-REPO_ROOT = Path(__file__).resolve().parent
-DEFAULT_TRACKER_ROOT = REPO_ROOT.parent / "gongeo.us-nikki-tracker"
-DEFAULT_CONFIG_ROOT = (
-    REPO_ROOT.parent / "gongeo.us-config-decoder" / "cfg" / "config_output"
+from image_search.constants.items import (
+    BASE_ITEM_PREFIX_RANGES,
+    IMAGE_EXTENSIONS,
+    TYPE_KEY_MAP,
 )
-DEFAULT_SYNC_REPORT = REPO_ROOT.parent / "gongeo.us-processor" / "reports" / "database-sync-report.json"
-IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+from image_search.constants.settings import PROJECT_ROOT
+from image_search.models.schemas import ManifestRecord
 
-# Base-item ID ranges, mirrored from the tracker's
-# server/api/items/index.get.ts BASE_ITEM_PREFIX_RANGES.
-# Prefixes 1022–1026 are variation tiers (glowup / evo1–evo3) and are excluded.
-BASE_ITEM_PREFIX_RANGES: tuple[tuple[int, int], ...] = (
-    (1020_000_000, 1020_999_999),
-    (1021_000_000, 1021_999_999),
-    (1027_000_000, 1027_999_999),
-    (1028_000_000, 1028_999_999),
-    (1029_000_000, 1029_999_999),
-)
+
+DEFAULT_TRACKER_ROOT = PROJECT_ROOT.parent / "gongeo.us-nikki-tracker"
+DEFAULT_CONFIG_ROOT = PROJECT_ROOT.parent / "gongeo.us-config-decoder" / "cfg" / "config_output"
+DEFAULT_SYNC_REPORT = PROJECT_ROOT.parent / "gongeo.us-processor" / "reports" / "database-sync-report.json"
 
 
 def _is_base_item(item_id: int) -> bool:
-    """Return True if *item_id* falls within any base-item prefix range."""
-    return any(lo <= item_id <= hi for lo, hi in BASE_ITEM_PREFIX_RANGES)
-
-TYPE_KEY_MAP = {
-    "LGS03_1": "hair",
-    "LGS03_2": "outerwear",
-    "LGS03_3": "tops",
-    "LGS03_4": "bottoms",
-    "LGS03_5": "bottoms",
-    "LGS03_6": "socks",
-    "LGS03_7": "shoes",
-    "LGS03_8": "hairAccessories",
-    "LGS03_9": "headwear",
-    "LGS03_10": "earrings",
-    "LGS03_11": "neckwear",
-    "LGS03_12": "bracelets",
-    "LGS03_13": "chokers",
-    "LGS03_14": "gloves",
-    "LGS03_15": "handhelds",
-    "LGS03_16": "bodyPaint",
-    "LGS03_17": "baseMakeup",
-    "LGS03_18": "eyebrows",
-    "LGS03_19": "eyelashes",
-    "LGS03_20": "contactLenses",
-    "LGS03_21": "lips",
-    "LGS03_22": "skinTones",
-    "LGS03_23": "dresses",
-    "LGS03_25": "faceDecorations",
-    "LGS03_26": "chestAccessories",
-    "LGS03_27": "pendants",
-    "LGS03_28": "backpieces",
-    "LGS03_29": "rings",
-    "LGS03_30": "armDecorations",
-    "LGS03_31": "fullMakeup",
-    "LGS03_32": "abilityHandhelds",
-}
+    return any(lower <= item_id <= upper for lower, upper in BASE_ITEM_PREFIX_RANGES)
 
 
 @dataclass(slots=True)
@@ -103,12 +60,8 @@ def resolve_manifest_paths(
     config_root: str | None = None,
     sync_report_path: str | None = None,
 ) -> ManifestPaths:
-    resolved_tracker = Path(
-        tracker_root or os.getenv("TRACKER_ROOT") or DEFAULT_TRACKER_ROOT
-    )
-    resolved_config = Path(
-        config_root or os.getenv("CONFIG_DECODER_OUTPUT") or DEFAULT_CONFIG_ROOT
-    )
+    resolved_tracker = Path(tracker_root or os.getenv("TRACKER_ROOT") or DEFAULT_TRACKER_ROOT)
+    resolved_config = Path(config_root or os.getenv("CONFIG_DECODER_OUTPUT") or DEFAULT_CONFIG_ROOT)
     resolved_sync_report = Path(sync_report_path or DEFAULT_SYNC_REPORT)
     return ManifestPaths(
         tracker_root=resolved_tracker,
@@ -131,7 +84,8 @@ def _find_image_path(root: Path, item_id: int) -> Path | None:
 
 
 def _resolve_item_type(
-    item_payload: dict[str, Any] | None, minor_type_info: dict[str, Any]
+    item_payload: dict[str, Any] | None,
+    minor_type_info: dict[str, Any],
 ) -> str:
     if not item_payload:
         return "unknown"
@@ -186,6 +140,7 @@ def build_manifest(
         if not _is_base_item(item_id):
             stats["non_base_skipped_count"] += 1
             continue
+
         item_payload = item_config.get(str(item_id))
         item_extra = item_extras.get(str(item_id), {})
 

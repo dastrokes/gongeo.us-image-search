@@ -7,93 +7,20 @@ from pathlib import Path
 
 from PIL import Image
 
-from palette import _is_skin_like, _prepare_image, _rgb_to_label, extract_dominant_colors
-from type_profiles import APPAREL_TYPES, get_type_profile
-
-
-NEUTRAL_LABELS = {"white", "gray", "silver", "black"}
-NON_NEUTRAL_LABELS = {
-    "blue",
-    "purple",
-    "pink",
-    "red",
-    "green",
-    "brown",
-    "blonde",
-    "gold",
-    "yellow",
-    "orange",
-}
-COLOR_ALIASES = {"grey": "gray"}
-COLOR_PATTERN = (
-    r"(?:(?:light|dark|pale)\s+)?"
-    r"(?:blue|purple|pink|red|green|gold|silver|gray|grey|white|black|brown|blonde|yellow|orange)"
+from image_search.constants.colors import (
+    ACCENT_DETAIL_NOUNS,
+    APPAREL_BODY_NOUNS,
+    COLOR_PATTERN,
+    HAIR_BODY_PATTERNS,
+    NEUTRAL_COLOR_LABELS,
+    normalize_color_label,
 )
-ACCENT_DETAIL_NOUNS = (
-    "button",
-    "buttons",
-    "zipper",
-    "buckle",
-    "trim",
-    "lining",
-    "collar",
-    "cuff",
-    "hem",
-    "fur",
-    "lace",
-    "ribbon",
-    "bow",
-    "hood",
-    "sash",
-    "embroidery",
-    "emblem",
-)
-APPAREL_BODY_NOUNS = (
-    "jacket",
-    "coat",
-    "cloak",
-    "cape",
-    "blazer",
-    "shawl",
-    "hoodie",
-    "top",
-    "blouse",
-    "shirt",
-    "bodice",
-    "corset",
-    "vest",
-    "camisole",
-    "skirt",
-    "pants",
-    "trousers",
-    "shorts",
-    "sock",
-    "stocking",
-    "tights",
-    "shoe",
-    "boot",
-    "heel",
-    "sandal",
-    "dress",
-    "gown",
-)
-HAIR_BODY_PATTERNS = (
-    ("light blue hair", "blue"),
-    ("grey hair", "gray"),
-    ("gray hair", "gray"),
-    ("silver hair", "silver"),
-    ("white hair", "white"),
-    ("black hair", "black"),
-    ("brown hair", "brown"),
-    ("blonde hair", "blonde"),
-    ("gold hair", "gold"),
-    ("red hair", "red"),
-    ("pink hair", "pink"),
-    ("purple hair", "purple"),
-    ("blue hair", "blue"),
-    ("green hair", "green"),
-    ("orange hair", "orange"),
-    ("yellow hair", "yellow"),
+from image_search.models.type_profiles import APPAREL_TYPES, get_type_profile
+from image_search.vision.palette import (
+    _is_skin_like,
+    _prepare_image,
+    _rgb_to_label,
+    extract_dominant_colors,
 )
 
 
@@ -113,17 +40,6 @@ class ColorTaggingResult:
     accent_colors: list[str]
 
 
-def _normalize_color(label: str) -> str:
-    normalized = re.sub(r"\s+", " ", label.lower()).strip()
-    if not normalized:
-        return normalized
-    normalized = COLOR_ALIASES.get(normalized, normalized)
-    if normalized.startswith(("light ", "dark ", "pale ")):
-        _, _, base = normalized.partition(" ")
-        normalized = base
-    return COLOR_ALIASES.get(normalized, normalized)
-
-
 def _image_has_transparency(image: Image.Image) -> bool:
     alpha_min, alpha_max = image.getchannel("A").getextrema()
     return alpha_min < 255 and alpha_max > 0
@@ -140,7 +56,10 @@ def _core_box(width: int, height: int) -> tuple[int, int, int, int]:
 
 
 def extract_image_color_stats(
-    image_path: str | Path | None, item_type: str | None, *, core_weighting: bool
+    image_path: str | Path | None,
+    item_type: str | None,
+    *,
+    core_weighting: bool,
 ) -> ImageColorStats:
     empty = ImageColorStats(Counter(), Counter(), Counter(), 0.0, 0.0, False)
     if not image_path:
@@ -163,9 +82,7 @@ def extract_image_color_stats(
     for y in range(height):
         for x in range(width):
             red, green, blue, alpha = image.getpixel((x, y))
-            if alpha < 40:
-                continue
-            if _is_skin_like(red, green, blue):
+            if alpha < 40 or _is_skin_like(red, green, blue):
                 continue
 
             label = _rgb_to_label((red, green, blue))
@@ -198,7 +115,8 @@ def _scaled_counter(values: Counter[str], scale: float) -> Counter[str]:
 
 
 def merge_image_color_stats(
-    icon_stats: ImageColorStats | None, overview_stats: ImageColorStats | None
+    icon_stats: ImageColorStats | None,
+    overview_stats: ImageColorStats | None,
 ) -> ImageColorStats:
     icon_stats = icon_stats or ImageColorStats(Counter(), Counter(), Counter(), 0.0, 0.0, False)
     overview_stats = overview_stats or ImageColorStats(Counter(), Counter(), Counter(), 0.0, 0.0, False)
@@ -228,7 +146,7 @@ def _unique_ordered(colors: list[str]) -> list[str]:
 def _extract_colors(pattern: re.Pattern[str], text: str) -> list[str]:
     matches: list[str] = []
     for match in pattern.finditer(text):
-        matches.append(_normalize_color(match.group("color")))
+        matches.append(normalize_color_label(match.group("color")))
     return _unique_ordered(matches)
 
 
@@ -246,7 +164,7 @@ def parse_caption_color_mentions(visual: str, item_type: str) -> tuple[list[str]
         rf"\b(?P<color>{COLOR_PATTERN})(?:-colored)?\s+(?P<detail>{'|'.join(ACCENT_DETAIL_NOUNS)})\b"
     )
     accent_colors = _unique_ordered(
-        [_normalize_color(match.group("color")) for match in accent_pattern.finditer(lowered)]
+        [normalize_color_label(match.group("color")) for match in accent_pattern.finditer(lowered)]
     )
 
     if item_type in APPAREL_TYPES:
@@ -289,15 +207,19 @@ def _select_dominant_from_stats(stats: ImageColorStats) -> list[str]:
         return []
 
     ranked = stats.weighted_counts.most_common()
-    non_neutral = [entry for entry in ranked if entry[0] not in NEUTRAL_LABELS]
+    non_neutral = [
+        entry for entry in ranked if entry[0] not in NEUTRAL_COLOR_LABELS
+    ]
     eligible_non_neutral = [
-        label for label, _ in non_neutral if _share(stats.weighted_counts, stats.total_weight, label) >= 0.18
+        label
+        for label, _ in non_neutral
+        if _share(stats.weighted_counts, stats.total_weight, label) >= 0.18
     ]
 
     candidate_labels = [
         label
         for label, _ in ranked
-        if not eligible_non_neutral or label not in NEUTRAL_LABELS
+        if not eligible_non_neutral or label not in NEUTRAL_COLOR_LABELS
     ]
     if not candidate_labels:
         candidate_labels = [label for label, _ in ranked]
@@ -318,8 +240,10 @@ def _select_dominant_from_stats(stats: ImageColorStats) -> list[str]:
         share = _share(stats.weighted_counts, stats.total_weight, label)
         if share < 0.22:
             continue
-        if label in NEUTRAL_LABELS and _share(
-            stats.core_weighted_counts, stats.core_total_weight, label
+        if label in NEUTRAL_COLOR_LABELS and _share(
+            stats.core_weighted_counts,
+            stats.core_total_weight,
+            label,
         ) < 0.18:
             continue
         secondary = label
@@ -328,18 +252,23 @@ def _select_dominant_from_stats(stats: ImageColorStats) -> list[str]:
     return [primary, secondary] if secondary and secondary != primary else [primary]
 
 
-def _use_caption_body_fallback(dominant_colors: list[str], caption_body_colors: list[str]) -> bool:
+def _use_caption_body_fallback(
+    dominant_colors: list[str],
+    caption_body_colors: list[str],
+) -> bool:
     if not caption_body_colors:
         return False
     if not dominant_colors:
         return True
-    if len(dominant_colors) == 1 and dominant_colors[0] in NEUTRAL_LABELS:
+    if len(dominant_colors) == 1 and dominant_colors[0] in NEUTRAL_COLOR_LABELS:
         return True
     return False
 
 
 def _tag_hair_colors(
-    overview_path: str, icon_path: str, caption_visual: str
+    overview_path: str,
+    icon_path: str,
+    caption_visual: str,
 ) -> ColorTaggingResult:
     caption_body_colors, _ = parse_caption_color_mentions(caption_visual, "hair")
     palette_colors = extract_dominant_colors(icon_path or overview_path, "hair")
@@ -349,16 +278,25 @@ def _tag_hair_colors(
             dominant.append(color)
         if len(dominant) >= 2:
             break
-    return ColorTaggingResult(dominant_colors=dominant[:2] or palette_colors[:2], accent_colors=[])
+    return ColorTaggingResult(
+        dominant_colors=dominant[:2] or palette_colors[:2],
+        accent_colors=[],
+    )
 
 
 def _tag_apparel_colors(
-    overview_path: str, icon_path: str, item_type: str, caption_visual: str
+    overview_path: str,
+    icon_path: str,
+    item_type: str,
+    caption_visual: str,
 ) -> ColorTaggingResult:
     icon_stats = extract_image_color_stats(icon_path, item_type, core_weighting=True)
     overview_stats = extract_image_color_stats(overview_path, item_type, core_weighting=True)
     merged_stats = merge_image_color_stats(icon_stats, overview_stats)
-    caption_body_colors, caption_accent_colors = parse_caption_color_mentions(caption_visual, item_type)
+    caption_body_colors, caption_accent_colors = parse_caption_color_mentions(
+        caption_visual,
+        item_type,
+    )
 
     dominant_colors = _select_dominant_from_stats(merged_stats)
     if _use_caption_body_fallback(dominant_colors, caption_body_colors):
@@ -367,11 +305,17 @@ def _tag_apparel_colors(
     accent_colors = [
         color for color in caption_accent_colors if color not in dominant_colors
     ][:2]
-    return ColorTaggingResult(dominant_colors=dominant_colors, accent_colors=accent_colors)
+    return ColorTaggingResult(
+        dominant_colors=dominant_colors,
+        accent_colors=accent_colors,
+    )
 
 
 def _tag_non_apparel_colors(
-    overview_path: str, icon_path: str, item_type: str, caption_visual: str
+    overview_path: str,
+    icon_path: str,
+    item_type: str,
+    caption_visual: str,
 ) -> ColorTaggingResult:
     profile = get_type_profile(item_type)
     preferred_path = icon_path if profile.prefer_icon and icon_path else overview_path
@@ -389,7 +333,10 @@ def _tag_non_apparel_colors(
 
 
 def tag_item_colors(
-    overview_path: str, icon_path: str, item_type: str, caption_visual: str
+    overview_path: str,
+    icon_path: str,
+    item_type: str,
+    caption_visual: str,
 ) -> ColorTaggingResult:
     if item_type == "hair":
         return _tag_hair_colors(overview_path, icon_path, caption_visual)

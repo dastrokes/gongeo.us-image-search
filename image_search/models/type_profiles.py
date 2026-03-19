@@ -3,6 +3,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from image_search.constants.items import TYPE_KEY_MAP
+from image_search.constants.text import (
+    BOTTOM_GARMENT_PATTERNS,
+    TOP_GARMENT_PATTERNS,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ItemTypeProfile:
@@ -10,41 +16,11 @@ class ItemTypeProfile:
     style_patterns: tuple[tuple[str, str], ...] = ()
     prefer_icon: bool = False
     extract_hair_color: bool = False
+    blocked_patterns_overview: tuple[str, ...] = ()
+    blocked_patterns_icon: tuple[str, ...] = ()
 
 
-KNOWN_ITEM_TYPES = {
-    "hair",
-    "outerwear",
-    "tops",
-    "bottoms",
-    "socks",
-    "shoes",
-    "hairAccessories",
-    "headwear",
-    "earrings",
-    "neckwear",
-    "bracelets",
-    "chokers",
-    "gloves",
-    "handhelds",
-    "bodyPaint",
-    "baseMakeup",
-    "eyebrows",
-    "eyelashes",
-    "contactLenses",
-    "lips",
-    "skinTones",
-    "dresses",
-    "faceDecorations",
-    "chestAccessories",
-    "pendants",
-    "backpieces",
-    "rings",
-    "armDecorations",
-    "fullMakeup",
-    "abilityHandhelds",
-    "unknown",
-}
+KNOWN_ITEM_TYPES = set(TYPE_KEY_MAP.values()) | {"unknown"}
 
 HAIR_STYLE_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"twin tails?|two (?:large )?pigtails", "twin tails"),
@@ -218,6 +194,8 @@ TYPE_PROFILES: dict[str, ItemTypeProfile] = {
         ),
         style_patterns=HEAD_STYLE_PATTERNS,
         prefer_icon=True,
+        blocked_patterns_overview=(),
+        blocked_patterns_icon=(),
     ),
     "headwear": ItemTypeProfile(
         keywords=(
@@ -242,31 +220,37 @@ TYPE_PROFILES: dict[str, ItemTypeProfile] = {
         keywords=("earring", "hoop", "stud", "drop", "tassel", "gem", "pearl", "star"),
         style_patterns=((r"pearl", "pearl"), (r"gem|crystal", "gem")),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "neckwear": ItemTypeProfile(
         keywords=("necklace", "scarf", "collar", "tie", "ribbon", "bow", "pendant", "gem", "pearl", "lace"),
         style_patterns=DECOR_STYLE_PATTERNS,
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "bracelets": ItemTypeProfile(
         keywords=("bracelet", "bangle", "cuff", "chain", "charm", "gem", "pearl", "ribbon"),
         style_patterns=((r"pearl", "pearl"), (r"gem|crystal", "gem")),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "chokers": ItemTypeProfile(
         keywords=("choker", "lace", "ribbon", "bow", "gem", "pearl", "collar"),
         style_patterns=DECOR_STYLE_PATTERNS,
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "gloves": ItemTypeProfile(
         keywords=("glove", "mitten", "finger", "cuff", "sleeve", "lace", "bow", "ribbon"),
         style_patterns=DECOR_STYLE_PATTERNS,
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "handhelds": ItemTypeProfile(
         keywords=("bag", "purse", "umbrella", "parasol", "fan", "book", "basket", "lantern", "bouquet", "plush", "staff", "wand"),
         style_patterns=DECOR_STYLE_PATTERNS[:3],
         prefer_icon=True,
+        blocked_patterns_icon=TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS,
     ),
     "bodyPaint": ItemTypeProfile(
         keywords=("body paint", "paint", "tattoo", "mark", "pattern", "glow", "shimmer"),
@@ -274,22 +258,27 @@ TYPE_PROFILES: dict[str, ItemTypeProfile] = {
     "baseMakeup": ItemTypeProfile(
         keywords=("makeup", "blush", "eyeshadow", "eyeliner", "contour", "freckles", "highlight"),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "eyebrows": ItemTypeProfile(
         keywords=("eyebrow", "eyebrows", "brow", "brows", "arch"),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "eyelashes": ItemTypeProfile(
         keywords=("eyelash", "eyelashes", "lash", "lashes", "mascara"),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "contactLenses": ItemTypeProfile(
         keywords=("contact", "contacts", "lens", "lenses", "iris", "pupil", "eye", "eyes"),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "lips": ItemTypeProfile(
         keywords=("lip", "lips", "lipstick", "gloss"),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "skinTones": ItemTypeProfile(
         keywords=("skin", "tone", "complexion"),
@@ -318,42 +307,66 @@ TYPE_PROFILES: dict[str, ItemTypeProfile] = {
         style_patterns=DECOR_STYLE_PATTERNS,
     ),
     "faceDecorations": ItemTypeProfile(
-        keywords=("face", "cheek", "forehead", "sticker", "decal", "jewel", "heart", "star", "freckle", "tattoo"),
+        keywords=(
+            "face",
+            "cheek",
+            "forehead",
+            "sticker",
+            "decal",
+            "jewel",
+            "heart",
+            "star",
+            "freckle",
+            "tattoo",
+            "glasses",
+            "eyewear",
+            "spectacles",
+            "frames",
+            "monocle",
+        ),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "chestAccessories": ItemTypeProfile(
         keywords=("brooch", "corsage", "pin", "badge", "flower", "bow", "ribbon", "chest", "gem", "pearl"),
         style_patterns=DECOR_STYLE_PATTERNS,
         prefer_icon=True,
+        blocked_patterns_icon=TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS,
     ),
     "pendants": ItemTypeProfile(
-        keywords=("pendant", "charm", "necklace", "chain", "gem", "pearl"),
+        keywords=("pendant", "charm", "necklace", "chain", "gem", "pearl", "bag", "purse", "garter", "strap"),
         style_patterns=((r"pearl", "pearl"), (r"gem|crystal", "gem")),
         prefer_icon=True,
+        blocked_patterns_icon=TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS,
     ),
     "backpieces": ItemTypeProfile(
         keywords=("back", "backpack", "pack", "wing", "wings", "tail", "cape", "bow", "ribbon"),
         style_patterns=DECOR_STYLE_PATTERNS[:3],
         prefer_icon=True,
+        blocked_patterns_icon=TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS,
     ),
     "rings": ItemTypeProfile(
         keywords=("ring", "rings", "band", "gem", "pearl"),
         style_patterns=((r"pearl", "pearl"), (r"gem|crystal", "gem")),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "armDecorations": ItemTypeProfile(
         keywords=("armlet", "armband", "arm", "bracelet", "cuff", "ribbon", "bow", "lace"),
         style_patterns=DECOR_STYLE_PATTERNS,
         prefer_icon=True,
+        blocked_patterns_icon=TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS,
     ),
     "fullMakeup": ItemTypeProfile(
         keywords=("makeup", "blush", "eyeshadow", "eyeliner", "lip", "freckles", "highlight", "face paint"),
         prefer_icon=True,
+        blocked_patterns_icon=(),
     ),
     "abilityHandhelds": ItemTypeProfile(
         keywords=("staff", "wand", "scepter", "lantern", "umbrella", "parasol", "fan", "sword", "instrument", "bag", "handheld"),
         style_patterns=DECOR_STYLE_PATTERNS[:3],
         prefer_icon=True,
+        blocked_patterns_icon=TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS,
     ),
     "unknown": ItemTypeProfile(
         keywords=(
@@ -375,14 +388,21 @@ TYPE_PROFILES: dict[str, ItemTypeProfile] = {
 
 APPAREL_TYPES = {
     item_type
-    for item_type, profile in TYPE_PROFILES.items()
-    if item_type
-    in {"outerwear", "tops", "bottoms", "socks", "shoes", "dresses"}
+    for item_type in TYPE_PROFILES
+    if item_type in {"outerwear", "tops", "bottoms", "socks", "shoes", "dresses"}
 }
 ACCESSORY_TYPES = {
     item_type
     for item_type, profile in TYPE_PROFILES.items()
-    if profile.prefer_icon and item_type not in {"baseMakeup", "eyebrows", "eyelashes", "contactLenses", "lips", "fullMakeup", "faceDecorations"}
+    if profile.prefer_icon and item_type not in {
+        "baseMakeup",
+        "eyebrows",
+        "eyelashes",
+        "contactLenses",
+        "lips",
+        "fullMakeup",
+        "faceDecorations",
+    }
 }
 FACE_DETAIL_TYPES = {
     "baseMakeup",

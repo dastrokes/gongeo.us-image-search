@@ -6,101 +6,39 @@ from pathlib import Path
 
 from PIL import Image
 
-from schemas import CaptionRecord, ManifestRecord
-from type_profiles import ACCESSORY_TYPES, APPAREL_TYPES, FACE_DETAIL_TYPES, get_type_profile, is_visual_term_relevant
-NOISE_TERMS = {
-    "girl",
-    "woman",
-    "person",
-    "anime",
-    "character",
-    "standing",
-    "posing",
-    "pose",
-    "background",
-    "white background",
-    "close up",
-    "close-up",
-    "illustration",
-}
-LOW_SIGNAL_PATTERNS = [
-    r"\b(?:playful|feminine|dreamlike|sophisticated|summery|detailed|delicate)\b",
-    r"\b(?:stand out|overall look|adding a touch|touch of sparkle|subtle sheen)\b",
-    r"\b(?:soft|silky|sparkle|elegance|elegant|relaxed fit)\b",
-]
-COLOR_PATTERN = (
-    r"(?:(?:light|dark|pale)\s+)?"
-    r"(?:blue|purple|pink|red|green|gold|silver|gray|grey|white|black|brown|blonde)"
+from image_search.constants.colors import (
+    COLOR_DETAIL_NOUNS,
+    COLOR_ONLY_PATTERN,
+    COLOR_PATTERN,
+    normalize_color_label,
 )
-COLOR_ONLY_PATTERN = re.compile(rf"^{COLOR_PATTERN}$")
-COLOR_DETAIL_NOUNS = (
-    "border",
-    "trim",
-    "collar",
-    "cuff",
-    "hem",
-    "lining",
-    "lace",
-    "ribbon",
-    "sash",
-    "fur",
-    "hood",
-    "mask",
-    "cape",
-    "cloak",
-    "robe",
-    "armor",
+from image_search.constants.settings import (
+    DEFAULT_CAPTION_MODEL_ID,
+    DEFAULT_FALLBACK_CAPTION_MODEL_ID,
 )
-STOP_PATTERNS = [
-    r"expression",
-    r"eyes?",
-    r"camera",
-    r"mood",
-    r"serene",
-    r"peaceful",
-    r"dreamy",
-    r"whimsical",
-    r"ethereal",
-    r"minimalistic",
-    r"background",
-    r"landscape",
-    r"mountains?",
-    r"trees?",
-    r"snowy",
-    r"looking directly",
-    r"sleeping",
-]
-TOP_GARMENT_PATTERNS: tuple[str, ...] = (
-    r"\btank top\b",
-    r"\bcamisole\b",
-    r"\bblouse\b",
-    r"\bshirt\b",
-    r"\btop\b",
-    r"\bbodice\b",
-    r"\bneckline\b",
+from image_search.constants.text import (
+    BOTTOM_GARMENT_PATTERNS,
+    CAPTION_NOISE_TERMS,
+    FLORENCE_DETAIL_PROMPT,
+    LOW_SIGNAL_VISUAL_PATTERN,
+    OUTERWEAR_GARMENT_PATTERNS,
+    STOP_VISUAL_PATTERN,
+    TOP_GARMENT_PATTERNS,
 )
-BOTTOM_GARMENT_PATTERNS: tuple[str, ...] = (
-    r"\bshorts?\b",
-    r"\bskirt\b",
-    r"\bpants\b",
-    r"\btrousers\b",
-    r"\bwaistband\b",
-    r"\bhigh-waisted\b",
-)
-OUTERWEAR_GARMENT_PATTERNS: tuple[str, ...] = (
-    r"\bjacket\b",
-    r"\bcoat\b",
-    r"\bcloak\b",
-    r"\bcape\b",
-    r"\bshawl\b",
-    r"\bblazer\b",
+from image_search.models.schemas import CaptionRecord, ManifestRecord
+from image_search.models.type_profiles import (
+    ACCESSORY_TYPES,
+    APPAREL_TYPES,
+    FACE_DETAIL_TYPES,
+    get_type_profile,
+    is_visual_term_relevant,
 )
 
 
 @dataclass(slots=True)
 class CaptionerConfig:
-    model_id: str = "microsoft/Florence-2-large"
-    fallback_model_id: str = "microsoft/Florence-2-base"
+    model_id: str = DEFAULT_CAPTION_MODEL_ID
+    fallback_model_id: str = DEFAULT_FALLBACK_CAPTION_MODEL_ID
     device: str = "auto"
     dtype: str = "auto"
     batch_size: int = 8
@@ -127,29 +65,30 @@ class FlorenceCaptioner:
         normalized = candidate.strip().lower()
         if not normalized:
             return False
+        profile = get_type_profile(item_type)
 
-        # Tops and outerwear often inherit the default bottoms from the full outfit
-        # render, even in icon crops. Drop those cross-garment descriptors early.
         if item_type in {"outerwear", "tops"} and any(
             re.search(pattern, normalized) for pattern in BOTTOM_GARMENT_PATTERNS
         ):
             return True
 
-        if modality != "overview":
-            return False
-
         if item_type != "hair" and COLOR_ONLY_PATTERN.fullmatch(normalized):
             return True
 
         blocked_patterns: tuple[str, ...] = ()
-        if item_type == "outerwear":
-            blocked_patterns = TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS
-        elif item_type == "tops":
-            blocked_patterns = BOTTOM_GARMENT_PATTERNS
-        elif item_type in {"bottoms", "socks", "shoes"}:
-            blocked_patterns = TOP_GARMENT_PATTERNS + OUTERWEAR_GARMENT_PATTERNS
-        elif item_type not in APPAREL_TYPES and item_type != "hair":
-            blocked_patterns = TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS
+        if modality == "overview":
+            if profile.blocked_patterns_overview:
+                blocked_patterns = profile.blocked_patterns_overview
+            elif item_type == "outerwear":
+                blocked_patterns = TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS
+            elif item_type == "tops":
+                blocked_patterns = BOTTOM_GARMENT_PATTERNS
+            elif item_type in {"bottoms", "socks", "shoes"}:
+                blocked_patterns = TOP_GARMENT_PATTERNS + OUTERWEAR_GARMENT_PATTERNS
+            elif item_type not in APPAREL_TYPES and item_type != "hair":
+                blocked_patterns = TOP_GARMENT_PATTERNS + BOTTOM_GARMENT_PATTERNS
+        elif profile.blocked_patterns_icon:
+            blocked_patterns = profile.blocked_patterns_icon
 
         return any(re.search(pattern, normalized) for pattern in blocked_patterns)
 
@@ -229,8 +168,6 @@ class FlorenceCaptioner:
 
         if self.config.dtype == "auto":
             if self.device == "cuda":
-                # bfloat16 is preferred on modern GPUs (Ampere+): better numerical
-                # stability than float16 with the same memory footprint.
                 self.torch_dtype = (
                     torch.bfloat16
                     if torch.cuda.is_bf16_supported()
@@ -274,8 +211,11 @@ class FlorenceCaptioner:
         import torch
 
         image = Image.open(image_path).convert("RGB")
-        prompt = "<MORE_DETAILED_CAPTION>"
-        inputs = self.processor(text=prompt, images=image, return_tensors="pt")
+        inputs = self.processor(
+            text=FLORENCE_DETAIL_PROMPT,
+            images=image,
+            return_tensors="pt",
+        )
         normalized_inputs = {}
         for key, value in inputs.items():
             if not hasattr(value, "to"):
@@ -297,14 +237,17 @@ class FlorenceCaptioner:
             )
 
         decoded = self.processor.batch_decode(
-            generated_ids, skip_special_tokens=False
+            generated_ids,
+            skip_special_tokens=False,
         )[0]
         try:
             parsed = self.processor.post_process_generation(
-                decoded, task=prompt, image_size=image.size
+                decoded,
+                task=FLORENCE_DETAIL_PROMPT,
+                image_size=image.size,
             )
             if isinstance(parsed, dict):
-                parsed_value = parsed.get(prompt)
+                parsed_value = parsed.get(FLORENCE_DETAIL_PROMPT)
                 if isinstance(parsed_value, str):
                     return parsed_value
                 if parsed_value is not None:
@@ -313,19 +256,17 @@ class FlorenceCaptioner:
             pass
         return decoded
 
-    def caption_images_batch(
-        self, image_paths: list[str | Path]
-    ) -> list[str]:
-        """Run inference on a batch of images in a single forward pass."""
+    def caption_images_batch(self, image_paths: list[str | Path]) -> list[str]:
         self.ensure_loaded()
         import torch
 
-        prompt = "<MORE_DETAILED_CAPTION>"
-        images = [Image.open(p).convert("RGB") for p in image_paths]
-        prompts = [prompt] * len(images)
-
+        images = [Image.open(path).convert("RGB") for path in image_paths]
+        prompts = [FLORENCE_DETAIL_PROMPT] * len(images)
         inputs = self.processor(
-            text=prompts, images=images, return_tensors="pt", padding=True
+            text=prompts,
+            images=images,
+            return_tensors="pt",
+            padding=True,
         )
         normalized_inputs = {}
         for key, value in inputs.items():
@@ -348,17 +289,20 @@ class FlorenceCaptioner:
             )
 
         decoded_list = self.processor.batch_decode(
-            generated_ids, skip_special_tokens=False
+            generated_ids,
+            skip_special_tokens=False,
         )
 
         results: list[str] = []
         for decoded, image in zip(decoded_list, images):
             try:
                 parsed = self.processor.post_process_generation(
-                    decoded, task=prompt, image_size=image.size
+                    decoded,
+                    task=FLORENCE_DETAIL_PROMPT,
+                    image_size=image.size,
                 )
                 if isinstance(parsed, dict):
-                    parsed_value = parsed.get(prompt)
+                    parsed_value = parsed.get(FLORENCE_DETAIL_PROMPT)
                     if isinstance(parsed_value, str):
                         results.append(parsed_value)
                         continue
@@ -372,7 +316,9 @@ class FlorenceCaptioner:
 
     @staticmethod
     def _normalize_caption(
-        raw_caption: str, item_type: str, modality: str = ""
+        raw_caption: str,
+        item_type: str,
+        modality: str = "",
     ) -> str:
         caption = raw_caption.lower()
         caption = re.sub(r"</?s>|<.*?>", " ", caption)
@@ -395,36 +341,32 @@ class FlorenceCaptioner:
             target.append(normalized)
 
         if profile.extract_hair_color:
-            color_match = re.findall(
-                r"((?:light|dark|pale)\s+)?(blue|purple|pink|red|green|gold|silver|gray|grey|white|black|brown|blonde)\s+hair",
-                caption,
-            )
-            for modifier, base_color in color_match:
-                normalized_color = (
-                    f"{modifier}{base_color}".strip().replace("grey", "gray")
+            for match in re.finditer(rf"(?P<color>{COLOR_PATTERN})\s+hair", caption):
+                add_descriptor(
+                    grounded,
+                    f"{normalize_color_label(match.group('color'))} hair",
                 )
-                add_descriptor(grounded, f"{normalized_color} hair")
 
         for part in parts:
             for candidate in FlorenceCaptioner._candidate_parts(part):
                 candidate = re.sub(r"^(a|an|the)\s+", "", candidate)
-                if any(noise in candidate for noise in NOISE_TERMS):
+                if any(noise in candidate for noise in CAPTION_NOISE_TERMS):
                     continue
-                if any(re.search(pattern, candidate) for pattern in STOP_PATTERNS):
+                if STOP_VISUAL_PATTERN.search(candidate):
                     continue
-                if any(re.search(pattern, candidate) for pattern in LOW_SIGNAL_PATTERNS):
+                if LOW_SIGNAL_VISUAL_PATTERN.search(candidate):
                     continue
                 candidate = re.sub(r"\b(she|her|hers)\b", "", candidate)
                 candidate = re.sub(r"^(has|have|with)\s+", "", candidate)
                 candidate = re.sub(r"\s+", " ", candidate).strip(" ,")
-                if len(candidate) < 3:
-                    continue
-                if candidate in seen:
+                if len(candidate) < 3 or candidate in seen:
                     continue
                 if any(token in candidate for token in {"wearing", "face", "head tilted"}):
                     continue
                 if FlorenceCaptioner._is_default_showcase_descriptor(
-                    candidate, item_type, modality
+                    candidate,
+                    item_type,
+                    modality,
                 ):
                     continue
                 if not is_visual_term_relevant(candidate, item_type):
@@ -433,7 +375,8 @@ class FlorenceCaptioner:
 
         style_source = ", ".join(grounded) if grounded else caption
         for descriptor in FlorenceCaptioner._extract_style_descriptors(
-            style_source, item_type
+            style_source,
+            item_type,
         ):
             add_descriptor(fallback, descriptor)
 
@@ -456,15 +399,13 @@ class FlorenceCaptioner:
 
     @staticmethod
     def _preferred_modalities(record: ManifestRecord) -> list[tuple[str, str]]:
-        modalities: list[tuple[str, str]] = []
         profile = get_type_profile(record.type)
         if profile.prefer_icon or record.type in ACCESSORY_TYPES or record.type in FACE_DETAIL_TYPES:
             ordered = (("icon", record.icon_path), ("overview", record.overview_path))
-        elif record.type in APPAREL_TYPES or record.type == "hair":
-            ordered = (("overview", record.overview_path), ("icon", record.icon_path))
         else:
             ordered = (("overview", record.overview_path), ("icon", record.icon_path))
 
+        modalities: list[tuple[str, str]] = []
         for label, path in ordered:
             if path:
                 modalities.append((label, path))
@@ -480,7 +421,9 @@ class FlorenceCaptioner:
         for modality, path in self._preferred_modalities(record):
             try:
                 normalized = self._normalize_caption(
-                    self.caption_image(path), record.type, modality
+                    self.caption_image(path),
+                    record.type,
+                    modality,
                 )
             except Exception as exc:
                 failed.append(f"{modality}:{exc}")
@@ -507,34 +450,30 @@ class FlorenceCaptioner:
             failed_modalities=failed,
         )
 
-    def caption_records_batch(
-        self, records: list[ManifestRecord]
-    ) -> list[CaptionRecord]:
-        """Caption a batch of records using batched GPU inference.
-
-        Collects all (record, modality, path) tuples, runs them through the
-        model in one batched call, then reassembles per-record CaptionRecords.
-        """
+    def caption_records_batch(self, records: list[ManifestRecord]) -> list[CaptionRecord]:
         self.ensure_loaded()
 
-        # Build a flat list of (record_index, modality, path) to infer together
         tasks: list[tuple[int, str, str]] = []
-        for idx, record in enumerate(records):
+        for index, record in enumerate(records):
             for modality, path in self._preferred_modalities(record):
-                tasks.append((idx, modality, path))
+                tasks.append((index, modality, path))
 
         if not tasks:
             return [
-                CaptionRecord(item_id=r.item_id, icon_caption="", overview_caption="", visual="", failed_modalities=[])
-                for r in records
+                CaptionRecord(
+                    item_id=record.item_id,
+                    icon_caption="",
+                    overview_caption="",
+                    visual="",
+                    failed_modalities=[],
+                )
+                for record in records
             ]
 
-        # Run batched inference; fall back per-image on error
-        paths = [t[2] for t in tasks]
+        paths = [task[2] for task in tasks]
         try:
             raw_captions = self.caption_images_batch(paths)
         except Exception:
-            # Fallback: caption one by one
             raw_captions = []
             for path in paths:
                 try:
@@ -542,36 +481,35 @@ class FlorenceCaptioner:
                 except Exception as exc:
                     raw_captions.append(f"__error__:{exc}")
 
-        # Reassemble per-record results
         icon_captions: dict[int, str] = {}
         overview_captions: dict[int, str] = {}
-        merged: dict[int, list[str]] = {i: [] for i in range(len(records))}
-        seen_parts: dict[int, set[str]] = {i: set() for i in range(len(records))}
-        failed: dict[int, list[str]] = {i: [] for i in range(len(records))}
+        merged: dict[int, list[str]] = {index: [] for index in range(len(records))}
+        seen_parts: dict[int, set[str]] = {index: set() for index in range(len(records))}
+        failed: dict[int, list[str]] = {index: [] for index in range(len(records))}
 
-        for (idx, modality, _path), raw in zip(tasks, raw_captions):
+        for (index, modality, _path), raw in zip(tasks, raw_captions):
             if raw.startswith("__error__:"):
-                failed[idx].append(f"{modality}:{raw[len('__error__:'):]}")
+                failed[index].append(f"{modality}:{raw[len('__error__:'):]}")
                 continue
-            normalized = self._normalize_caption(raw, records[idx].type, modality)
-            if self._is_low_signal_caption(normalized, records[idx].type):
+            normalized = self._normalize_caption(raw, records[index].type, modality)
+            if self._is_low_signal_caption(normalized, records[index].type):
                 continue
             if modality == "icon":
-                icon_captions[idx] = normalized
+                icon_captions[index] = normalized
             else:
-                overview_captions[idx] = normalized
+                overview_captions[index] = normalized
             for part in self._caption_parts(normalized):
-                if part not in seen_parts[idx]:
-                    seen_parts[idx].add(part)
-                    merged[idx].append(part)
+                if part not in seen_parts[index]:
+                    seen_parts[index].add(part)
+                    merged[index].append(part)
 
         return [
             CaptionRecord(
-                item_id=records[i].item_id,
-                icon_caption=icon_captions.get(i, ""),
-                overview_caption=overview_captions.get(i, ""),
-                visual=", ".join(merged[i]),
-                failed_modalities=failed[i],
+                item_id=records[index].item_id,
+                icon_caption=icon_captions.get(index, ""),
+                overview_caption=overview_captions.get(index, ""),
+                visual=", ".join(merged[index]),
+                failed_modalities=failed[index],
             )
-            for i in range(len(records))
+            for index in range(len(records))
         ]

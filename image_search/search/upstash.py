@@ -11,12 +11,14 @@ from urllib.parse import urlparse
 import requests
 from upstash_vector import Index
 
-from schemas import DocumentRecord, QueryRequest, QueryResult
+from image_search.constants.settings import (
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_INDEX_TYPE,
+    DEFAULT_MANAGEMENT_URL,
+    DEFAULT_SPARSE_EMBEDDING_MODEL,
+)
+from image_search.models.schemas import DocumentRecord, QueryRequest, QueryResult
 
-DEFAULT_EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"
-DEFAULT_SPARSE_EMBEDDING_MODEL = "BM25"
-DEFAULT_INDEX_TYPE = "HYBRID"
-DEFAULT_MANAGEMENT_URL = "https://api.upstash.com/v2/vector"
 
 EMBEDDING_MODEL_API_NAMES = {
     "BAAI/bge-small-en-v1.5": "BGE_SMALL_EN_V1_5",
@@ -97,7 +99,8 @@ class UpstashConfig:
             rest_token=resolved_rest_token or None,
             embedding_model=embedding_model,
             management_url=os.getenv(
-                "UPSTASH_VECTOR_MANAGEMENT_URL", DEFAULT_MANAGEMENT_URL
+                "UPSTASH_VECTOR_MANAGEMENT_URL",
+                DEFAULT_MANAGEMENT_URL,
             ),
             management_email=os.getenv("UPSTASH_EMAIL"),
             management_api_key=os.getenv("UPSTASH_API_KEY"),
@@ -158,6 +161,7 @@ def create_index(
         payload["sparse_embedding_model"] = _normalize_sparse_embedding_model_name(
             sparse_embedding_model
         )
+
     response = requests.post(
         f"{config.management_url.rstrip('/')}/index",
         headers={
@@ -217,9 +221,7 @@ def build_filter_expression(request: QueryRequest) -> str | None:
         )
     if request.obtain_type:
         clauses.append(
-            "("
-            + " OR ".join(f"obtain_type = {value}" for value in request.obtain_type)
-            + ")"
+            "(" + " OR ".join(f"obtain_type = {value}" for value in request.obtain_type) + ")"
         )
     if request.colors:
         escaped = [value.replace("'", "\\'") for value in request.colors]
