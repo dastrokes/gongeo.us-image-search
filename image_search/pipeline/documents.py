@@ -40,7 +40,11 @@ def build_search_text(
         f"item type: {metadata.item_type}",
     ]
     if metadata.primary_color:
-        secondary = f", secondary {metadata.secondary_color}" if metadata.secondary_color else ""
+        secondary = (
+            f", secondary {metadata.secondary_color}"
+            if metadata.secondary_color
+            else ""
+        )
         lines.append(f"colors: primary {metadata.primary_color}{secondary}")
     elif metadata.dominant_colors:
         lines.append(f"colors: {', '.join(metadata.dominant_colors)}")

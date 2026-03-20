@@ -15,11 +15,20 @@ from image_search.constants.colors import (
 )
 from image_search.constants.settings import DEFAULT_CAPTION_MODEL_ID
 from image_search.constants.text import (
+    ACCESSORY_TYPE_SPECIFIC_PROMPT_RULES,
+    APPAREL_LEAK_PATTERNS,
     BOTTOM_GARMENT_PATTERNS,
-    CAPTION_NOISE_TERMS,
+    BODY_LEAK_PATTERNS,
+    CAPTION_NOISE_PATTERN,
+    DEFAULT_PROMPT_FOCUS,
     DRESS_GARMENT_PATTERNS,
+    HAIR_TYPE_SPECIFIC_PROMPT_RULES,
+    HAIR_LEAK_PATTERNS,
+    JEWELRY_LEAK_PATTERNS,
     LOW_SIGNAL_VISUAL_PATTERN,
     OUTERWEAR_GARMENT_PATTERNS,
+    PLAIN_DETAIL_PROMPT_LINES,
+    PROMPT_FOCUS_BY_MODALITY,
     QWEN_STRUCTURED_DETAIL_PROMPT,
     STOP_VISUAL_PATTERN,
     TOP_GARMENT_PATTERNS,
@@ -45,44 +54,6 @@ class CaptionerConfig:
 
 
 class VisionCaptioner:
-    _APPAREL_LEAK_PATTERNS: tuple[str, ...] = (
-        *TOP_GARMENT_PATTERNS,
-        *BOTTOM_GARMENT_PATTERNS,
-        *OUTERWEAR_GARMENT_PATTERNS,
-        *DRESS_GARMENT_PATTERNS,
-        r"\bcorset\b",
-        r"\bvest\b",
-        r"\bapron\b",
-    )
-    _JEWELRY_LEAK_PATTERNS: tuple[str, ...] = (
-        r"\bnecklace\b",
-        r"\bchoker\b",
-        r"\bpendant\b",
-        r"\bearrings?\b",
-        r"\bbracelets?\b",
-        r"\bring\b",
-        r"\bbrooch\b",
-    )
-    _BODY_LEAK_PATTERNS: tuple[str, ...] = (
-        r"\bface\b",
-        r"\bskin\b",
-        r"\bhand\b",
-        r"\barm\b",
-        r"\btorso\b",
-        r"\bbody\b",
-    )
-    _HAIR_LEAK_PATTERNS: tuple[str, ...] = (
-        r"\bhair\b",
-        r"\bponytails?\b",
-        r"\bpigtails?\b",
-        r"\btwin tails?\b",
-        r"\bbangs?\b",
-        r"\bbun\b",
-        r"\bbraid(?:ed)?\b",
-        r"\bcurls?\b",
-        r"\bwaves?\b",
-    )
-
     @staticmethod
     def _extract_style_descriptors(source_text: str, item_type: str) -> list[str]:
         profile = get_type_profile(item_type)
@@ -201,45 +172,31 @@ class VisionCaptioner:
         return candidates
 
     @staticmethod
-    def _build_prompt(item_type: str, modality: str) -> str:
-        focus = "the item's visible structure, materials, and distinguishing details"
-        if modality == "overview":
-            focus = "overall silhouette, length, layering, placement, and major materials"
-        elif modality == "icon":
-            focus = "small motifs, trims, closures, embroidery, ornaments, and accent details"
+    def _prompt_focus(modality: str) -> str:
+        return PROMPT_FOCUS_BY_MODALITY.get(modality, DEFAULT_PROMPT_FOCUS)
 
-        prompt = QWEN_STRUCTURED_DETAIL_PROMPT.format(focus=focus)
-        if item_type:
-            prompt += f"\nTreat the main item as a `{item_type}`."
-            prompt += VisionCaptioner._subcategory_prompt_rule(item_type)
-            prompt += VisionCaptioner._attribute_prompt_rule(item_type, modality)
-            prompt += VisionCaptioner._coverage_prompt_rule(item_type, modality)
-        return prompt
-
-    @staticmethod
-    def _build_plain_prompt(item_type: str, modality: str) -> str:
-        focus = "the item's visible structure, materials, and distinguishing details"
-        if modality == "overview":
-            focus = "overall silhouette, length, layering, placement, and major materials"
-        elif modality == "icon":
-            focus = "small motifs, trims, closures, embroidery, ornaments, and accent details"
-
-        prompt = (
-            "Describe only the main wearable item in this image.\n"
-            f"Focus on {focus}.\n"
-            "Start with the main garment/accessory subcategory if it is visible.\n"
-            "Be exhaustive about visible attributes, but omit anything not clearly visible.\n"
-            "Prefer concrete visual facts such as length, silhouette, shape, placement, material, pattern, motif, trim, closure, and ornament.\n"
-            "Return only a comma-separated list of short lowercase phrases.\n"
-            "Do not return JSON.\n"
-            "Do not mention the character, pose, background, or nearby items."
+    @classmethod
+    def _item_prompt_rules(cls, item_type: str, modality: str) -> str:
+        if not item_type:
+            return ""
+        return (
+            f"\nTreat the main item as a `{item_type}`."
+            + cls._type_specific_prompt_rules(item_type)
+            + cls._subcategory_prompt_rule(item_type)
+            + cls._attribute_prompt_rule(item_type, modality)
+            + cls._coverage_prompt_rule(item_type, modality)
         )
-        if item_type:
-            prompt += f"\nTreat the main item as a `{item_type}`."
-            prompt += VisionCaptioner._subcategory_prompt_rule(item_type)
-            prompt += VisionCaptioner._attribute_prompt_rule(item_type, modality)
-            prompt += VisionCaptioner._coverage_prompt_rule(item_type, modality)
-        return prompt
+
+    @classmethod
+    def _build_prompt(cls, item_type: str, modality: str) -> str:
+        prompt = QWEN_STRUCTURED_DETAIL_PROMPT.format(focus=cls._prompt_focus(modality))
+        return prompt + cls._item_prompt_rules(item_type, modality)
+
+    @classmethod
+    def _build_plain_prompt(cls, item_type: str, modality: str) -> str:
+        focus = cls._prompt_focus(modality)
+        lines = [line.format(focus=focus) for line in PLAIN_DETAIL_PROMPT_LINES]
+        return "\n".join(lines) + cls._item_prompt_rules(item_type, modality)
 
     @staticmethod
     def _subcategory_prompt_rule(item_type: str) -> str:
@@ -256,61 +213,35 @@ class VisionCaptioner:
     @staticmethod
     def _attribute_prompt_rule(item_type: str, modality: str) -> str:
         if item_type == "hair":
-            return (
-                "\nCover visible hair attributes: length, arrangement, bangs, texture, parting, and attached ornaments."
-            )
+            return "\nCover visible hair attributes: length, arrangement, bangs, texture, parting, and attached ornaments."
         if item_type == "dresses":
-            return (
-                "\nCover visible dress attributes: subcategory, length, silhouette, neckline, sleeve length, sleeve shape, straps, waist, hem, layering, materials, pattern, motif, trim, ornament, and closures."
-            )
+            return "\nCover visible dress attributes: subcategory, length, silhouette, neckline, sleeve length, sleeve shape, straps, waist, hem, layering, materials, pattern, motif, trim, ornament, and closures."
         if item_type in {"tops", "outerwear"}:
-            return (
-                "\nCover visible apparel attributes: subcategory, neckline, collar, sleeve length, sleeve shape, garment length, hem, layering, front opening or closure, materials, pattern, motif, trim, and ornament."
-            )
+            return "\nCover visible apparel attributes: subcategory, neckline, collar, sleeve length, sleeve shape, garment length, hem, layering, front opening or closure, materials, pattern, motif, trim, and ornament."
         if item_type == "bottoms":
-            return (
-                "\nCover visible bottom attributes: subcategory, rise, length, silhouette, pleats or layering, hem, materials, pattern, motif, trim, and ornament."
-            )
+            return "\nCover visible bottom attributes: subcategory, rise, length, silhouette, pleats or layering, hem, materials, pattern, motif, trim, and ornament."
         if item_type == "socks":
-            return (
-                "\nCover visible legwear attributes: subcategory, height, opacity, trim, pattern, motif, and ornament."
-            )
+            return "\nCover visible legwear attributes: subcategory, height, opacity, trim, pattern, motif, and ornament."
         if item_type == "shoes":
-            return (
-                "\nCover visible footwear attributes: subcategory, heel height, shaft height, toe shape, platform, straps, buckles or closures, materials, pattern, trim, and ornament."
-            )
+            return "\nCover visible footwear attributes: subcategory, heel height, shaft height, toe shape, platform, straps, buckles or closures, materials, pattern, trim, and ornament."
         if item_type in ACCESSORY_TYPES:
-            return (
-                "\nCover visible accessory attributes: subcategory, shape, size, placement, attachment style, materials, pattern, motif, trim, ornament, gems, bows, ribbons, and closures."
-            )
+            return "\nCover visible accessory attributes: subcategory, shape, size, placement, attachment style, materials, pattern, motif, trim, ornament, gems, bows, ribbons, and closures."
         if item_type in FACE_DETAIL_TYPES:
-            return (
-                "\nCover visible face-detail attributes: placement, shape, finish, intensity, color, pattern, motif, and decorative accents."
-            )
+            return "\nCover visible face-detail attributes: placement, shape, finish, intensity, color, pattern, motif, and decorative accents."
         if item_type == "bodyPaint":
-            return (
-                "\nCover visible body-paint attributes: placement, coverage, shape, pattern, motif, finish, and color accents."
-            )
+            return "\nCover visible body-paint attributes: placement, coverage, shape, pattern, motif, finish, and color accents."
         if item_type == "skinTones":
             return "\nDescribe only visible skin tone or complexion cues of the target cosmetic item."
-        return (
-            "\nCover visible attributes such as subcategory, shape, placement, length, materials, pattern, motif, trim, ornament, and closures when applicable."
-        )
+        return "\nCover visible attributes such as subcategory, shape, placement, length, materials, pattern, motif, trim, ornament, and closures when applicable."
 
     @staticmethod
     def _coverage_prompt_rule(item_type: str, modality: str) -> str:
         if modality == "overview":
             if item_type in APPAREL_TYPES or item_type == "hair":
-                return (
-                    "\nThe overview should prioritize whole-item structure first: subcategory, length or height, silhouette, placement, and large construction details."
-                )
-            return (
-                "\nThe overview should prioritize whole-item shape, placement, scale, and how details are distributed across the item."
-            )
+                return "\nThe overview should prioritize whole-item structure first: subcategory, length or height, silhouette, placement, and large construction details."
+            return "\nThe overview should prioritize whole-item shape, placement, scale, and how details are distributed across the item."
         if modality == "icon":
-            return (
-                "\nThe icon should prioritize small details second: trim, closures, motifs, ornaments, textures, and accent materials."
-            )
+            return "\nThe icon should prioritize small details second: trim, closures, motifs, ornaments, textures, and accent materials."
         return ""
 
     @staticmethod
@@ -444,7 +375,10 @@ class VisionCaptioner:
     ) -> list[list[ManifestRecord]]:
         if batch_size <= 0:
             batch_size = 1
-        return [records[index : index + batch_size] for index in range(0, len(records), batch_size)]
+        return [
+            records[index : index + batch_size]
+            for index in range(0, len(records), batch_size)
+        ]
 
     def _retry_missing_modalities(
         self,
@@ -457,7 +391,9 @@ class VisionCaptioner:
         path_by_modality = {
             label: path for label, path in self._record_image_paths(record)
         }
-        retry_modalities = [label for label in modalities if path_by_modality.get(label)]
+        retry_modalities = [
+            label for label in modalities if path_by_modality.get(label)
+        ]
         if not retry_modalities:
             return {}
 
@@ -479,16 +415,9 @@ class VisionCaptioner:
     @staticmethod
     def _type_specific_prompt_rules(item_type: str) -> str:
         if item_type == "hair":
-            return (
-                "\nDescribe only the hairstyle or hair-attached decorations."
-                "\nIgnore clothing, dresses, tops, jewelry, skin, face, and anything below the neck."
-                "\nMention bows, ribbons, clips, or headbands only when they are attached to the hair."
-            )
+            return HAIR_TYPE_SPECIFIC_PROMPT_RULES
         if item_type in ACCESSORY_TYPES or item_type in FACE_DETAIL_TYPES:
-            return (
-                "\nDescribe only the target accessory or face detail."
-                "\nIgnore surrounding clothing, adjacent jewelry, hairstyle, body parts, and nearby items unless they are part of the target item."
-            )
+            return ACCESSORY_TYPE_SPECIFIC_PROMPT_RULES
         return ""
 
     @staticmethod
@@ -596,7 +525,10 @@ class VisionCaptioner:
 
         model_class = self._resolve_model_class()
         self.processor = AutoProcessor.from_pretrained(self.config.model_id)
-        if hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
+        if (
+            hasattr(self.processor, "tokenizer")
+            and self.processor.tokenizer is not None
+        ):
             self.processor.tokenizer.padding_side = "left"
         model_kwargs: dict[str, Any] = {}
         use_quantization = self.config.quantization == "8bit"
@@ -745,7 +677,7 @@ class VisionCaptioner:
         for part in parts:
             for candidate in VisionCaptioner._candidate_parts(part):
                 candidate = re.sub(r"^(a|an|the)\s+", "", candidate)
-                if any(noise in candidate for noise in CAPTION_NOISE_TERMS):
+                if CAPTION_NOISE_PATTERN.search(candidate):
                     continue
                 if STOP_VISUAL_PATTERN.search(candidate):
                     continue
@@ -756,7 +688,9 @@ class VisionCaptioner:
                 candidate = re.sub(r"\s+", " ", candidate).strip(" ,")
                 if len(candidate) < 3 or candidate in seen:
                     continue
-                if any(token in candidate for token in {"wearing", "face", "head tilted"}):
+                if any(
+                    token in candidate for token in {"wearing", "face", "head tilted"}
+                ):
                     continue
                 if VisionCaptioner._is_default_showcase_descriptor(
                     candidate,
@@ -789,16 +723,16 @@ class VisionCaptioner:
         profile = get_type_profile(item_type)
         has_profile_keyword = any(keyword in normalized for keyword in profile.keywords)
         matches_apparel = any(
-            re.search(pattern, normalized) for pattern in cls._APPAREL_LEAK_PATTERNS
+            re.search(pattern, normalized) for pattern in APPAREL_LEAK_PATTERNS
         )
         matches_jewelry = any(
-            re.search(pattern, normalized) for pattern in cls._JEWELRY_LEAK_PATTERNS
+            re.search(pattern, normalized) for pattern in JEWELRY_LEAK_PATTERNS
         )
         matches_body = any(
-            re.search(pattern, normalized) for pattern in cls._BODY_LEAK_PATTERNS
+            re.search(pattern, normalized) for pattern in BODY_LEAK_PATTERNS
         )
         matches_hair = any(
-            re.search(pattern, normalized) for pattern in cls._HAIR_LEAK_PATTERNS
+            re.search(pattern, normalized) for pattern in HAIR_LEAK_PATTERNS
         )
 
         if item_type == "hair":
@@ -819,9 +753,7 @@ class VisionCaptioner:
     @staticmethod
     def _caption_parts(normalized_caption: str) -> list[str]:
         return [
-            chunk.strip()
-            for chunk in normalized_caption.split(",")
-            if chunk.strip()
+            chunk.strip() for chunk in normalized_caption.split(",") if chunk.strip()
         ]
 
     @classmethod
@@ -834,7 +766,11 @@ class VisionCaptioner:
     @staticmethod
     def _preferred_modalities(record: ManifestRecord) -> list[tuple[str, str]]:
         profile = get_type_profile(record.type)
-        if profile.prefer_icon or record.type in ACCESSORY_TYPES or record.type in FACE_DETAIL_TYPES:
+        if (
+            profile.prefer_icon
+            or record.type in ACCESSORY_TYPES
+            or record.type in FACE_DETAIL_TYPES
+        ):
             ordered = (("icon", record.icon_path), ("overview", record.overview_path))
         else:
             ordered = (("overview", record.overview_path), ("icon", record.icon_path))
@@ -848,7 +784,9 @@ class VisionCaptioner:
     def caption_record(self, record: ManifestRecord) -> CaptionRecord:
         return self.caption_records_batch([record])[0]
 
-    def caption_records_batch(self, records: list[ManifestRecord]) -> list[CaptionRecord]:
+    def caption_records_batch(
+        self, records: list[ManifestRecord]
+    ) -> list[CaptionRecord]:
         if not records:
             return []
         self.ensure_loaded()

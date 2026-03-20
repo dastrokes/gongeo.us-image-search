@@ -19,16 +19,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Generate base-item manifest JSONL for the image-search index."
     )
-    parser.add_argument("--tracker-root", default=None, help="Path to nikki-tracker repo root")
-    parser.add_argument("--config-root", default=None, help="Path to config-decoder output root")
-    parser.add_argument("--sync-report", default=None, help="Path to database-sync-report.json")
-    parser.add_argument("--source-version", default=None, help="Override source_version field")
+    parser.add_argument(
+        "--tracker-root", default=None, help="Path to nikki-tracker repo root"
+    )
+    parser.add_argument(
+        "--config-root", default=None, help="Path to config-decoder output root"
+    )
+    parser.add_argument(
+        "--sync-report", default=None, help="Path to database-sync-report.json"
+    )
+    parser.add_argument(
+        "--source-version", default=None, help="Override source_version field"
+    )
     parser.add_argument(
         "--output",
         default=str(PROJECT_ROOT / "manifest" / "item-manifest.jsonl"),
         help="Destination JSONL file",
     )
-    parser.add_argument("--limit", type=int, default=None, help="Limit number of records")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Limit number of records"
+    )
     parser.add_argument(
         "--type",
         action="append",

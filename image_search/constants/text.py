@@ -2,81 +2,119 @@ from __future__ import annotations
 
 import re
 
-
 QWEN_STRUCTURED_DETAIL_PROMPT = """
-Describe only the main wearable item from the provided images.
+Describe exactly one main wearable item from the provided images.
 Focus on {focus}.
-Return only a comma-separated list of short lowercase phrases.
+Return only a comma-separated list of short lowercase phrases describing the item itself.
 Rules:
 - Use lowercase normalized phrases only.
-- Start with the main item subcategory if it is visible.
-- Be exhaustive about clearly visible item attributes, but do not guess.
-- Prefer concrete visual facts such as length, silhouette, shape, placement, material, pattern, motif, trim, closure, and ornament.
-- Do not mention the character, pose, face, body, hands, background, nearby items, or framing.
+- Start with the visible main item subcategory if it is clear.
+- Include only directly visible attributes of that item.
+- Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.
+- Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.
+- Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.
+- Do not write full sentences or repeat near-duplicate phrases.
 - Do not return JSON.
 """.strip()
 
-CAPTION_NOISE_TERMS = {
-    "girl",
-    "woman",
-    "person",
-    "anime",
-    "character",
-    "standing",
-    "posing",
-    "pose",
-    "background",
-    "white background",
-    "close up",
-    "close-up",
-    "illustration",
+PLAIN_DETAIL_PROMPT_LINES: tuple[str, ...] = (
+    "Describe exactly one main wearable item from the provided images.",
+    "Focus on {focus}.",
+    "Return only a comma-separated list of short lowercase phrases describing the item itself.",
+    "Use lowercase normalized phrases only.",
+    "Start with the visible main item subcategory if it is clear.",
+    "Include only directly visible attributes of that item.",
+    "Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.",
+    "Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.",
+    "Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.",
+    "Do not write full sentences or repeat near-duplicate phrases.",
+    "Do not return JSON.",
+)
+
+PROMPT_FOCUS_BY_MODALITY: dict[str, str] = {
+    "overview": "overall silhouette, length, layering, placement, and major materials",
+    "icon": "small motifs, trims, closures, embroidery, ornaments, and accent details",
 }
 
-LOW_SIGNAL_VISUAL_PATTERN = re.compile(
-    r"\b(?:playful|feminine|dreamlike|sophisticated|summery|detailed|delicate|"
-    r"stand out|overall look|adding a touch|touch of sparkle|subtle sheen|"
-    r"soft|silky|sparkle|elegance|elegant|relaxed fit|tight-fitting)\b"
+DEFAULT_PROMPT_FOCUS = (
+    "the item's visible structure, materials, and distinguishing details"
 )
 
-STOP_VISUAL_PATTERN = re.compile(
-    r"\b(?:expression|eyes?|camera|mood|serene|peaceful|dreamy|whimsical|"
-    r"ethereal|minimalistic|background|landscape|mountains?|trees?|snowy|"
-    r"looking directly|sleeping)\b"
+HAIR_TYPE_SPECIFIC_PROMPT_RULES = (
+    "\nDescribe only the hairstyle or hair-attached decorations."
+    "\nIgnore clothing, dresses, tops, jewelry, skin, face, and anything below the neck."
+    "\nMention bows, ribbons, clips, or headbands only when they are attached to the hair."
 )
+
+ACCESSORY_TYPE_SPECIFIC_PROMPT_RULES = (
+    "\nDescribe only the target accessory or face detail."
+    "\nIgnore surrounding clothing, adjacent jewelry, hairstyle, body parts, and nearby items unless they are part of the target item."
+)
+
+CAPTION_NOISE_TERMS = frozenset(
+    {
+        "person",
+        "background",
+        "illustration",
+    }
+)
+
+CAPTION_NOISE_PATTERN = re.compile(
+    r"\b(?:"
+    + "|".join(
+        re.escape(term) for term in sorted(CAPTION_NOISE_TERMS, key=len, reverse=True)
+    )
+    + r")\b"
+)
+
+LOW_SIGNAL_VISUAL_PATTERN = re.compile(r"\b(?:overall look)\b")
+
+STOP_VISUAL_PATTERN = re.compile(r"\b(?:camera|background|looking directly)\b")
 
 TOP_GARMENT_PATTERNS: tuple[str, ...] = (
-    r"\btank top\b",
-    r"\bsports bra\b",
-    r"\bbra top\b",
-    r"\bcamisole\b",
     r"\bblouse\b",
     r"\bshirt\b",
     r"\btop\b",
-    r"\bbodice\b",
-    r"\bneckline\b",
-    r"\bsquare neckline\b",
 )
 
 BOTTOM_GARMENT_PATTERNS: tuple[str, ...] = (
-    r"\bshorts?\b",
     r"\bskirt\b",
     r"\bpants\b",
     r"\btrousers\b",
-    r"\bwaistband\b",
-    r"\bhigh-waisted\b",
 )
 
 OUTERWEAR_GARMENT_PATTERNS: tuple[str, ...] = (
     r"\bjacket\b",
     r"\bcoat\b",
     r"\bcloak\b",
-    r"\bcape\b",
-    r"\bshawl\b",
-    r"\bblazer\b",
 )
 
 DRESS_GARMENT_PATTERNS: tuple[str, ...] = (
     r"\bdress\b",
     r"\bgown\b",
-    r"\bonesie\b",
+)
+
+APPAREL_LEAK_PATTERNS: tuple[str, ...] = (
+    *TOP_GARMENT_PATTERNS,
+    *BOTTOM_GARMENT_PATTERNS,
+    *OUTERWEAR_GARMENT_PATTERNS,
+    *DRESS_GARMENT_PATTERNS,
+)
+
+JEWELRY_LEAK_PATTERNS: tuple[str, ...] = (
+    r"\bnecklace\b",
+    r"\bearrings?\b",
+    r"\bring\b",
+)
+
+BODY_LEAK_PATTERNS: tuple[str, ...] = (
+    r"\bface\b",
+    r"\bhand\b",
+    r"\bbody\b",
+)
+
+HAIR_LEAK_PATTERNS: tuple[str, ...] = (
+    r"\bhair\b",
+    r"\bbangs?\b",
+    r"\bbraid(?:ed)?\b",
 )

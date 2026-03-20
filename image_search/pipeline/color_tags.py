@@ -86,7 +86,11 @@ def extract_image_color_stats(
                 continue
 
             label = _rgb_to_label((red, green, blue))
-            if not has_transparency and label in {"white", "gray"} and max(red, green, blue) > 220:
+            if (
+                not has_transparency
+                and label in {"white", "gray"}
+                and max(red, green, blue) > 220
+            ):
                 continue
 
             raw_counts[label] += 1
@@ -118,8 +122,12 @@ def merge_image_color_stats(
     icon_stats: ImageColorStats | None,
     overview_stats: ImageColorStats | None,
 ) -> ImageColorStats:
-    icon_stats = icon_stats or ImageColorStats(Counter(), Counter(), Counter(), 0.0, 0.0, False)
-    overview_stats = overview_stats or ImageColorStats(Counter(), Counter(), Counter(), 0.0, 0.0, False)
+    icon_stats = icon_stats or ImageColorStats(
+        Counter(), Counter(), Counter(), 0.0, 0.0, False
+    )
+    overview_stats = overview_stats or ImageColorStats(
+        Counter(), Counter(), Counter(), 0.0, 0.0, False
+    )
     return ImageColorStats(
         weighted_counts=_scaled_counter(icon_stats.weighted_counts, 2.0)
         + _scaled_counter(overview_stats.weighted_counts, 1.0),
@@ -127,7 +135,8 @@ def merge_image_color_stats(
         core_weighted_counts=_scaled_counter(icon_stats.core_weighted_counts, 2.0)
         + _scaled_counter(overview_stats.core_weighted_counts, 1.0),
         total_weight=(icon_stats.total_weight * 2.0) + overview_stats.total_weight,
-        core_total_weight=(icon_stats.core_total_weight * 2.0) + overview_stats.core_total_weight,
+        core_total_weight=(icon_stats.core_total_weight * 2.0)
+        + overview_stats.core_total_weight,
         has_transparency=icon_stats.has_transparency or overview_stats.has_transparency,
     )
 
@@ -150,7 +159,9 @@ def _extract_colors(pattern: re.Pattern[str], text: str) -> list[str]:
     return _unique_ordered(matches)
 
 
-def parse_caption_color_mentions(visual: str, item_type: str) -> tuple[list[str], list[str]]:
+def parse_caption_color_mentions(
+    visual: str, item_type: str
+) -> tuple[list[str], list[str]]:
     lowered = visual.lower()
 
     if item_type == "hair":
@@ -164,7 +175,10 @@ def parse_caption_color_mentions(visual: str, item_type: str) -> tuple[list[str]
         rf"\b(?P<color>{COLOR_PATTERN})(?:-colored)?\s+(?P<detail>{'|'.join(ACCENT_DETAIL_NOUNS)})\b"
     )
     accent_colors = _unique_ordered(
-        [normalize_color_label(match.group("color")) for match in accent_pattern.finditer(lowered)]
+        [
+            normalize_color_label(match.group("color"))
+            for match in accent_pattern.finditer(lowered)
+        ]
     )
 
     if item_type in APPAREL_TYPES:
@@ -184,7 +198,9 @@ def parse_caption_color_mentions(visual: str, item_type: str) -> tuple[list[str]
         re.compile(
             rf"\b(?:a|an|the)\s+(?P<body>{noun_pattern})s?\s+(?:is|are)\s+(?P<color>{COLOR_PATTERN})\b"
         ),
-        re.compile(rf"\b(?P<body>{noun_pattern})s?\s+(?:is|are)\s+(?P<color>{COLOR_PATTERN})\b"),
+        re.compile(
+            rf"\b(?P<body>{noun_pattern})s?\s+(?:is|are)\s+(?P<color>{COLOR_PATTERN})\b"
+        ),
     ]
 
     body_colors: list[str] = []
@@ -207,9 +223,7 @@ def _select_dominant_from_stats(stats: ImageColorStats) -> list[str]:
         return []
 
     ranked = stats.weighted_counts.most_common()
-    non_neutral = [
-        entry for entry in ranked if entry[0] not in NEUTRAL_COLOR_LABELS
-    ]
+    non_neutral = [entry for entry in ranked if entry[0] not in NEUTRAL_COLOR_LABELS]
     eligible_non_neutral = [
         label
         for label, _ in non_neutral
@@ -230,8 +244,10 @@ def _select_dominant_from_stats(stats: ImageColorStats) -> list[str]:
         first_non_neutral, second_non_neutral = non_neutral[0][0], non_neutral[1][0]
         if (
             _share(stats.weighted_counts, stats.total_weight, first_non_neutral) >= 0.25
-            and _share(stats.weighted_counts, stats.total_weight, second_non_neutral) >= 0.25
-            and _share(stats.weighted_counts, stats.total_weight, first_non_neutral) <= 0.55
+            and _share(stats.weighted_counts, stats.total_weight, second_non_neutral)
+            >= 0.25
+            and _share(stats.weighted_counts, stats.total_weight, first_non_neutral)
+            <= 0.55
         ):
             return ["multicolor", first_non_neutral]
 
@@ -240,11 +256,15 @@ def _select_dominant_from_stats(stats: ImageColorStats) -> list[str]:
         share = _share(stats.weighted_counts, stats.total_weight, label)
         if share < 0.22:
             continue
-        if label in NEUTRAL_COLOR_LABELS and _share(
-            stats.core_weighted_counts,
-            stats.core_total_weight,
-            label,
-        ) < 0.18:
+        if (
+            label in NEUTRAL_COLOR_LABELS
+            and _share(
+                stats.core_weighted_counts,
+                stats.core_total_weight,
+                label,
+            )
+            < 0.18
+        ):
             continue
         secondary = label
         break
@@ -291,7 +311,9 @@ def _tag_apparel_colors(
     caption_visual: str,
 ) -> ColorTaggingResult:
     icon_stats = extract_image_color_stats(icon_path, item_type, core_weighting=True)
-    overview_stats = extract_image_color_stats(overview_path, item_type, core_weighting=True)
+    overview_stats = extract_image_color_stats(
+        overview_path, item_type, core_weighting=True
+    )
     merged_stats = merge_image_color_stats(icon_stats, overview_stats)
     caption_body_colors, caption_accent_colors = parse_caption_color_mentions(
         caption_visual,

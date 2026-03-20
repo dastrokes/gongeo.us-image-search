@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
 
 # Base-item ID ranges, mirrored from the tracker's

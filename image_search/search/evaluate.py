@@ -18,7 +18,9 @@ def load_evaluation_queries(path: str | Path) -> list[EvaluationQuery]:
             queries.append(
                 EvaluationQuery(
                     query=str(payload["query"]),
-                    expected_item_ids=[int(value) for value in payload["expected_item_ids"]],
+                    expected_item_ids=[
+                        int(value) for value in payload["expected_item_ids"]
+                    ],
                     filters=dict(payload.get("filters", {})),
                 )
             )
@@ -70,7 +72,9 @@ def lexical_baseline(
         filtered = [
             row
             for row in filtered
-            if requested_facets.intersection({str(value) for value in row.get("accepted_facets", [])})
+            if requested_facets.intersection(
+                {str(value) for value in row.get("accepted_facets", [])}
+            )
         ]
 
     query_tokens = set(_tokenize(query))
@@ -84,10 +88,24 @@ def lexical_baseline(
                             " ".join(
                                 [
                                     str(row.get("item_type", "")),
-                                    " ".join(str(value) for value in row.get("accepted_facets", []) or []),
-                                    " ".join(str(value) for value in row.get("search_terms", []) or []),
-                                    " ".join(str(value) for value in row.get("dominant_colors", []) or []),
-                                    " ".join(str(value) for value in row.get("accent_colors", []) or []),
+                                    " ".join(
+                                        str(value)
+                                        for value in row.get("accepted_facets", [])
+                                        or []
+                                    ),
+                                    " ".join(
+                                        str(value)
+                                        for value in row.get("search_terms", []) or []
+                                    ),
+                                    " ".join(
+                                        str(value)
+                                        for value in row.get("dominant_colors", [])
+                                        or []
+                                    ),
+                                    " ".join(
+                                        str(value)
+                                        for value in row.get("accent_colors", []) or []
+                                    ),
                                 ]
                             )
                         )
@@ -159,7 +177,10 @@ def evaluate_queries(
         request = QueryRequest(
             q=evaluation_query.query,
             limit=limit,
-            item_type=[str(value) for value in filters.get("item_type", filters.get("type", []))],
+            item_type=[
+                str(value)
+                for value in filters.get("item_type", filters.get("type", []))
+            ],
             colors=[str(value) for value in filters.get("colors", [])],
             facets=[str(value) for value in filters.get("facets", [])],
         )
@@ -170,7 +191,9 @@ def evaluate_queries(
         semantic_latencies_ms.append(semantic_latency)
 
         semantic_ids = [result.item_id for result in semantic_results]
-        lexical_ids = lexical_baseline(evaluation_query.query, documents, limit, filters)
+        lexical_ids = lexical_baseline(
+            evaluation_query.query, documents, limit, filters
+        )
 
         semantic_metric_row = {
             "recall_at_10": _recall_at_k(semantic_ids, expected, limit),

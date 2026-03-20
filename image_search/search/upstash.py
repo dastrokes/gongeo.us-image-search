@@ -19,7 +19,6 @@ from image_search.constants.settings import (
 )
 from image_search.models.schemas import DocumentRecord, QueryRequest, QueryResult
 
-
 EMBEDDING_MODEL_API_NAMES = {
     "BAAI/bge-small-en-v1.5": "BGE_SMALL_EN_V1_5",
     "BAAI/bge-base-en-v1.5": "BGE_BASE_EN_V1_5",

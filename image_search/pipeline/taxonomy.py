@@ -12,7 +12,6 @@ from image_search.constants.taxonomy import (
     TERM_EXTRACTION_RULES_BY_TYPE,
     VISUAL_CONCEPTS_BY_TYPE,
     ConceptDefinition,
-    ExtractionRule,
 )
 from image_search.models.schemas import (
     ItemInputRecord,
@@ -27,7 +26,6 @@ from image_search.models.schemas import (
 )
 from image_search.models.type_profiles import get_type_profile
 from image_search.pipeline.color_tags import ColorTaggingResult
-
 
 ACCEPTED_THRESHOLD = 0.88
 REVIEW_THRESHOLD = 0.70
@@ -240,7 +238,9 @@ def build_visual_features(
         if value and value not in palette:
             palette.append(value)
 
-    primary_color = color_tags.dominant_colors[0] if color_tags.dominant_colors else None
+    primary_color = (
+        color_tags.dominant_colors[0] if color_tags.dominant_colors else None
+    )
     secondary_color = None
     if len(color_tags.dominant_colors) > 1:
         secondary_color = color_tags.dominant_colors[1]
@@ -471,7 +471,11 @@ def build_structured_candidates(
             if overview_text and re.search(pattern, overview_text):
                 matched_modalities.add("overview")
                 matched_patterns.append(pattern)
-            if not matched_modalities and combined_text and re.search(pattern, combined_text):
+            if (
+                not matched_modalities
+                and combined_text
+                and re.search(pattern, combined_text)
+            ):
                 matched_modalities.add("combined")
                 matched_patterns.append(pattern)
 
@@ -517,7 +521,10 @@ def _dedupe_candidates(
     deduped: dict[str, StructuredCandidateRecord] = {}
     for candidate in candidates:
         current = deduped.get(candidate.concept_key)
-        if current is None or candidate.pre_validation_score > current.pre_validation_score:
+        if (
+            current is None
+            or candidate.pre_validation_score > current.pre_validation_score
+        ):
             deduped[candidate.concept_key] = candidate
     return list(deduped.values())
 
@@ -536,7 +543,10 @@ def _prune_parent_candidates(
             parent_candidate = by_key.get(parent_key)
             if parent_candidate is None:
                 continue
-            if parent_candidate.pre_validation_score <= child_candidate.pre_validation_score:
+            if (
+                parent_candidate.pre_validation_score
+                <= child_candidate.pre_validation_score
+            ):
                 suppressed_keys.add(parent_key)
 
     return [
@@ -650,7 +660,9 @@ def _validate_candidates(
         if facet_is_multi:
             for index, candidate in enumerate(facet_candidates):
                 definition = CONCEPT_BY_KEY[candidate.concept_key]
-                status = _status_for_score(candidate.pre_validation_score, candidate.facet_key)
+                status = _status_for_score(
+                    candidate.pre_validation_score, candidate.facet_key
+                )
                 if index >= definition.max_values:
                     if index == definition.max_values and status == "accepted":
                         status = "review"
@@ -674,19 +686,26 @@ def _validate_candidates(
 
         top_candidate = facet_candidates[0]
         top_definition = CONCEPT_BY_KEY[top_candidate.concept_key]
-        top_status = _status_for_score(top_candidate.pre_validation_score, top_candidate.facet_key)
+        top_status = _status_for_score(
+            top_candidate.pre_validation_score, top_candidate.facet_key
+        )
         top_extra: dict[str, object] | None = None
 
         if len(facet_candidates) > 1:
             second_candidate = facet_candidates[1]
             margin = _facet_conflict_margin(facet_key)
-            if (top_candidate.pre_validation_score - second_candidate.pre_validation_score) < margin:
+            if (
+                top_candidate.pre_validation_score
+                - second_candidate.pre_validation_score
+            ) < margin:
                 if top_status == "accepted":
                     top_extra = {
                         "validation": "accepted_with_conflict",
                         "competing_values": [
                             candidate.value_key
-                            for candidate in facet_candidates[: min(3, len(facet_candidates))]
+                            for candidate in facet_candidates[
+                                : min(3, len(facet_candidates))
+                            ]
                         ],
                     }
                 elif top_candidate.pre_validation_score >= REVIEW_THRESHOLD:
@@ -695,7 +714,9 @@ def _validate_candidates(
                         "validation": "ambiguous_conflict",
                         "competing_values": [
                             candidate.value_key
-                            for candidate in facet_candidates[: min(3, len(facet_candidates))]
+                            for candidate in facet_candidates[
+                                : min(3, len(facet_candidates))
+                            ]
                         ],
                     }
                 else:
@@ -704,7 +725,9 @@ def _validate_candidates(
                         "validation": "ambiguous_conflict",
                         "competing_values": [
                             candidate.value_key
-                            for candidate in facet_candidates[: min(3, len(facet_candidates))]
+                            for candidate in facet_candidates[
+                                : min(3, len(facet_candidates))
+                            ]
                         ],
                     }
 
@@ -723,7 +746,10 @@ def _validate_candidates(
                     candidate,
                     model_version=model_version,
                     status="suppressed",
-                    confidence=min(candidate.pre_validation_score, top_candidate.pre_validation_score),
+                    confidence=min(
+                        candidate.pre_validation_score,
+                        top_candidate.pre_validation_score,
+                    ),
                     extra_evidence={
                         "validation": "facet_conflict",
                         "selected_value": top_definition.value_key,
@@ -747,7 +773,9 @@ def build_tag_assignments(
     model_version: str,
     candidates: list[StructuredCandidateRecord] | None = None,
 ) -> list[TagAssignmentRecord]:
-    resolved_candidates = candidates or build_structured_candidates(item_input, visual_features)
+    resolved_candidates = candidates or build_structured_candidates(
+        item_input, visual_features
+    )
     assignments = _validate_candidates(
         item_input.item_type,
         resolved_candidates,
@@ -830,7 +858,11 @@ def build_unmapped_term_records(
             report_terms.append(term)
 
     for term in report_terms:
-        if term in seen or _is_obvious_noise_term(term) or _term_matches_taxonomy(term, item_input.item_type):
+        if (
+            term in seen
+            or _is_obvious_noise_term(term)
+            or _term_matches_taxonomy(term, item_input.item_type)
+        ):
             continue
         seen.add(term)
         records.append(
@@ -865,6 +897,16 @@ def _collect_search_terms(
 ) -> list[str]:
     terms: list[str] = []
     seen: set[str] = set()
+    observed_terms = {
+        re.sub(r"\s+", " ", value.strip().lower())
+        for value in (
+            *visual_features.search_terms,
+            *visual_features.raw_terms,
+            *visual_features.icon_terms,
+            *visual_features.overview_terms,
+        )
+        if value and value.strip()
+    }
 
     def add_term(value: str) -> None:
         normalized = re.sub(r"\s+", " ", value.strip().lower())
@@ -873,6 +915,48 @@ def _collect_search_terms(
         seen.add(normalized)
         terms.append(normalized)
 
+    def was_observed(value: str) -> bool:
+        normalized = re.sub(r"\s+", " ", value.strip().lower())
+        if not normalized:
+            return False
+        return any(
+            observed == normalized
+            or observed.startswith(f"{normalized} ")
+            or normalized in observed
+            for observed in observed_terms
+        )
+
+    def observed_variants(
+        assignment: TagAssignmentRecord,
+        definition: ConceptDefinition | None,
+    ) -> list[str]:
+        variants: list[str] = []
+        candidate_values: list[str] = []
+
+        candidate_values.append(_display_label(assignment.concept_key).lower())
+
+        matched_terms = assignment.evidence.get("matched_terms")
+        if isinstance(matched_terms, list):
+            candidate_values.extend(
+                str(value).lower().strip()
+                for value in matched_terms
+                if str(value).strip()
+            )
+
+        if definition is not None:
+            candidate_values.extend(alias.lower() for alias in definition.aliases)
+
+        seen_variants: set[str] = set()
+        for value in candidate_values:
+            normalized = re.sub(r"\s+", " ", value.strip().lower())
+            if not normalized or normalized in seen_variants:
+                continue
+            seen_variants.add(normalized)
+            if was_observed(normalized):
+                variants.append(normalized)
+
+        return variants
+
     for value in visual_features.search_terms:
         add_term(value)
 
@@ -880,7 +964,8 @@ def _collect_search_terms(
         definition = CONCEPT_BY_KEY.get(assignment.concept_key)
         label = _display_label(assignment.concept_key).lower()
         if assignment.search_only and assignment.status in {"accepted", "review"}:
-            add_term(label)
+            for variant in observed_variants(assignment, definition):
+                add_term(variant)
         elif assignment.facet_key == "subcategory" and assignment.status != "accepted":
             add_term(label)
         elif assignment.status == "review" and assignment.facet_key in {
@@ -891,15 +976,21 @@ def _collect_search_terms(
             "material",
         }:
             add_term(label)
-        elif assignment.status == "accepted" and assignment.facet_key in {"subcategory", "pattern"}:
+        elif assignment.status == "accepted" and assignment.facet_key in {
+            "subcategory",
+            "pattern",
+        }:
             add_term(label)
 
         if definition is None:
             continue
         if assignment.status in {"accepted", "review"}:
             for alias in definition.aliases:
-                add_term(alias)
-            for parent_key in PARENT_CHILD_RELATIONSHIPS.get(assignment.concept_key, ()):
+                if was_observed(alias):
+                    add_term(alias)
+            for parent_key in PARENT_CHILD_RELATIONSHIPS.get(
+                assignment.concept_key, ()
+            ):
                 add_term(_display_label(parent_key))
 
     return terms
@@ -910,9 +1001,13 @@ def build_metadata_record(
     visual_features: VisualFeatureRecord,
     assignments: list[TagAssignmentRecord],
 ) -> MetadataRecord:
-    accepted = [assignment for assignment in assignments if assignment.status == "accepted"]
+    accepted = [
+        assignment for assignment in assignments if assignment.status == "accepted"
+    ]
     review = [assignment for assignment in assignments if assignment.status == "review"]
-    accepted_filterable = [assignment for assignment in accepted if not assignment.search_only]
+    accepted_filterable = [
+        assignment for assignment in accepted if not assignment.search_only
+    ]
     facet_values: dict[str, list[str]] = {}
     for assignment in accepted_filterable:
         facet_values.setdefault(assignment.facet_key, []).append(assignment.value_key)

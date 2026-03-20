@@ -127,7 +127,11 @@ def extract_dominant_colors(
         if alpha < 40 or _is_skin_like(red, green, blue):
             continue
         label = _rgb_to_label((red, green, blue))
-        if not has_transparency and label in {"white", "gray"} and max(red, green, blue) > 220:
+        if (
+            not has_transparency
+            and label in {"white", "gray"}
+            and max(red, green, blue) > 220
+        ):
             continue
         labels[label] += 1
         if label not in NEUTRAL_COLOR_LABELS:
@@ -137,9 +141,16 @@ def extract_dominant_colors(
         return []
 
     if colorful_pixel_count > 0:
-        labels = Counter(
-            {label: count for label, count in labels.items() if label not in {"white", "gray"}}
-        ) or labels
+        labels = (
+            Counter(
+                {
+                    label: count
+                    for label, count in labels.items()
+                    if label not in {"white", "gray"}
+                }
+            )
+            or labels
+        )
 
     most_common = labels.most_common()
     primary_label, primary_count = most_common[0]

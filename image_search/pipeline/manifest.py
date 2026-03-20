@@ -14,10 +14,16 @@ from image_search.constants.items import (
 from image_search.constants.settings import PROJECT_ROOT
 from image_search.models.schemas import ManifestRecord
 
-
 DEFAULT_TRACKER_ROOT = PROJECT_ROOT.parent / "gongeo.us-nikki-tracker"
-DEFAULT_CONFIG_ROOT = PROJECT_ROOT.parent / "gongeo.us-config-decoder" / "cfg" / "config_output"
-DEFAULT_SYNC_REPORT = PROJECT_ROOT.parent / "gongeo.us-processor" / "reports" / "database-sync-report.json"
+DEFAULT_CONFIG_ROOT = (
+    PROJECT_ROOT.parent / "gongeo.us-config-decoder" / "cfg" / "config_output"
+)
+DEFAULT_SYNC_REPORT = (
+    PROJECT_ROOT.parent
+    / "gongeo.us-processor"
+    / "reports"
+    / "database-sync-report.json"
+)
 
 
 def _is_base_item(item_id: int) -> bool:
@@ -52,8 +58,12 @@ def resolve_manifest_paths(
     config_root: str | None = None,
     sync_report_path: str | None = None,
 ) -> ManifestPaths:
-    resolved_tracker = Path(tracker_root or os.getenv("TRACKER_ROOT") or DEFAULT_TRACKER_ROOT)
-    resolved_config = Path(config_root or os.getenv("CONFIG_DECODER_OUTPUT") or DEFAULT_CONFIG_ROOT)
+    resolved_tracker = Path(
+        tracker_root or os.getenv("TRACKER_ROOT") or DEFAULT_TRACKER_ROOT
+    )
+    resolved_config = Path(
+        config_root or os.getenv("CONFIG_DECODER_OUTPUT") or DEFAULT_CONFIG_ROOT
+    )
     resolved_sync_report = Path(sync_report_path or DEFAULT_SYNC_REPORT)
     return ManifestPaths(
         tracker_root=resolved_tracker,

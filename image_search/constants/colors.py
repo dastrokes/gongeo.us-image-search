@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-
 NEUTRAL_COLOR_LABELS = {"white", "gray", "silver", "black"}
 COLOR_ALIASES = {"grey": "gray"}
 COLOR_WORDS = (
@@ -22,10 +21,7 @@ COLOR_WORDS = (
     "yellow",
     "orange",
 )
-COLOR_PATTERN = (
-    r"(?:(?:light|dark|pale)\s+)?"
-    + rf"(?:{'|'.join(COLOR_WORDS)})"
-)
+COLOR_PATTERN = r"(?:(?:light|dark|pale)\s+)?" + rf"(?:{'|'.join(COLOR_WORDS)})"
 COLOR_ONLY_PATTERN = re.compile(rf"^{COLOR_PATTERN}$")
 
 COLOR_DETAIL_NOUNS = (
