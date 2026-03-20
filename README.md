@@ -25,16 +25,16 @@ Root `cli.py` and `generate_manifest.py` stay as thin compatibility entrypoints.
 
 It produces:
 
-- `reports/index/item-manifest.jsonl`
-- `reports/index/taxonomy-concepts.jsonl`
-- `reports/index/item-visual-features.jsonl`
-- `reports/index/item-structured-candidates.jsonl`
-- `reports/index/item-tag-assignments.jsonl`
-- `reports/index/item-review-queue.jsonl`
-- `reports/index/item-unmapped-terms.jsonl`
-- `reports/index/item-search-documents.jsonl`
-- `reports/index/item-captions-debug.jsonl`
-- `reports/index/build-summary.json`
+- `manifest/item-manifest.jsonl`
+- `index/taxonomy-concepts.jsonl`
+- `index/item-visual-features.jsonl`
+- `index/item-structured-candidates.jsonl`
+- `index/item-tag-assignments.jsonl`
+- `index/item-review-queue.jsonl`
+- `index/item-unmapped-terms.jsonl`
+- `index/item-search-documents.jsonl`
+- `index/item-captions-debug.jsonl`
+- `index/build-summary.json`
 
 ## Install
 

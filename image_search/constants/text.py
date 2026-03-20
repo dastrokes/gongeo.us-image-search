@@ -6,21 +6,14 @@ import re
 QWEN_STRUCTURED_DETAIL_PROMPT = """
 Describe only the main wearable item from the provided images.
 Focus on {focus}.
-Return JSON only with these keys:
-{{
-  "icon": ["short lowercase phrases from the icon image"],
-  "overview": ["short lowercase phrases from the overview image"],
-  "merged": ["combined item-level phrases"]
-}}
+Return only a comma-separated list of short lowercase phrases.
 Rules:
-- Use arrays of short lowercase phrases.
-- Use [] when unsure.
-- Be exhaustive about visible item attributes, but omit anything not clearly visible.
-- Prefer concrete visual facts such as subcategory, length, silhouette, shape, placement, material, pattern, motif, trim, closure, and ornament.
-- Use pattern for repeated surface graphics, motif for symbolic imagery, and ornament for attached decoration.
-- Put the most identifying phrases first.
-- Do not mention the character, pose, face, body, hands, background, or framing.
-- Do not write prose outside the JSON object.
+- Use lowercase normalized phrases only.
+- Start with the main item subcategory if it is visible.
+- Be exhaustive about clearly visible item attributes, but do not guess.
+- Prefer concrete visual facts such as length, silhouette, shape, placement, material, pattern, motif, trim, closure, and ornament.
+- Do not mention the character, pose, face, body, hands, background, nearby items, or framing.
+- Do not return JSON.
 """.strip()
 
 CAPTION_NOISE_TERMS = {

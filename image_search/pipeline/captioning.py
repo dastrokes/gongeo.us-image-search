@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,8 +39,7 @@ from image_search.models.type_profiles import (
 class CaptionerConfig:
     model_id: str = DEFAULT_CAPTION_MODEL_ID
     device: str = "auto"
-    device_map: str = "auto"
-    dtype: str = "auto"
+    quantization: str = "none"
     batch_size: int = 8
     inference_batch_size: int = 2
 
@@ -316,153 +314,8 @@ class VisionCaptioner:
         return ""
 
     @staticmethod
-    def _collect_terms(value: Any, terms: list[str], seen: set[str]) -> None:
-        if isinstance(value, str):
-            for candidate in re.split(r"[,;\n]+", value):
-                normalized = candidate.replace("_", " ").strip().lower()
-                normalized = re.sub(r"\s+", " ", normalized)
-                normalized = normalized.strip(" .,:;\"'`()[]{}")
-                if normalized in {"", "n/a", "none", "unknown"}:
-                    continue
-                if normalized not in seen:
-                    seen.add(normalized)
-                    terms.append(normalized)
-            return
-
-        if isinstance(value, list):
-            for item in value:
-                VisionCaptioner._collect_terms(item, terms, seen)
-            return
-
-        if isinstance(value, dict):
-            for key, nested in value.items():
-                if key.lower() == "confidence":
-                    continue
-                VisionCaptioner._collect_terms(nested, terms, seen)
-
-    @staticmethod
-    def _strip_code_fences(raw_text: str) -> str:
-        normalized = raw_text.strip()
-        if normalized.startswith("```"):
-            normalized = re.sub(r"^```(?:json)?\s*", "", normalized, flags=re.IGNORECASE)
-            normalized = re.sub(r"\s*```$", "", normalized)
-        return normalized
-
-    @staticmethod
-    def _clean_candidate_text(value: str) -> str:
-        normalized = value.replace("_", " ").strip().lower()
-        normalized = normalized.replace('\\"', '"')
-        normalized = re.sub(r"\s+", " ", normalized)
-        normalized = normalized.strip(" .,:;\"'`()[]{}")
-        normalized = re.sub(r"^(?:a|an|the)\s+", "", normalized)
-        if normalized.startswith("json "):
-            normalized = normalized[5:].strip()
-        normalized = re.sub(r"^(icon|overview|merged)\s*:\s*", "", normalized)
-        if any(token in normalized for token in ('{"', '"icon"', '"overview"', '"merged"')):
-            return ""
-        if normalized in {"", "n/a", "none", "unknown"}:
-            return ""
-        return normalized
-
-    @staticmethod
-    def _extract_bracket_content(text: str, start_index: int) -> tuple[str, int] | None:
-        depth = 0
-        collected: list[str] = []
-        for index in range(start_index, len(text)):
-            char = text[index]
-            if char == "[":
-                depth += 1
-                if depth == 1:
-                    continue
-            elif char == "]":
-                depth -= 1
-                if depth == 0:
-                    return "".join(collected), index + 1
-            if depth >= 1:
-                collected.append(char)
-        return None
-
-    @staticmethod
-    def _salvage_qwen_payload(raw_text: str) -> dict[str, list[str]] | None:
-        normalized = VisionCaptioner._strip_code_fences(raw_text)
-        payload: dict[str, list[str]] = {}
-        for key in ("icon", "overview", "merged", "visual"):
-            match = re.search(rf'"{key}"\s*:\s*\[', normalized, flags=re.IGNORECASE)
-            if not match:
-                continue
-            extracted = VisionCaptioner._extract_bracket_content(normalized, match.end() - 1)
-            if extracted is None:
-                continue
-            content, _ = extracted
-            terms: list[str] = []
-            seen: set[str] = set()
-            for quoted in re.findall(r'"([^"]+)"', content):
-                cleaned = VisionCaptioner._clean_candidate_text(quoted)
-                if cleaned and cleaned not in seen:
-                    seen.add(cleaned)
-                    terms.append(cleaned)
-            if not terms:
-                for piece in content.split(","):
-                    cleaned = VisionCaptioner._clean_candidate_text(piece)
-                    if cleaned and cleaned not in seen:
-                        seen.add(cleaned)
-                        terms.append(cleaned)
-            if terms:
-                payload[key] = terms
-        return payload or None
-
-    @staticmethod
-    def _extract_qwen_payload(raw_text: str) -> dict[str, Any] | None:
-        normalized = VisionCaptioner._strip_code_fences(raw_text)
-        if not normalized:
-            return None
-
-        start = normalized.find("{")
-        end = normalized.rfind("}")
-        if start == -1 or end == -1 or end <= start:
-            return VisionCaptioner._salvage_qwen_payload(normalized)
-
-        try:
-            payload = json.loads(normalized[start : end + 1])
-        except json.JSONDecodeError:
-            return VisionCaptioner._salvage_qwen_payload(normalized)
-        return payload if isinstance(payload, dict) else None
-
-    @staticmethod
     def _parse_qwen_response(raw_text: str) -> str:
-        payload = VisionCaptioner._extract_qwen_payload(raw_text)
-        terms: list[str] = []
-        seen: set[str] = set()
-
-        if payload is not None:
-            ordered_keys = (
-                "colors",
-                "shape",
-                "materials",
-                "patterns",
-                "motifs",
-                "construction",
-                "details",
-            )
-            for key in ordered_keys:
-                VisionCaptioner._collect_terms(payload.get(key), terms, seen)
-            for key, value in payload.items():
-                if key in ordered_keys:
-                    continue
-                VisionCaptioner._collect_terms(value, terms, seen)
-            if terms:
-                return ", ".join(terms)
-            return ""
-
-        for line in raw_text.splitlines():
-            if ":" not in line:
-                continue
-            _, value = line.split(":", 1)
-            VisionCaptioner._collect_terms(value, terms, seen)
-
-        if terms:
-            return ", ".join(terms)
-        return ""
+        return raw_text.strip()
 
     def __init__(self, config: CaptionerConfig) -> None:
         self.config = config
@@ -480,29 +333,52 @@ class VisionCaptioner:
         else:
             self.device = self.config.device
 
-        if self.config.dtype == "auto":
-            if self.device == "cuda":
-                self.torch_dtype = (
-                    torch.bfloat16
-                    if torch.cuda.is_bf16_supported()
-                    else torch.float16
-                )
-            else:
-                self.torch_dtype = torch.float32
+        if self.device == "cuda":
+            self.torch_dtype = (
+                torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            )
         else:
-            self.torch_dtype = getattr(torch, self.config.dtype)
+            self.torch_dtype = torch.float32
         return torch
 
+    def _single_device_map(self) -> dict[str, int | str]:
+        if self.device.startswith("cuda"):
+            suffix = self.device.partition(":")[2]
+            if suffix.isdigit():
+                return {"": int(suffix)}
+            return {"": 0}
+        return {"": self.device}
+
+    def _input_device(self, torch: Any) -> str:
+        if self.model is not None:
+            hf_device_map = getattr(self.model, "hf_device_map", None)
+            if isinstance(hf_device_map, dict):
+                root_device = hf_device_map.get("")
+                if isinstance(root_device, int):
+                    return f"cuda:{root_device}"
+                if isinstance(root_device, str) and root_device:
+                    return root_device
+
+            try:
+                parameter = next(self.model.parameters())
+            except (AttributeError, StopIteration, TypeError):
+                parameter = None
+            if parameter is not None:
+                return str(parameter.device)
+
+        return str(torch.device(self.device))
+
     def _normalize_inputs(self, inputs: Any, torch: Any) -> dict[str, Any]:
+        target_device = self._input_device(torch)
         normalized_inputs: dict[str, Any] = {}
         for key, value in inputs.items():
             if not hasattr(value, "to"):
                 normalized_inputs[key] = value
                 continue
             if torch.is_floating_point(value):
-                normalized_inputs[key] = value.to(self.device, dtype=self.torch_dtype)
+                normalized_inputs[key] = value.to(target_device, dtype=self.torch_dtype)
             else:
-                normalized_inputs[key] = value.to(self.device)
+                normalized_inputs[key] = value.to(target_device)
         return normalized_inputs
 
     @staticmethod
@@ -574,7 +450,7 @@ class VisionCaptioner:
         self,
         record: ManifestRecord,
         modalities: list[str],
-    ) -> dict[str, str]:
+    ) -> dict[str, dict[str, str]]:
         if not modalities:
             return {}
 
@@ -585,71 +461,20 @@ class VisionCaptioner:
         if not retry_modalities:
             return {}
 
-        retried = self._caption_batch_qwen(
+        normalized: dict[str, dict[str, str]] = {}
+        raw_outputs = self._decode_batch_qwen(
             [path_by_modality[label] for label in retry_modalities],
             [record.type] * len(retry_modalities),
             retry_modalities,
+            prompt_builder=self._build_plain_prompt,
         )
-        normalized = {
-            label: self._normalize_caption(raw_caption, record.type, label)
-            for label, raw_caption in zip(retry_modalities, retried)
-        }
-        still_missing = [
-            label for label in retry_modalities if not normalized.get(label)
-        ]
-        if still_missing:
-            raw_fallback = self._caption_batch_qwen(
-                [path_by_modality[label] for label in still_missing],
-                [record.type] * len(still_missing),
-                still_missing,
-                prompt_builder=self._build_plain_prompt,
-                parse_structured=False,
-            )
-            for label, raw_caption in zip(still_missing, raw_fallback):
-                normalized[label] = self._normalize_caption(raw_caption, record.type, label)
+        for label, raw_caption in zip(retry_modalities, raw_outputs):
+            normalized[label] = {
+                "caption": self._normalize_caption(raw_caption, record.type, label),
+                "raw_output": raw_caption,
+                "mode": "plain",
+            }
         return normalized
-
-    @staticmethod
-    def _flatten_qwen_field(value: Any) -> str:
-        terms: list[str] = []
-        seen: set[str] = set()
-        VisionCaptioner._collect_terms(value, terms, seen)
-        return ", ".join(terms)
-
-    @staticmethod
-    def _build_record_prompt(
-        record: ManifestRecord,
-        has_icon: bool,
-        has_overview: bool,
-    ) -> str:
-        if has_icon and has_overview:
-            focus = (
-                "icon details in the first image and silhouette, placement, and scale "
-                "in the second image"
-            )
-        elif has_icon:
-            focus = "small motifs, trims, closures, embroidery, ornaments, and accent details"
-        else:
-            focus = "overall silhouette, length, layering, placement, and major materials"
-
-        prompt = QWEN_STRUCTURED_DETAIL_PROMPT.format(focus=focus)
-        if record.type:
-            prompt += f"\nTreat the main item as a `{record.type}`."
-            prompt += VisionCaptioner._subcategory_prompt_rule(record.type)
-            prompt += VisionCaptioner._attribute_prompt_rule(record.type, "overview" if has_overview and not has_icon else "icon" if has_icon and not has_overview else "record")
-        prompt += VisionCaptioner._type_specific_prompt_rules(record.type)
-        if has_icon and has_overview:
-            prompt += (
-                "\nThe first image is the icon view and the second image is the "
-                "overview view."
-                "\nUse the icon array for small details and the overview array for whole-item structure."
-                "\nEnsure the merged array preserves the strongest subcategory and the most important structural and decorative attributes from both views."
-            )
-        elif has_icon:
-            prompt += "\nOnly the icon view is available."
-        elif has_overview:
-            prompt += "\nOnly the overview view is available."
-        return prompt
 
     @staticmethod
     def _type_specific_prompt_rules(item_type: str) -> str:
@@ -667,40 +492,6 @@ class VisionCaptioner:
         return ""
 
     @staticmethod
-    def _parse_record_payload(
-        raw_text: str,
-        has_icon: bool,
-        has_overview: bool,
-    ) -> tuple[str, str, str]:
-        payload = VisionCaptioner._extract_qwen_payload(raw_text)
-        if payload is None:
-            merged = VisionCaptioner._parse_qwen_response(raw_text)
-            if has_icon and has_overview:
-                return "", "", merged
-            if has_icon:
-                return merged, "", merged
-            if has_overview:
-                return "", merged, merged
-            return "", "", merged
-
-        icon = VisionCaptioner._flatten_qwen_field(payload.get("icon"))
-        overview = VisionCaptioner._flatten_qwen_field(payload.get("overview"))
-        merged = VisionCaptioner._flatten_qwen_field(payload.get("merged"))
-
-        if not merged:
-            merged = VisionCaptioner._flatten_qwen_field(payload.get("visual"))
-        if not merged:
-            merged = VisionCaptioner._merge_unique_parts(icon, overview)
-        if not merged:
-            merged = VisionCaptioner._parse_qwen_response(raw_text)
-
-        if not icon and has_icon:
-            icon = merged
-        if not overview and has_overview:
-            overview = merged
-        return icon, overview, merged
-
-    @staticmethod
     def _sanitized_generation_config(model: Any):
         import copy
 
@@ -711,14 +502,13 @@ class VisionCaptioner:
                 setattr(generation_config, key, None)
         return generation_config
 
-    def _caption_batch_qwen(
+    def _decode_batch_qwen(
         self,
         image_paths: list[str | Path],
         item_types: list[str],
         modalities: list[str],
         *,
         prompt_builder: Any | None = None,
-        parse_structured: bool = True,
     ) -> list[str]:
         import torch
 
@@ -771,6 +561,23 @@ class VisionCaptioner:
             skip_special_tokens=True,
             clean_up_tokenization_spaces=False,
         )
+        return decoded_list
+
+    def _caption_batch_qwen(
+        self,
+        image_paths: list[str | Path],
+        item_types: list[str],
+        modalities: list[str],
+        *,
+        prompt_builder: Any | None = None,
+        parse_structured: bool = True,
+    ) -> list[str]:
+        decoded_list = self._decode_batch_qwen(
+            image_paths,
+            item_types,
+            modalities,
+            prompt_builder=prompt_builder,
+        )
         if not parse_structured:
             return decoded_list
         return [self._parse_qwen_response(decoded) for decoded in decoded_list]
@@ -785,17 +592,30 @@ class VisionCaptioner:
             return
 
         self._resolve_torch()
-        from transformers import AutoProcessor
+        from transformers import AutoProcessor, BitsAndBytesConfig
 
         model_class = self._resolve_model_class()
         self.processor = AutoProcessor.from_pretrained(self.config.model_id)
         if hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
             self.processor.tokenizer.padding_side = "left"
-        model_kwargs: dict[str, Any] = {"dtype": self.torch_dtype}
-        if self.device == "cuda" and self.config.device_map != "none":
-            model_kwargs["device_map"] = "auto"
+        model_kwargs: dict[str, Any] = {}
+        use_quantization = self.config.quantization == "8bit"
+        if use_quantization:
+            if not self.device.startswith("cuda"):
+                raise RuntimeError("8-bit quantization requires a CUDA device.")
+            try:
+                import bitsandbytes  # noqa: F401
+            except ImportError as exc:
+                raise RuntimeError(
+                    "8-bit quantization requires bitsandbytes in the active environment. "
+                    "bitsandbytes is not available for this Python install; use Python 3.12 or 3.13."
+                ) from exc
+            model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
+            model_kwargs["device_map"] = self._single_device_map()
+        else:
+            model_kwargs["dtype"] = self.torch_dtype
         self.model = model_class.from_pretrained(self.config.model_id, **model_kwargs)
-        if self.device != "cuda" or self.config.device_map == "none":
+        if not use_quantization:
             self.model.to(self.device)
         self.model.eval()
         self.model_id = self.config.model_id
@@ -803,137 +623,56 @@ class VisionCaptioner:
     def _caption_records_batch_qwen(
         self, records: list[ManifestRecord]
     ) -> list[CaptionRecord]:
-        import torch
-
         if not records:
             return []
 
         results: list[CaptionRecord] = []
-        batch_size = max(1, int(self.config.inference_batch_size))
-        generation_config = self._sanitized_generation_config(self.model)
+        for record in records:
+            image_specs = self._record_image_paths(record)
+            has_icon = any(label == "icon" for label, _ in image_specs)
+            has_overview = any(label == "overview" for label, _ in image_specs)
+            modalities = [label for label, _path in image_specs]
+            raw_captions = self._retry_missing_modalities(record, modalities)
 
-        for batch in self._chunk_records(records, batch_size):
-            texts: list[str] = []
-            images: list[list[Any]] = []
-            metadata: list[tuple[bool, bool, int, str]] = []
-            records_by_id = {record.item_id: record for record in batch}
+            icon_caption = raw_captions.get("icon", {}).get("caption", "")
+            overview_caption = raw_captions.get("overview", {}).get("caption", "")
+            item_type = record.type
 
-            for record in batch:
-                image_specs = self._record_image_paths(record)
-                has_icon = any(label == "icon" for label, _ in image_specs)
-                has_overview = any(label == "overview" for label, _ in image_specs)
-                prompt = self._build_record_prompt(record, has_icon, has_overview)
-                messages = [
-                    {
-                        "role": "user",
-                        "content": [
-                            *[
-                                {
-                                    "type": "image",
-                                    "image": str(Path(path).resolve()),
-                                }
-                                for _label, path in image_specs
-                            ],
-                            {"type": "text", "text": prompt},
-                        ],
-                    }
-                ]
-                texts.append(
-                    self.processor.apply_chat_template(
-                        messages,
-                        tokenize=False,
-                        add_generation_prompt=True,
-                    )
-                )
-                images.append([self._load_rgb_image(path) for _label, path in image_specs])
-                metadata.append((has_icon, has_overview, record.item_id, record.type))
+            if self._is_low_signal_caption(icon_caption, item_type):
+                icon_caption = ""
+            if self._is_low_signal_caption(overview_caption, item_type):
+                overview_caption = ""
 
-            inputs = self.processor(
-                text=texts,
-                images=images,
-                padding=True,
-                return_tensors="pt",
+            visual = self._normalize_caption(
+                self._merge_unique_parts(icon_caption, overview_caption),
+                item_type,
+                "overview",
             )
-            inputs = self._normalize_inputs(inputs, torch)
+            if self._is_low_signal_caption(visual, item_type):
+                visual = ""
 
-            with torch.inference_mode():
-                generated_ids = self.model.generate(
-                    **inputs,
-                    generation_config=generation_config,
-                    use_model_defaults=False,
-                    max_new_tokens=96,
-                )
+            if has_icon and not icon_caption:
+                icon_caption = visual
+            if has_overview and not overview_caption:
+                overview_caption = visual
 
-            generated_ids_trimmed = [
-                out_ids[len(in_ids) :]
-                for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
-            ]
-            decoded_list = self.processor.batch_decode(
-                generated_ids_trimmed,
-                skip_special_tokens=True,
-                clean_up_tokenization_spaces=False,
+            failed_modalities = self._failed_modalities_for_record(
+                has_icon=has_icon,
+                has_overview=has_overview,
+                icon_caption=icon_caption,
+                overview_caption=overview_caption,
+                visual=visual,
             )
 
-            for decoded, (has_icon, has_overview, item_id, item_type) in zip(
-                decoded_list,
-                metadata,
-            ):
-                record = records_by_id[item_id]
-                icon, overview, merged = self._parse_record_payload(
-                    decoded,
-                    has_icon,
-                    has_overview,
-                )
-                icon_caption = self._normalize_caption(icon, item_type, "icon")
-                overview_caption = self._normalize_caption(
-                    overview,
-                    item_type,
-                    "overview",
-                )
-                visual = self._normalize_caption(merged, item_type, "overview")
-
-                if has_icon and not icon_caption:
-                    icon_caption = visual
-                if has_overview and not overview_caption:
-                    overview_caption = visual
-
-                missing_modalities = []
-                if has_icon and not icon_caption:
-                    missing_modalities.append("icon")
-                if has_overview and not overview_caption:
-                    missing_modalities.append("overview")
-
-                if missing_modalities:
-                    retried = self._retry_missing_modalities(record, missing_modalities)
-                    if not icon_caption:
-                        icon_caption = retried.get("icon", "")
-                    if not overview_caption:
-                        overview_caption = retried.get("overview", "")
-
-                if not visual:
-                    visual = self._normalize_caption(
-                        self._merge_unique_parts(icon_caption, overview_caption),
-                        item_type,
-                        "overview",
-                    )
-
-                failed_modalities = self._failed_modalities_for_record(
-                    has_icon=has_icon,
-                    has_overview=has_overview,
+            results.append(
+                CaptionRecord(
+                    item_id=record.item_id,
                     icon_caption=icon_caption,
                     overview_caption=overview_caption,
                     visual=visual,
+                    failed_modalities=failed_modalities,
                 )
-
-                results.append(
-                    CaptionRecord(
-                        item_id=item_id,
-                        icon_caption=icon_caption,
-                        overview_caption=overview_caption,
-                        visual=visual,
-                        failed_modalities=failed_modalities,
-                    )
-                )
+            )
 
         return results
 

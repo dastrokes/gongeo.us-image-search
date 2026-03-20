@@ -25,7 +25,7 @@ def main() -> int:
     parser.add_argument("--source-version", default=None, help="Override source_version field")
     parser.add_argument(
         "--output",
-        default=str(PROJECT_ROOT / "reports" / "index" / "item-manifest.jsonl"),
+        default=str(PROJECT_ROOT / "manifest" / "item-manifest.jsonl"),
         help="Destination JSONL file",
     )
     parser.add_argument("--limit", type=int, default=None, help="Limit number of records")

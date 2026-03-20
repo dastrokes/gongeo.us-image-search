@@ -43,7 +43,11 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
 
 
 def _default_output_root() -> Path:
-    return PROJECT_ROOT / "reports" / "index"
+    return PROJECT_ROOT / "index"
+
+
+def _default_manifest_root() -> Path:
+    return PROJECT_ROOT / "manifest"
 
 
 def _cleanup_stale_outputs(output_root: Path) -> None:
@@ -94,7 +98,9 @@ def _manifest_needs_regen(manifest_path: Path) -> bool:
         "version_area",
         "gallery_score",
     }
-    return not required_fields.issubset(payload) or bool(deprecated_fields.intersection(payload))
+    return not required_fields.issubset(payload) or bool(
+        deprecated_fields.intersection(payload)
+    )
 
 
 def _load_caption_cache(captions_path: Path) -> dict[int, dict]:
@@ -114,25 +120,27 @@ def _load_caption_cache(captions_path: Path) -> dict[int, dict]:
     return cache
 
 
-def _is_complete_cached_caption(caption: dict) -> bool:
+def _is_complete_cached_caption(caption: dict, item_type: str) -> bool:
     failed_modalities = caption.get("failed_modalities") or []
     visual = str(caption.get("visual", "")).strip()
-    item_type = ""
+    normalized_item_type = str(item_type or "").strip().lower()
 
     def _is_type_only(value: object) -> bool:
-        if not item_type:
+        if not normalized_item_type:
             return False
         text = str(value or "").strip()
         if not text:
             return False
         parts = [part.strip() for part in text.split(",") if part.strip()]
-        return bool(parts) and all(part == item_type for part in parts)
+        return bool(parts) and all(part == normalized_item_type for part in parts)
 
     if failed_modalities:
         return False
     if not visual:
         return False
-    if _is_type_only(caption.get("icon_caption")) or _is_type_only(caption.get("overview_caption")):
+    if _is_type_only(caption.get("icon_caption")) or _is_type_only(
+        caption.get("overview_caption")
+    ):
         return False
     return not _is_type_only(visual)
 
@@ -159,7 +167,8 @@ def run_build_index(args: argparse.Namespace) -> int:
     )
 
     output_root = Path(args.output_root or _default_output_root())
-    manifest_path = output_root / "item-manifest.jsonl"
+    manifest_root = Path(args.manifest_root or _default_manifest_root())
+    manifest_path = manifest_root / "item-manifest.jsonl"
     captions_path = output_root / "item-captions-debug.jsonl"
     taxonomy_concepts_path = output_root / "taxonomy-concepts.jsonl"
     visual_features_path = output_root / "item-visual-features.jsonl"
@@ -171,7 +180,11 @@ def run_build_index(args: argparse.Namespace) -> int:
     summary_path = output_root / "build-summary.json"
     started_at = datetime.now(timezone.utc)
 
-    if not args.regen_manifest and manifest_path.exists() and not _manifest_needs_regen(manifest_path):
+    if (
+        not args.regen_manifest
+        and manifest_path.exists()
+        and not _manifest_needs_regen(manifest_path)
+    ):
         print(f"Loading existing manifest from {manifest_path} ...")
         manifest_records: list[ManifestRecord] = []
         with manifest_path.open("r", encoding="utf-8") as handle:
@@ -198,22 +211,24 @@ def run_build_index(args: argparse.Namespace) -> int:
 
     caption_cache = _load_caption_cache(captions_path)
     already_done = {
-        item_id
-        for item_id in set(caption_cache)
-        if _is_complete_cached_caption(caption_cache[item_id])
+        record.item_id
+        for record in manifest_records
+        if record.item_id in caption_cache
+        and _is_complete_cached_caption(caption_cache[record.item_id], record.type)
     }
     if already_done:
         print(f"Resuming: {len(already_done)} items already captioned, skipping them.")
 
-    pending = [record for record in manifest_records if record.item_id not in already_done]
+    pending = [
+        record for record in manifest_records if record.item_id not in already_done
+    ]
     print(f"Items to caption: {len(pending)} / {len(manifest_records)}")
 
     captioner = VisionCaptioner(
         CaptionerConfig(
             model_id=args.caption_model,
             device=args.device,
-            device_map=args.device_map,
-            dtype=args.dtype,
+            quantization=args.quantization,
             batch_size=args.batch_size,
             inference_batch_size=args.caption_inference_batch_size,
         )
@@ -285,7 +300,9 @@ def run_build_index(args: argparse.Namespace) -> int:
 
         caption_rows.append(caption.to_dict())
         visual_feature_rows.append(visual_features.to_dict())
-        candidate_rows.extend(candidate.to_dict() for candidate in structured_candidates)
+        candidate_rows.extend(
+            candidate.to_dict() for candidate in structured_candidates
+        )
         assignment_rows.extend(assignment.to_dict() for assignment in assignments)
         review_rows.extend(review.to_dict() for review in reviews)
         unmapped_term_rows.extend(record.to_dict() for record in unmapped_terms)
@@ -328,7 +345,9 @@ def run_build_index(args: argparse.Namespace) -> int:
     )
     _write_json(summary_path, summary.to_dict())
 
-    print(json.dumps({"summary_path": str(summary_path), **summary.to_dict()}, indent=2))
+    print(
+        json.dumps({"summary_path": str(summary_path), **summary.to_dict()}, indent=2)
+    )
     return 0
 
 
@@ -424,22 +443,30 @@ def run_evaluate(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Infinity Nikki Upstash search tooling")
+    parser = argparse.ArgumentParser(
+        description="Infinity Nikki Upstash search tooling"
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    build_parser = subparsers.add_parser("build-index", help="Build local search artifacts")
+    build_parser = subparsers.add_parser(
+        "build-index", help="Build local search artifacts"
+    )
     build_parser.add_argument("--limit", type=int, default=None)
     build_parser.add_argument("--batch-size", type=int, default=8)
     build_parser.add_argument("--caption-inference-batch-size", type=int, default=2)
     build_parser.add_argument("--device", default="auto")
-    build_parser.add_argument("--device-map", choices=("auto", "none"), default="auto")
-    build_parser.add_argument("--dtype", default="auto")
+    build_parser.add_argument(
+        "--quantization", choices=("none", "8bit", "4bit"), default="none"
+    )
     build_parser.add_argument("--caption-model", default=DEFAULT_CAPTION_MODEL_ID)
     build_parser.add_argument("--tracker-root", default=os.getenv("TRACKER_ROOT"))
-    build_parser.add_argument("--config-root", default=os.getenv("CONFIG_DECODER_OUTPUT"))
+    build_parser.add_argument(
+        "--config-root", default=os.getenv("CONFIG_DECODER_OUTPUT")
+    )
     build_parser.add_argument("--sync-report", default=None)
     build_parser.add_argument("--source-version", default=None)
     build_parser.add_argument("--output-root", default=str(_default_output_root()))
+    build_parser.add_argument("--manifest-root", default=str(_default_manifest_root()))
     build_parser.add_argument(
         "--regen-manifest",
         action="store_true",
@@ -447,7 +474,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     build_parser.set_defaults(func=run_build_index)
 
-    sync_parser = subparsers.add_parser("sync-upstash", help="Upsert documents into Upstash")
+    sync_parser = subparsers.add_parser(
+        "sync-upstash", help="Upsert documents into Upstash"
+    )
     sync_parser.add_argument(
         "--documents-path",
         default=str(_default_output_root() / "item-search-documents.jsonl"),
@@ -456,19 +485,27 @@ def build_parser() -> argparse.ArgumentParser:
     sync_parser.add_argument("--rest-url", default=None)
     sync_parser.add_argument("--rest-token", default=None)
     sync_parser.add_argument("--embedding-model", default=DEFAULT_EMBEDDING_MODEL)
-    sync_parser.add_argument("--sparse-embedding-model", default=DEFAULT_SPARSE_EMBEDDING_MODEL)
+    sync_parser.add_argument(
+        "--sparse-embedding-model", default=DEFAULT_SPARSE_EMBEDDING_MODEL
+    )
     sync_parser.add_argument("--create-index", action="store_true")
     sync_parser.add_argument("--index-name", default=DEFAULT_INDEX_NAME)
     sync_parser.add_argument("--region", default=DEFAULT_INDEX_REGION)
     sync_parser.add_argument("--index-type", default=DEFAULT_INDEX_TYPE)
-    sync_parser.add_argument("--dimension-count", type=int, default=DEFAULT_INDEX_DIMENSION_COUNT)
+    sync_parser.add_argument(
+        "--dimension-count", type=int, default=DEFAULT_INDEX_DIMENSION_COUNT
+    )
     sync_parser.add_argument("--metric", default=DEFAULT_INDEX_METRIC)
     sync_parser.set_defaults(func=run_sync_upstash)
 
-    query_parser = subparsers.add_parser("query-upstash", help="Query Upstash with raw text")
+    query_parser = subparsers.add_parser(
+        "query-upstash", help="Query Upstash with raw text"
+    )
     query_parser.add_argument("--q", required=True)
     query_parser.add_argument("--limit", type=int, default=20)
-    query_parser.add_argument("--item-type", "--type", action="append", dest="item_type")
+    query_parser.add_argument(
+        "--item-type", "--type", action="append", dest="item_type"
+    )
     query_parser.add_argument("--color", action="append")
     query_parser.add_argument("--facet", action="append")
     query_parser.add_argument("--rest-url", default=None)

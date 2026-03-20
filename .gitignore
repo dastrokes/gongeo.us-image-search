@@ -30,8 +30,9 @@ ENV/
 .env.*
 !.env.example
 
-# Reports (generated outputs)
-reports/*
+# Output
+manifest/*
+index/*
 
 # Model cache
 .cache/
@@ -48,3 +49,5 @@ reports/*
 .DS_Store
 Thumbs.db
 
+# Agents
+AGENTS.md

@@ -100,6 +100,39 @@ def _split_caption_terms(value: str) -> list[str]:
     return parts
 
 
+def _normalize_term(value: str) -> str:
+    normalized = re.sub(r"\s+", " ", str(value).replace("_", " ").strip().lower())
+    return normalized.strip(" ,")
+
+
+def _unique_terms(values: list[str]) -> list[str]:
+    terms: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = _normalize_term(value)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        terms.append(normalized)
+    return terms
+
+
+def _candidate_modalities_for_term(
+    term: str,
+    icon_terms: list[str],
+    overview_terms: list[str],
+    raw_terms: list[str],
+) -> list[str]:
+    modalities: list[str] = []
+    if term in icon_terms:
+        modalities.append("icon")
+    if term in overview_terms:
+        modalities.append("overview")
+    if term in raw_terms and not modalities:
+        modalities.append("combined")
+    return modalities
+
+
 def _status_for_score(score: float, facet_key: str = "") -> str:
     accepted_threshold = ACCEPTED_THRESHOLD
     review_threshold = REVIEW_THRESHOLD
@@ -217,7 +250,7 @@ def build_visual_features(
     icon_terms = _split_caption_terms(caption_icon)
     overview_terms = _split_caption_terms(caption_overview)
     raw_terms = _split_caption_terms(caption_visual)
-
+    derived_search_terms = _unique_terms(raw_terms)
     return VisualFeatureRecord(
         item_id=item_id,
         item_type=item_type,
@@ -232,7 +265,7 @@ def build_visual_features(
         icon_terms=icon_terms,
         overview_terms=overview_terms,
         raw_terms=raw_terms,
-        search_terms=_type_relevant_caption_terms(item_type, raw_terms),
+        search_terms=_type_relevant_caption_terms(item_type, derived_search_terms),
         signals={
             "color_source": "deterministic_cv",
             "caption_modalities": {
@@ -467,8 +500,9 @@ def build_structured_candidates(
             )
         )
 
+    deduped = _dedupe_candidates(candidates)
     return sorted(
-        candidates,
+        deduped,
         key=lambda candidate: (
             candidate.facet_key,
             -candidate.pre_validation_score,
