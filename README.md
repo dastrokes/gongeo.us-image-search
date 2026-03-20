@@ -31,6 +31,7 @@ It produces:
 - `reports/index/item-structured-candidates.jsonl`
 - `reports/index/item-tag-assignments.jsonl`
 - `reports/index/item-review-queue.jsonl`
+- `reports/index/item-unmapped-terms.jsonl`
 - `reports/index/item-search-documents.jsonl`
 - `reports/index/item-captions-debug.jsonl`
 - `reports/index/build-summary.json`
@@ -40,6 +41,8 @@ It produces:
 ```bash
 pip install -r requirements.txt
 ```
+
+Default captioning now uses `Qwen/Qwen3-VL-4B-Instruct` for more structured visual extraction. This requires the upgraded `transformers==4.57.6` dependency pin, which includes `Qwen3VLForConditionalGeneration`.
 
 ## Environment
 
@@ -64,16 +67,16 @@ Development should stay capped at `--limit 10` unless intentionally widened.
 python cli.py build-index --limit 10
 python cli.py sync-upstash
 python cli.py query-upstash --q "blue floral headwear" --item-type headwear
-python cli.py query-upstash --q "mini hat" --facet headwear.subtype:mini_hat
+python cli.py query-upstash --q "midi dress with high collar" --facet length:midi --facet collar:high_collar
 python cli.py evaluate --queries path/to/queries.jsonl
 ```
 
 ## Notes
 
-- Florence captions are now intermediate evidence for structured facet mapping, not the primary search payload.
+- Qwen 3 VL structured captions are now the default intermediate evidence for structured facet mapping, not the primary search payload.
 - The canonical output contract is visual-only and keyed by `item_id`. Official game metadata is not part of the tagging artifacts.
 - Search documents are derived from accepted structured tags plus vetted `search_terms`; review tags are emitted to a separate QA artifact.
-- The report set is intentionally small: manifest, captions, taxonomy concepts, structured candidates, assignments, review queue, search documents, and build summary.
+- The report set is intentionally small: manifest, captions, taxonomy concepts, structured candidates, assignments, review queue, unmapped terms, search documents, and build summary.
 - Explicit filters are passed to Upstash metadata filtering. Natural-language-to-filter parsing is not part of v1.
 - Indexed metadata separates `dominant_colors` from `accent_colors`; `--color` filters match either bucket.
 - Structured facet filtering is available via repeated `--facet` flags against `accepted_facets`.

@@ -26,9 +26,7 @@ class MetadataRecord:
     accent_colors: list[str] = field(default_factory=list)
     primary_color: str | None = None
     secondary_color: str | None = None
-    motifs: list[str] = field(default_factory=list)
-    patterns: list[str] = field(default_factory=list)
-    subtypes: list[str] = field(default_factory=list)
+    facet_values: dict[str, list[str]] = field(default_factory=dict)
     accepted_facets: list[str] = field(default_factory=list)
     review_facets: list[str] = field(default_factory=list)
     search_terms: list[str] = field(default_factory=list)
@@ -75,6 +73,7 @@ class BuildSummary:
     accepted_tag_count: int = 0
     review_tag_count: int = 0
     suppressed_tag_count: int = 0
+    unmapped_term_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -175,6 +174,19 @@ class ReviewRecord:
     value_key: str
     confidence: float
     status: str
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class UnmappedTermRecord:
+    item_id: int
+    item_type: str
+    term: str
+    source_modalities: list[str] = field(default_factory=list)
+    reason: str = "unmapped_caption_term"
     evidence: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

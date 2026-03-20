@@ -9,7 +9,6 @@ from pathlib import Path
 from image_search.constants.settings import (
     DEFAULT_CAPTION_MODEL_ID,
     DEFAULT_EMBEDDING_MODEL,
-    DEFAULT_FALLBACK_CAPTION_MODEL_ID,
     DEFAULT_INDEX_DIMENSION_COUNT,
     DEFAULT_INDEX_METRIC,
     DEFAULT_INDEX_NAME,
@@ -52,6 +51,7 @@ def _cleanup_stale_outputs(output_root: Path) -> None:
         "item-official-metadata.jsonl",
         "item-documents.jsonl",
         "item-metadata.parquet",
+        "item-unmapped-terms.jsonl",
     ):
         try:
             (output_root / filename).unlink(missing_ok=True)
@@ -143,7 +143,7 @@ def run_build_index(args: argparse.Namespace) -> int:
         CaptionRecord,
         ManifestRecord,
     )
-    from image_search.pipeline.captioning import CaptionerConfig, FlorenceCaptioner
+    from image_search.pipeline.captioning import CaptionerConfig, VisionCaptioner
     from image_search.pipeline.color_tags import tag_item_colors
     from image_search.pipeline.documents import build_document_record
     from image_search.pipeline.manifest import build_manifest
@@ -154,6 +154,7 @@ def run_build_index(args: argparse.Namespace) -> int:
         build_structured_candidates,
         build_tag_assignments,
         build_taxonomy_concepts,
+        build_unmapped_term_records,
         build_visual_features,
     )
 
@@ -165,6 +166,7 @@ def run_build_index(args: argparse.Namespace) -> int:
     structured_candidates_path = output_root / "item-structured-candidates.jsonl"
     assignments_path = output_root / "item-tag-assignments.jsonl"
     review_path = output_root / "item-review-queue.jsonl"
+    unmapped_terms_path = output_root / "item-unmapped-terms.jsonl"
     search_documents_path = output_root / "item-search-documents.jsonl"
     summary_path = output_root / "build-summary.json"
     started_at = datetime.now(timezone.utc)
@@ -206,13 +208,14 @@ def run_build_index(args: argparse.Namespace) -> int:
     pending = [record for record in manifest_records if record.item_id not in already_done]
     print(f"Items to caption: {len(pending)} / {len(manifest_records)}")
 
-    captioner = FlorenceCaptioner(
+    captioner = VisionCaptioner(
         CaptionerConfig(
             model_id=args.caption_model,
-            fallback_model_id=args.fallback_caption_model,
             device=args.device,
+            device_map=args.device_map,
             dtype=args.dtype,
             batch_size=args.batch_size,
+            inference_batch_size=args.caption_inference_batch_size,
         )
     )
 
@@ -238,6 +241,7 @@ def run_build_index(args: argparse.Namespace) -> int:
     candidate_rows: list[dict[str, object]] = []
     assignment_rows: list[dict[str, object]] = []
     review_rows: list[dict[str, object]] = []
+    unmapped_term_rows: list[dict[str, object]] = []
     search_document_rows: list[dict[str, object]] = []
     concept_rows = [record.to_dict() for record in build_taxonomy_concepts()]
     accepted_tag_count = 0
@@ -275,6 +279,7 @@ def run_build_index(args: argparse.Namespace) -> int:
             candidates=structured_candidates,
         )
         reviews = build_review_records(assignments)
+        unmapped_terms = build_unmapped_term_records(item_input, visual_features)
         metadata = build_metadata_record(item_input, visual_features, assignments)
         document = build_document_record(metadata, visual_features, assignments)
 
@@ -283,6 +288,7 @@ def run_build_index(args: argparse.Namespace) -> int:
         candidate_rows.extend(candidate.to_dict() for candidate in structured_candidates)
         assignment_rows.extend(assignment.to_dict() for assignment in assignments)
         review_rows.extend(review.to_dict() for review in reviews)
+        unmapped_term_rows.extend(record.to_dict() for record in unmapped_terms)
         search_document_rows.append(document.to_dict())
 
         for assignment in assignments:
@@ -299,6 +305,7 @@ def run_build_index(args: argparse.Namespace) -> int:
     _write_jsonl(structured_candidates_path, candidate_rows)
     _write_jsonl(assignments_path, assignment_rows)
     _write_jsonl(review_path, review_rows)
+    _write_jsonl(unmapped_terms_path, unmapped_term_rows)
     _write_jsonl(search_documents_path, search_document_rows)
 
     finished_at = datetime.now(timezone.utc)
@@ -314,6 +321,7 @@ def run_build_index(args: argparse.Namespace) -> int:
         accepted_tag_count=accepted_tag_count,
         review_tag_count=review_tag_count,
         suppressed_tag_count=suppressed_tag_count,
+        unmapped_term_count=len(unmapped_term_rows),
         build_started_at=started_at.isoformat(),
         build_finished_at=finished_at.isoformat(),
         duration_seconds=(finished_at - started_at).total_seconds(),
@@ -422,10 +430,11 @@ def build_parser() -> argparse.ArgumentParser:
     build_parser = subparsers.add_parser("build-index", help="Build local search artifacts")
     build_parser.add_argument("--limit", type=int, default=None)
     build_parser.add_argument("--batch-size", type=int, default=8)
+    build_parser.add_argument("--caption-inference-batch-size", type=int, default=2)
     build_parser.add_argument("--device", default="auto")
+    build_parser.add_argument("--device-map", choices=("auto", "none"), default="auto")
     build_parser.add_argument("--dtype", default="auto")
     build_parser.add_argument("--caption-model", default=DEFAULT_CAPTION_MODEL_ID)
-    build_parser.add_argument("--fallback-caption-model", default=DEFAULT_FALLBACK_CAPTION_MODEL_ID)
     build_parser.add_argument("--tracker-root", default=os.getenv("TRACKER_ROOT"))
     build_parser.add_argument("--config-root", default=os.getenv("CONFIG_DECODER_OUTPUT"))
     build_parser.add_argument("--sync-report", default=None)

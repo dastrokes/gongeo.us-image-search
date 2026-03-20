@@ -31,12 +31,7 @@ ENV/
 !.env.example
 
 # Reports (generated outputs)
-reports/index/*.jsonl
-reports/index/*.parquet
-reports/index/*.json
-reports/*.jsonl
-reports/*.parquet
-reports/*.json
+reports/*
 
 # Model cache
 .cache/
