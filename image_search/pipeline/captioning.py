@@ -25,10 +25,12 @@ from image_search.constants.text import (
     HAIR_TYPE_SPECIFIC_PROMPT_RULES,
     HAIR_LEAK_PATTERNS,
     JEWELRY_LEAK_PATTERNS,
+    JOINT_PLAIN_DETAIL_PROMPT_LINES,
     LOW_SIGNAL_VISUAL_PATTERN,
     OUTERWEAR_GARMENT_PATTERNS,
     PLAIN_DETAIL_PROMPT_LINES,
     PROMPT_FOCUS_BY_MODALITY,
+    QWEN_JOINT_DETAIL_PROMPT,
     QWEN_STRUCTURED_DETAIL_PROMPT,
     STOP_VISUAL_PATTERN,
     TOP_GARMENT_PATTERNS,
@@ -197,6 +199,50 @@ class VisionCaptioner:
         focus = cls._prompt_focus(modality)
         lines = [line.format(focus=focus) for line in PLAIN_DETAIL_PROMPT_LINES]
         return "\n".join(lines) + cls._item_prompt_rules(item_type, modality)
+
+    @classmethod
+    def _build_joint_prompt(
+        cls,
+        item_type: str,
+        *,
+        has_overview: bool,
+        has_icon: bool,
+    ) -> str:
+        prompt = QWEN_JOINT_DETAIL_PROMPT
+        prompt += f"\nTreat the main item as a `{item_type}`."
+        prompt += cls._type_specific_prompt_rules(item_type)
+        prompt += cls._subcategory_prompt_rule(item_type)
+        if has_overview:
+            prompt += cls._attribute_prompt_rule(item_type, "overview")
+            prompt += cls._coverage_prompt_rule(item_type, "overview")
+        if has_icon:
+            prompt += cls._attribute_prompt_rule(item_type, "icon")
+            prompt += cls._coverage_prompt_rule(item_type, "icon")
+        return prompt
+
+    @classmethod
+    def _build_joint_plain_prompt(
+        cls,
+        item_type: str,
+        *,
+        has_overview: bool,
+        has_icon: bool,
+    ) -> str:
+        lines = list(JOINT_PLAIN_DETAIL_PROMPT_LINES)
+        lines.append(f"Treat the main item as a `{item_type}`.")
+        extra = cls._type_specific_prompt_rules(item_type).strip()
+        if extra:
+            lines.append(extra)
+        subcategory = cls._subcategory_prompt_rule(item_type).strip()
+        if subcategory:
+            lines.append(subcategory)
+        if has_overview:
+            lines.append(cls._attribute_prompt_rule(item_type, "overview").strip())
+            lines.append(cls._coverage_prompt_rule(item_type, "overview").strip())
+        if has_icon:
+            lines.append(cls._attribute_prompt_rule(item_type, "icon").strip())
+            lines.append(cls._coverage_prompt_rule(item_type, "icon").strip())
+        return "\n".join(line for line in lines if line)
 
     @staticmethod
     def _subcategory_prompt_rule(item_type: str) -> str:
@@ -511,6 +557,104 @@ class VisionCaptioner:
             return decoded_list
         return [self._parse_qwen_response(decoded) for decoded in decoded_list]
 
+    def _decode_joint_qwen(
+        self,
+        image_specs: list[tuple[str, str | Path]],
+        item_type: str,
+        *,
+        plain: bool = False,
+    ) -> str:
+        import torch
+
+        ordered_specs = [
+            spec
+            for label in ("overview", "icon")
+            for spec in image_specs
+            if spec[0] == label
+        ]
+        if not ordered_specs:
+            return ""
+
+        prompt_builder = (
+            self._build_joint_plain_prompt if plain else self._build_joint_prompt
+        )
+        prompt = prompt_builder(
+            item_type,
+            has_overview=any(label == "overview" for label, _ in ordered_specs),
+            has_icon=any(label == "icon" for label, _ in ordered_specs),
+        )
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    *({"type": "image"} for _label, _path in ordered_specs),
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+        text = self.processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
+        loaded_images = [
+            self._load_rgb_image(Path(path)) for _label, path in ordered_specs
+        ]
+        inputs = self.processor(
+            text=[text],
+            images=loaded_images,
+            padding=True,
+            return_tensors="pt",
+        )
+        inputs = self._normalize_inputs(inputs, torch)
+        generation_config = self._sanitized_generation_config(self.model)
+
+        with torch.inference_mode():
+            generated_ids = self.model.generate(
+                **inputs,
+                generation_config=generation_config,
+                use_model_defaults=False,
+                max_new_tokens=160,
+            )
+
+        generated_ids_trimmed = [
+            out_ids[len(in_ids) :]
+            for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
+        ]
+        decoded = self.processor.batch_decode(
+            generated_ids_trimmed,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        )
+        return decoded[0] if decoded else ""
+
+    @staticmethod
+    def _parse_joint_response(raw_text: str) -> dict[str, str]:
+        parsed = {"overview": "", "icon": "", "visual": ""}
+        current_key = ""
+
+        for raw_line in raw_text.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            match = re.match(r"^(overview|icon|visual)\s*:\s*(.*)$", line, re.I)
+            if match:
+                current_key = match.group(1).lower()
+                parsed[current_key] = match.group(2).strip()
+                continue
+            if current_key:
+                separator = ", " if parsed[current_key] else ""
+                parsed[current_key] = f"{parsed[current_key]}{separator}{line}"
+
+        if any(parsed.values()):
+            return parsed
+
+        fallback = raw_text.strip()
+        if fallback:
+            parsed["visual"] = fallback
+        return parsed
+
     def _resolve_model_class(self):
         from transformers import Qwen3VLForConditionalGeneration
 
@@ -561,25 +705,57 @@ class VisionCaptioner:
         results: list[CaptionRecord] = []
         for record in records:
             image_specs = self._record_image_paths(record)
-            has_icon = any(label == "icon" for label, _ in image_specs)
-            has_overview = any(label == "overview" for label, _ in image_specs)
-            modalities = [label for label, _path in image_specs]
-            raw_captions = self._retry_missing_modalities(record, modalities)
-
-            icon_caption = raw_captions.get("icon", {}).get("caption", "")
-            overview_caption = raw_captions.get("overview", {}).get("caption", "")
+            ordered_specs = [
+                spec
+                for label in ("overview", "icon")
+                for spec in image_specs
+                if spec[0] == label
+            ]
+            has_icon = any(label == "icon" for label, _ in ordered_specs)
+            has_overview = any(label == "overview" for label, _ in ordered_specs)
             item_type = record.type
+
+            raw_joint = self._decode_joint_qwen(ordered_specs, item_type)
+            parsed_joint = self._parse_joint_response(raw_joint)
+            missing_expected_line = (
+                not parsed_joint["visual"]
+                or (has_overview and not parsed_joint["overview"])
+                or (has_icon and not parsed_joint["icon"])
+            )
+            if missing_expected_line:
+                retry_joint = self._parse_joint_response(
+                    self._decode_joint_qwen(ordered_specs, item_type, plain=True)
+                )
+                for key, value in retry_joint.items():
+                    if value:
+                        parsed_joint[key] = value
+
+            icon_caption = self._normalize_caption(
+                parsed_joint["icon"],
+                item_type,
+                "icon",
+            )
+            overview_caption = self._normalize_caption(
+                parsed_joint["overview"],
+                item_type,
+                "overview",
+            )
+            visual = self._normalize_caption(
+                parsed_joint["visual"],
+                item_type,
+                "overview",
+            )
+            if not visual:
+                visual = self._normalize_caption(
+                    self._merge_unique_parts(overview_caption, icon_caption),
+                    item_type,
+                    "overview",
+                )
 
             if self._is_low_signal_caption(icon_caption, item_type):
                 icon_caption = ""
             if self._is_low_signal_caption(overview_caption, item_type):
                 overview_caption = ""
-
-            visual = self._normalize_caption(
-                self._merge_unique_parts(icon_caption, overview_caption),
-                item_type,
-                "overview",
-            )
             if self._is_low_signal_caption(visual, item_type):
                 visual = ""
 

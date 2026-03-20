@@ -1525,7 +1525,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
         _concept(
             "neckline",
             "v_neck",
-            "V-neckline",
+            "v-neckline",
             allowed_item_types=("tops", "dresses"),
             patterns=(r"\bv[- ]neck(?:line)?\b",),
             preferred_evidence="overview",

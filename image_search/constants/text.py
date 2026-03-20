@@ -17,12 +17,64 @@ Rules:
 - Do not return JSON.
 """.strip()
 
+QWEN_JOINT_DETAIL_PROMPT = """
+You are given up to two images of the same wearable item.
+Image order:
+- image 1: overview image
+- image 2: icon image
+
+Describe exactly one main wearable item shared across the images.
+Return exactly these three lines and nothing else:
+overview: <comma-separated short lowercase phrases>
+icon: <comma-separated short lowercase phrases>
+visual: <comma-separated short lowercase phrases>
+
+Rules:
+- Use lowercase normalized phrases only.
+- Start with the visible main item subcategory if it is clear.
+- Keep the `overview` and `icon` distinction clear.
+- `overview` should focus on what is most visible in the overview image.
+- `icon` should focus on what is most visible in the icon image.
+- `visual` should describe the item across both images as one combined output.
+- Each value must be a plain comma-separated tag list, not a sentence fragment.
+- Include only directly visible attributes of that item.
+- Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.
+- Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.
+- Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.
+- Do not write full sentences or repeat near-duplicate phrases.
+- Do not return JSON.
+""".strip()
+
 PLAIN_DETAIL_PROMPT_LINES: tuple[str, ...] = (
     "Describe exactly one main wearable item from the provided images.",
     "Focus on {focus}.",
     "Return only a comma-separated list of short lowercase phrases describing the item itself.",
     "Use lowercase normalized phrases only.",
     "Start with the visible main item subcategory if it is clear.",
+    "Include only directly visible attributes of that item.",
+    "Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.",
+    "Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.",
+    "Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.",
+    "Do not write full sentences or repeat near-duplicate phrases.",
+    "Do not return JSON.",
+)
+
+JOINT_PLAIN_DETAIL_PROMPT_LINES: tuple[str, ...] = (
+    "You are given up to two images of the same wearable item.",
+    "Image 1 is the overview image.",
+    "Image 2 is the icon image.",
+    "Describe exactly one main wearable item shared across the images.",
+    "Return exactly these three lines and nothing else:",
+    "overview: <comma-separated short lowercase phrases>",
+    "icon: <comma-separated short lowercase phrases>",
+    "visual: <comma-separated short lowercase phrases>",
+    "Use lowercase normalized phrases only.",
+    "Start with the visible main item subcategory if it is clear.",
+    "Keep the `overview` and `icon` distinction clear.",
+    "`overview` should focus on what is most visible in the overview image.",
+    "`icon` should focus on what is most visible in the icon image.",
+    "`visual` should describe the item across both images as one combined output.",
+    "Each value must be a plain comma-separated tag list, not a sentence fragment.",
     "Include only directly visible attributes of that item.",
     "Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.",
     "Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.",
