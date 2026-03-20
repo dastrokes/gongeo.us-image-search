@@ -37,6 +37,26 @@ DEFAULT_CONFLICT_MARGIN = 0.06
 SUBCATEGORY_ACCEPTED_THRESHOLD = 0.82
 SUBCATEGORY_REVIEW_THRESHOLD = 0.68
 
+_OBVIOUS_UNMAPPED_TERMS = frozenset(
+    {
+        "ankle",
+        "front placement",
+        "material",
+        "ornament",
+        "pattern",
+        "shoe",
+        "shoe icon",
+        "shoe silhouette",
+        "shoes",
+        "toe",
+        "trim",
+    }
+)
+
+_NEGATIVE_UNMAPPED_TERM_PATTERN = re.compile(
+    r"^no(?: visible)? (?:pattern|ornament|motif|trim|material)$"
+)
+
 
 def build_taxonomy_concepts() -> list[TaxonomyConceptRecord]:
     return [
@@ -776,7 +796,7 @@ def build_unmapped_term_records(
             report_terms.append(term)
 
     for term in report_terms:
-        if term in seen or _term_matches_taxonomy(term, item_input.item_type):
+        if term in seen or _is_obvious_noise_term(term) or _term_matches_taxonomy(term, item_input.item_type):
             continue
         seen.add(term)
         records.append(
@@ -793,6 +813,15 @@ def build_unmapped_term_records(
         )
 
     return records
+
+
+def _is_obvious_noise_term(term: str) -> bool:
+    normalized = re.sub(r"\s+", " ", term.strip().lower())
+    if not normalized:
+        return True
+    if normalized in _OBVIOUS_UNMAPPED_TERMS:
+        return True
+    return bool(_NEGATIVE_UNMAPPED_TERM_PATTERN.fullmatch(normalized))
 
 
 def _collect_search_terms(
