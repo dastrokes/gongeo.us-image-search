@@ -2,59 +2,59 @@ from __future__ import annotations
 
 import re
 
-QWEN_STRUCTURED_DETAIL_PROMPT = """
-Describe exactly one main wearable item from the provided images.
+STRUCTURED_DETAIL_PROMPT = """
+Describe exactly one main wearable item from the provided image(s).
 Focus on {focus}.
-Return only a comma-separated list of short lowercase phrases describing the item itself.
+Return only a comma-separated list of short lowercase phrases describing the item itself. No preamble, no explanation.
 Rules:
-- Use lowercase normalized phrases only.
-- Start with the visible main item subcategory if it is clear.
+- Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.
 - Include only directly visible attributes of that item.
 - Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.
 - Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.
-- Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.
+- Include smaller visible details when they are clear.
+- Use lowercase normalized phrases only.
 - Do not write full sentences or repeat near-duplicate phrases.
 - Do not return JSON.
 """.strip()
 
-QWEN_JOINT_DETAIL_PROMPT = """
+JOINT_DETAIL_PROMPT = """
 You are given up to two images of the same wearable item.
 Image order:
 - image 1: overview image
 - image 2: icon image
 
 Describe exactly one main wearable item shared across the images.
-Return exactly these three lines and nothing else:
+Return exactly these two lines and nothing else:
 overview: <comma-separated short lowercase phrases>
 icon: <comma-separated short lowercase phrases>
-visual: <comma-separated short lowercase phrases>
 
 Rules:
-- Use lowercase normalized phrases only.
 - Start with the visible main item subcategory if it is clear.
+- Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.
 - Keep the `overview` and `icon` distinction clear.
 - `overview` should focus on what is most visible in the overview image.
 - `icon` should focus on what is most visible in the icon image.
-- `visual` should describe the item across both images as one combined output.
 - Each value must be a plain comma-separated tag list, not a sentence fragment.
 - Include only directly visible attributes of that item.
 - Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.
 - Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.
-- Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.
+- Include smaller visible details when they are clear.
+- Use lowercase normalized phrases only.
 - Do not write full sentences or repeat near-duplicate phrases.
 - Do not return JSON.
 """.strip()
 
 PLAIN_DETAIL_PROMPT_LINES: tuple[str, ...] = (
-    "Describe exactly one main wearable item from the provided images.",
+    "Describe exactly one main wearable item from the provided image(s).",
     "Focus on {focus}.",
-    "Return only a comma-separated list of short lowercase phrases describing the item itself.",
-    "Use lowercase normalized phrases only.",
+    "Return only a comma-separated list of short lowercase phrases describing the item itself. No preamble, no explanation.",
     "Start with the visible main item subcategory if it is clear.",
+    "Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.",
     "Include only directly visible attributes of that item.",
     "Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.",
     "Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.",
-    "Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.",
+    "Include smaller visible details when they are clear.",
+    "Use lowercase normalized phrases only.",
     "Do not write full sentences or repeat near-duplicate phrases.",
     "Do not return JSON.",
 )
@@ -64,21 +64,20 @@ JOINT_PLAIN_DETAIL_PROMPT_LINES: tuple[str, ...] = (
     "Image 1 is the overview image.",
     "Image 2 is the icon image.",
     "Describe exactly one main wearable item shared across the images.",
-    "Return exactly these three lines and nothing else:",
+    "Return exactly these two lines and nothing else:",
     "overview: <comma-separated short lowercase phrases>",
     "icon: <comma-separated short lowercase phrases>",
-    "visual: <comma-separated short lowercase phrases>",
-    "Use lowercase normalized phrases only.",
     "Start with the visible main item subcategory if it is clear.",
+    "Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.",
     "Keep the `overview` and `icon` distinction clear.",
     "`overview` should focus on what is most visible in the overview image.",
     "`icon` should focus on what is most visible in the icon image.",
-    "`visual` should describe the item across both images as one combined output.",
     "Each value must be a plain comma-separated tag list, not a sentence fragment.",
     "Include only directly visible attributes of that item.",
     "Be exhaustive about clear visual details, but do not infer hidden or ambiguous details.",
     "Prefer concrete visual facts such as length, cut, silhouette, shape, coverage, placement, material, texture, pattern, motif, trim, closure, ornament, and construction details.",
-    "Exclude the wearer, face, body, hair, hands, pose, expression, background, lighting, framing, and other items.",
+    "Include smaller visible details when they are clear.",
+    "Use lowercase normalized phrases only.",
     "Do not write full sentences or repeat near-duplicate phrases.",
     "Do not return JSON.",
 )
@@ -92,15 +91,39 @@ DEFAULT_PROMPT_FOCUS = (
     "the item's visible structure, materials, and distinguishing details"
 )
 
+HAIR_ATTRIBUTE_PROMPT_RULE = "Cover visible hair attributes: length, arrangement, bangs, texture, parting, and attached ornaments."
+
+DRESS_ATTRIBUTE_PROMPT_RULE = "Cover visible dress attributes: subcategory, length, silhouette, neckline, sleeve length, sleeve shape, straps, waist, hem, layering, materials, pattern, motif, trim, ornament, and closures. Include smaller visible motifs and graphics when clear."
+
+APPAREL_ATTRIBUTE_PROMPT_RULE = "Cover visible apparel attributes: subcategory, neckline, collar, sleeve length, sleeve shape, garment length, hem, layering, front opening or closure, materials, pattern, motif, trim, and ornament. Include smaller visible motifs and graphics when clear."
+
+BOTTOM_ATTRIBUTE_PROMPT_RULE = "Cover visible bottom attributes: subcategory, rise, length, silhouette, pleats or layering, hem, materials, pattern, motif, trim, and ornament. Include smaller visible motifs and graphics when clear."
+
+SOCKS_ATTRIBUTE_PROMPT_RULE = "Cover visible legwear attributes: subcategory, height, opacity, trim, pattern, motif, and ornament."
+
+SHOES_ATTRIBUTE_PROMPT_RULE = "Cover visible footwear attributes: subcategory, heel height, shaft height, toe shape, platform, straps, buckles or closures, materials, pattern, trim, and ornament."
+
+ACCESSORY_ATTRIBUTE_PROMPT_RULE = "Cover visible accessory attributes: subcategory, shape, size, placement, attachment style, materials, pattern, motif, trim, ornament, gems, bows, ribbons, and closures."
+
+FACE_DETAIL_ATTRIBUTE_PROMPT_RULE = "Cover visible face-detail attributes: placement, shape, finish, intensity, color, pattern, motif, and decorative accents."
+
+BODY_PAINT_ATTRIBUTE_PROMPT_RULE = "Cover visible body-paint attributes: placement, coverage, shape, pattern, motif, finish, and color accents."
+
+SKIN_TONE_ATTRIBUTE_PROMPT_RULE = (
+    "Describe only visible skin tone or complexion cues of the target cosmetic item."
+)
+
+GENERIC_ATTRIBUTE_PROMPT_RULE = "Cover visible attributes such as subcategory, shape, placement, length, materials, pattern, motif, trim, ornament, and closures when applicable."
+
 HAIR_TYPE_SPECIFIC_PROMPT_RULES = (
-    "\nDescribe only the hairstyle or hair-attached decorations."
-    "\nIgnore clothing, dresses, tops, jewelry, skin, face, and anything below the neck."
-    "\nMention bows, ribbons, clips, or headbands only when they are attached to the hair."
+    "Describe only the hairstyle or hair-attached decorations.\n"
+    "Do not describe clothing, dresses, tops, jewelry, skin, face, or anything below the neck.\n"
+    "Mention bows, ribbons, clips, or headbands only when they are attached to the hair."
 )
 
 ACCESSORY_TYPE_SPECIFIC_PROMPT_RULES = (
-    "\nDescribe only the target accessory or face detail."
-    "\nIgnore surrounding clothing, adjacent jewelry, hairstyle, body parts, and nearby items unless they are part of the target item."
+    "Describe only the target accessory or face detail.\n"
+    "Do not describe surrounding clothing, adjacent jewelry, hairstyle, body parts, or nearby items unless they are part of the target item."
 )
 
 CAPTION_NOISE_TERMS = frozenset(
@@ -116,12 +139,16 @@ CAPTION_NOISE_PATTERN = re.compile(
     + "|".join(
         re.escape(term) for term in sorted(CAPTION_NOISE_TERMS, key=len, reverse=True)
     )
-    + r")\b"
+    + r")\b",
+    re.IGNORECASE,
 )
 
-LOW_SIGNAL_VISUAL_PATTERN = re.compile(r"\b(?:overall look)\b")
+LOW_SIGNAL_VISUAL_PATTERN = re.compile(r"\b(?:overall look)\b", re.IGNORECASE)
 
-STOP_VISUAL_PATTERN = re.compile(r"\b(?:camera|background|looking directly)\b")
+STOP_VISUAL_PATTERN = re.compile(
+    r"\b(?:camera|photo background|looking directly at)\b",
+    re.IGNORECASE,
+)
 
 TOP_GARMENT_PATTERNS: tuple[str, ...] = (
     r"\bblouse\b",

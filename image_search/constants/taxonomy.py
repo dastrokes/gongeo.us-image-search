@@ -4,6 +4,11 @@ from dataclasses import dataclass
 
 from image_search.constants.colors import COLOR_WORDS, normalize_color_label
 
+CONFIDENCE_LOW = 0.76
+CONFIDENCE_DEFAULT = 0.80
+CONFIDENCE_HIGH = 0.84
+CONFIDENCE_MAX = 0.88
+
 
 @dataclass(frozen=True, slots=True)
 class ConceptDefinition:
@@ -93,6 +98,8 @@ ACCESSORY_OR_PROP_TYPES: tuple[str, ...] = (
     "armDecorations",
     "abilityHandhelds",
 )
+HAIR_WITH_ACCESSORIES_TYPES: tuple[str, ...] = ("hair", "hairAccessories")
+HAIR_OR_HEADPIECE_TYPES: tuple[str, ...] = ("hair", "hairAccessories", "headwear")
 
 SEARCH_ONLY_FACETS: frozenset[str] = frozenset(
     {
@@ -133,6 +140,7 @@ EXCLUSIVE_FACETS: frozenset[str] = frozenset(
         "shoes.platform",
         "shoes.sole",
         "hair.length",
+        "hair.parting",
         "hair.texture",
         "hair.bangs",
         "eyebrows.shape",
@@ -178,7 +186,7 @@ def _concept(
     allowed_item_types: tuple[str, ...],
     patterns: tuple[str, ...],
     preferred_evidence: str = "both",
-    base_confidence: float = 0.76,
+    base_confidence: float = CONFIDENCE_LOW,
     multi_value: bool = False,
     max_values: int = 1,
     search_only: bool = False,
@@ -231,7 +239,7 @@ def _color_concepts() -> list[ConceptDefinition]:
     )
     concepts: list[ConceptDefinition] = []
     for facet_key in ("color.primary", "color.secondary", "color.accent"):
-        confidence = 0.86 if facet_key == "color.accent" else 0.9
+        confidence = CONFIDENCE_HIGH if facet_key == "color.accent" else 0.9
         for value in values:
             concepts.append(
                 ConceptDefinition(
@@ -260,7 +268,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("tartan",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "pattern",
@@ -271,7 +279,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("stripes",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "pattern",
@@ -282,7 +290,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("gingham", "checked"),
             multi_value=True,
             max_values=3,
-            base_confidence=0.81,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "pattern",
@@ -293,7 +301,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("flower print", "flowered"),
             multi_value=True,
             max_values=3,
-            base_confidence=0.81,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "pattern",
@@ -304,7 +312,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("polka dot", "polka dots", "dotted"),
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "pattern",
@@ -317,6 +325,8 @@ def _surface_concepts() -> list[ConceptDefinition]:
                 r"\bdiamond ornament\b",
                 r"\bchevron\b",
                 r"\bgrid pattern\b",
+                r"\bhoneycomb pattern\b",
+                r"\bhoneycomb\b",
             ),
             aliases=(
                 "diamond pattern",
@@ -324,10 +334,12 @@ def _surface_concepts() -> list[ConceptDefinition]:
                 "geometrics",
                 "chevron pattern",
                 "grid pattern",
+                "honeycomb pattern",
+                "honeycomb",
             ),
             multi_value=True,
             max_values=3,
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "pattern",
@@ -340,7 +352,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("colored pattern",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.74,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "pattern",
@@ -351,7 +363,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("embossed pattern",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.74,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "pattern",
@@ -362,7 +374,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("embroidered", "embroidery", "gold embroidery"),
             multi_value=True,
             max_values=3,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "material",
@@ -373,7 +385,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("lacy",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "material",
@@ -391,7 +403,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("knitted",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "material",
@@ -402,7 +414,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("silk", "silken"),
             multi_value=True,
             max_values=3,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "material",
@@ -420,7 +432,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("faux leather",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "material",
@@ -431,7 +443,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("furry", "faux fur"),
             multi_value=True,
             max_values=3,
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "material",
@@ -442,7 +454,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("tulle skirt",),
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "material",
@@ -453,7 +465,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("denim material", "denim-like material"),
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "trim",
@@ -465,7 +477,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "trim",
@@ -477,7 +489,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "trim",
@@ -489,7 +501,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.81,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "trim",
@@ -501,7 +513,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "trim",
@@ -513,7 +525,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "trim",
@@ -525,7 +537,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "trim",
@@ -537,7 +549,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "trim",
@@ -563,7 +575,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "trim",
@@ -574,7 +586,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=2,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "trim",
@@ -600,7 +612,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.74,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "trim",
@@ -624,7 +636,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "trim",
@@ -636,7 +648,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "texture",
@@ -647,7 +659,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("overlaid with lace",),
             multi_value=True,
             max_values=2,
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "texture",
@@ -666,7 +678,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("transparent", "transparent material"),
             multi_value=True,
             max_values=2,
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "texture",
@@ -677,7 +689,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("metal sheen",),
             multi_value=True,
             max_values=2,
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "texture",
@@ -702,7 +714,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             ),
             multi_value=True,
             max_values=2,
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "texture",
@@ -713,7 +725,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             aliases=("mesh material",),
             multi_value=True,
             max_values=2,
-            base_confidence=0.74,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "ornament",
@@ -730,7 +742,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "ornament",
@@ -746,7 +758,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "ornament",
@@ -772,7 +784,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "ornament",
@@ -798,7 +810,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "ornament",
@@ -822,7 +834,55 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=2,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
+        ),
+        _concept(
+            "ornament",
+            "horns",
+            "horn ornament",
+            allowed_item_types=(
+                "tops",
+                "outerwear",
+                "dresses",
+                "backpieces",
+                "headwear",
+                "hairAccessories",
+            ),
+            patterns=(
+                r"\bhorn ornament\b",
+                r"\bhorn motif\b",
+                r"\bdecorative horns?\b",
+                r"\bhorned detail\b",
+            ),
+            aliases=("horn motif", "decorative horns", "horned detail"),
+            preferred_evidence="overview",
+            multi_value=True,
+            max_values=2,
+            base_confidence=CONFIDENCE_LOW,
+        ),
+        _concept(
+            "ornament",
+            "antlers",
+            "antler ornament",
+            allowed_item_types=(
+                "tops",
+                "outerwear",
+                "dresses",
+                "backpieces",
+                "headwear",
+                "hairAccessories",
+            ),
+            patterns=(
+                r"\bantler ornament\b",
+                r"\bantler motif\b",
+                r"\bdecorative antlers?\b",
+                r"\bantler detail\b",
+            ),
+            aliases=("antler motif", "decorative antlers", "antler detail"),
+            preferred_evidence="overview",
+            multi_value=True,
+            max_values=2,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "ornament",
@@ -834,7 +894,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "ornament",
@@ -846,7 +906,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "ornament",
@@ -858,7 +918,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -870,7 +930,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "motif",
@@ -882,7 +942,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "motif",
@@ -894,7 +954,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "motif",
@@ -912,7 +972,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -928,7 +988,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -945,7 +1005,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -957,7 +1017,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.75,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -969,7 +1029,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -986,7 +1046,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -998,7 +1058,7 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -1015,7 +1075,24 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
+        ),
+        _concept(
+            "motif",
+            "frog",
+            "frog motif",
+            allowed_item_types=all_visual,
+            patterns=(
+                r"\bfrog motif\b",
+                r"\bfrog graphic\b",
+                r"\bfrog emblem\b",
+                r"\bfrog\b",
+            ),
+            aliases=("frog", "frog graphic", "frog emblem"),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "motif",
@@ -1027,7 +1104,131 @@ def _surface_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
+        ),
+        _concept(
+            "motif",
+            "bee",
+            "bee motif",
+            allowed_item_types=all_visual,
+            patterns=(r"\bbee motif\b", r"\bbee emblem\b", r"\bbees?\b"),
+            aliases=("bee", "bee emblem"),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "motif",
+            "fruit",
+            "fruit motif",
+            allowed_item_types=all_visual,
+            patterns=(
+                r"\bfruit motif\b",
+                r"\bfruit pattern\b",
+                r"\bcherr(?:y|ies)\b",
+                r"\bstrawberr(?:y|ies)\b",
+                r"\bapple(?:s)?\b",
+                r"\bpear(?:s)?\b",
+                r"\bgrape(?:s)?\b",
+                r"\bcitrus\b",
+            ),
+            aliases=(
+                "fruit",
+                "fruit pattern",
+                "cherry",
+                "strawberry",
+                "apple",
+                "pear",
+                "grape",
+                "citrus",
+            ),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "motif",
+            "paw_print",
+            "paw print motif",
+            allowed_item_types=all_visual,
+            patterns=(r"\bpaw print motif\b", r"\bpaw prints?\b", r"\bpawprint\b"),
+            aliases=("paw print", "paw prints", "pawprint"),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "motif",
+            "cloud",
+            "cloud motif",
+            allowed_item_types=all_visual,
+            patterns=(
+                r"\bcloud motif\b",
+                r"\bcloud motifs\b",
+                r"\bcloud pattern\b",
+                r"\bclouds?\b",
+                r"\bcloud motif with raindrops\b",
+            ),
+            aliases=("cloud", "clouds", "cloud pattern"),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "motif",
+            "starburst",
+            "starburst motif",
+            allowed_item_types=all_visual,
+            patterns=(r"\bstarburst motif\b", r"\bstarburst\b"),
+            aliases=("starburst",),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "motif",
+            "wheat",
+            "wheat motif",
+            allowed_item_types=all_visual,
+            patterns=(r"\bwheat motif\b", r"\bwheat\b"),
+            aliases=("wheat",),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_LOW,
+        ),
+        _concept(
+            "motif",
+            "popsicle",
+            "popsicle motif",
+            allowed_item_types=all_visual,
+            patterns=(r"\bpopsicle motif\b", r"\bpopsicle\b"),
+            aliases=("popsicle",),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "motif",
+            "claw",
+            "claw motif",
+            allowed_item_types=all_visual,
+            patterns=(
+                r"\bclaw scratch motif\b",
+                r"\bclaw marks?\b",
+                r"\bclaw scratch(?:es)?\b",
+            ),
+            aliases=("claw scratch", "claw marks"),
+            preferred_evidence="icon",
+            multi_value=True,
+            max_values=3,
+            base_confidence=CONFIDENCE_LOW,
         ),
     ]
 
@@ -1212,18 +1413,27 @@ def _hair_concepts() -> list[ConceptDefinition]:
             "short",
             "short hair",
             allowed_item_types=("hair",),
-            patterns=(r"\bshort hair\b", r"\bbob(?: cut)?\b"),
+            patterns=(
+                r"\bshort hair\b",
+                r"\bbob(?: cut)?\b",
+                r"\bshort\b(?!\s+to\s+medium(?:\s+length)?)",
+            ),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "hair.length",
             "medium",
             "medium hair",
             allowed_item_types=("hair",),
-            patterns=(r"\bshoulder[- ]length hair\b", r"\bmedium(?:-length)? hair\b"),
+            patterns=(
+                r"\bshoulder[- ]length(?: hair)?\b",
+                r"\bmedium(?:-length)?(?: hair)?\b",
+                r"\bmedium length(?: hair)?\b",
+                r"\bshort to medium length\b",
+            ),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.length",
@@ -1232,11 +1442,12 @@ def _hair_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("hair",),
             patterns=(
                 r"\blong hair\b",
+                r"(?<!very )\blong\b",
                 r"\bfalls over (?:the )?shoulders\b",
                 r"\bcascad(?:e|es|ing) down\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "hair.length",
@@ -1245,11 +1456,12 @@ def _hair_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("hair",),
             patterns=(
                 r"\bvery long hair\b",
-                r"\bfloor[- ]length hair\b",
-                r"\bwaist[- ]length hair\b",
+                r"\bvery long\b",
+                r"\bfloor[- ]length(?: hair)?\b",
+                r"\bwaist[- ]length(?: hair)?\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "hair.arrangement",
@@ -1264,7 +1476,7 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.88,
+            base_confidence=CONFIDENCE_MAX,
         ),
         _concept(
             "hair.arrangement",
@@ -1275,7 +1487,7 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "hair.arrangement",
@@ -1286,7 +1498,7 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.arrangement",
@@ -1297,7 +1509,7 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.arrangement",
@@ -1308,7 +1520,7 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "hair.arrangement",
@@ -1319,7 +1531,7 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.arrangement",
@@ -1330,7 +1542,7 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.arrangement",
@@ -1341,43 +1553,111 @@ def _hair_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=3,
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
+        ),
+        _concept(
+            "hair.parting",
+            "center_part",
+            "center part",
+            allowed_item_types=("hair",),
+            patterns=(
+                r"\bcenter[- ]part(?:ed)?\b",
+                r"\bparted center\b",
+                r"\bcenter parting\b",
+                r"\bmiddle part\b",
+                r"\bparted in the middle\b",
+                r"\bdefined parting\b",
+            ),
+            preferred_evidence="overview",
+            base_confidence=CONFIDENCE_DEFAULT,
+            aliases=("center-parted", "parted center", "middle part"),
+        ),
+        _concept(
+            "hair.parting",
+            "side_part",
+            "side part",
+            allowed_item_types=("hair",),
+            patterns=(
+                r"\bside[- ]part(?:ed)?\b",
+                r"\bside parting\b",
+                r"\bparted to the side\b",
+                r"\bside parts?\b",
+                r"\bsubtle parting\b",
+                r"\bgentle parting\b",
+                r"\bnatural parting\b",
+                r"\bsingle part(?:ing)?\b",
+            ),
+            preferred_evidence="overview",
+            base_confidence=CONFIDENCE_DEFAULT,
+            aliases=("side-parted", "side parting"),
         ),
         _concept(
             "hair.texture",
             "straight",
             "straight hair",
             allowed_item_types=("hair",),
-            patterns=(r"\bstraight hair\b",),
+            patterns=(
+                r"\bstraight hair\b",
+                r"\bstraight\b",
+                r"\bstraight sections\b",
+            ),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.texture",
             "wavy",
             "wavy hair",
             allowed_item_types=("hair",),
-            patterns=(r"\bwavy hair\b", r"\bloose waves?\b"),
+            patterns=(
+                r"\bwavy hair\b",
+                r"\bwavy\b",
+                r"\bwavy texture\b",
+                r"\bloose waves?\b",
+                r"\bsoft waves?\b",
+                r"\bnatural waves?\b",
+                r"\bsoft flowing waves\b",
+            ),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.texture",
             "curly",
             "curly hair",
             allowed_item_types=("hair",),
-            patterns=(r"\bcurly hair\b", r"\bloose curls?\b"),
+            patterns=(
+                r"\bcurly hair\b",
+                r"\bcurly\b",
+                r"\bloose curls?\b",
+                r"\bsoft curls?\b",
+                r"\bvoluminous curls?\b",
+                r"\bdetailed curls?\b",
+                r"\bsoftly curled\b",
+                r"\bcurled ends\b",
+                r"\bcurled\b",
+            ),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "hair.bangs",
+            "bangs",
+            "bangs",
+            allowed_item_types=("hair",),
+            patterns=(r"\bbangs\b", r"\blayered bangs\b", r"\bwavy bangs\b"),
+            preferred_evidence="overview",
+            base_confidence=CONFIDENCE_LOW,
+            aliases=("layered bangs",),
         ),
         _concept(
             "hair.bangs",
             "full_bangs",
             "full bangs",
             allowed_item_types=("hair",),
-            patterns=(r"\bfull bangs\b", r"\bstraight bangs\b"),
+            patterns=(r"\bfull bangs\b", r"\bstraight bangs\b", r"\bblunt bangs\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "hair.bangs",
@@ -1386,7 +1666,16 @@ def _hair_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("hair",),
             patterns=(r"\bside bangs\b", r"\bside-swept bangs\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "hair.bangs",
+            "no_bangs",
+            "no bangs",
+            allowed_item_types=("hair",),
+            patterns=(r"\bno bangs\b",),
+            preferred_evidence="overview",
+            base_confidence=CONFIDENCE_HIGH,
         ),
     ]
 
@@ -1400,7 +1689,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("dresses", "bottoms"),
             patterns=(r"\ba[- ]line\b",),
             preferred_evidence="overview",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "silhouette",
@@ -1409,7 +1698,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("dresses",),
             patterns=(r"\bballgown\b", r"\bball gown\b"),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "silhouette",
@@ -1418,7 +1707,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses", "bottoms"),
             patterns=(r"\bfitted\b", r"\bform-fitting\b"),
             preferred_evidence="overview",
-            base_confidence=0.77,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "silhouette",
@@ -1427,16 +1716,20 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("dresses", "bottoms"),
             patterns=(r"\blayered\b", r"\btiered\b"),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "silhouette",
             "asymmetrical",
             "asymmetrical",
-            allowed_item_types=("dresses", "bottoms", "tops", "outerwear"),
-            patterns=(r"\basymmetrical\b", r"\basymmetric\b"),
+            allowed_item_types=("dresses", "bottoms", "tops", "outerwear", "hair"),
+            patterns=(
+                r"\basymmetrical\b",
+                r"\basymmetric\b",
+                r"\basymetric\b",
+            ),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "silhouette",
@@ -1445,7 +1738,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\bwide[- ]leg\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "length",
@@ -1460,7 +1753,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
                 r"\babove the knee\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "length",
@@ -1474,7 +1767,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
                 r"\bmid-calf\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "length",
@@ -1488,7 +1781,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
                 r"\blong skirt\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "length",
@@ -1497,7 +1790,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear"),
             patterns=(r"\bcropped\b", r"\bcrop top\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "length",
@@ -1506,7 +1799,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear"),
             patterns=(r"\blongline\b", r"\blong coat\b"),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "rise",
@@ -1520,7 +1813,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
                 r"\bbelted waist\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "neckline",
@@ -1529,7 +1822,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses"),
             patterns=(r"\bv[- ]neck(?:line)?\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "neckline",
@@ -1542,7 +1835,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
                 r"\bcircular neckline\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "neckline",
@@ -1551,7 +1844,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses"),
             patterns=(r"\bsquare neckline\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "neckline",
@@ -1560,7 +1853,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses", "outerwear"),
             patterns=(r"\bhigh neck(?:line)?\b", r"\bturtleneck\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "neckline",
@@ -1569,7 +1862,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses"),
             patterns=(r"\bhalter neck(?:line)?\b", r"\bhalter\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
             aliases=("halter neck",),
         ),
         _concept(
@@ -1579,7 +1872,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses"),
             patterns=(r"\bsweetheart neckline\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "neckline",
@@ -1588,7 +1881,31 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses"),
             patterns=(r"\bstrapless\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "neckline",
+            "off_shoulder",
+            "off-shoulder",
+            allowed_item_types=("tops", "dresses"),
+            patterns=(
+                r"\boff[- ]shoulder\b",
+                r"\boff[- ]the[- ]shoulder\b",
+                r"\boff the shoulder\b",
+            ),
+            preferred_evidence="overview",
+            base_confidence=CONFIDENCE_DEFAULT,
+            aliases=("off shoulder",),
+        ),
+        _concept(
+            "neckline",
+            "one_shoulder",
+            "one-shoulder",
+            allowed_item_types=("tops", "dresses"),
+            patterns=(r"\bone[- ]shoulder\b", r"\bsingle[- ]shoulder\b"),
+            preferred_evidence="overview",
+            base_confidence=CONFIDENCE_HIGH,
+            aliases=("one shoulder", "single shoulder"),
         ),
         _concept(
             "collar",
@@ -1597,7 +1914,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear", "dresses"),
             patterns=(r"\bcollared\b", r"\bcollar(?:ed)?\b"),
             preferred_evidence="icon",
-            base_confidence=0.74,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "collar",
@@ -1606,7 +1923,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear", "dresses"),
             patterns=(r"\bhigh collar\b",),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "collar",
@@ -1615,7 +1932,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear", "dresses"),
             patterns=(r"\bruffled collar\b", r"\bfrilled collar\b"),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "closure",
@@ -1626,11 +1943,12 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
                 r"\bbutton[- ]front\b",
                 r"\bbutton[- ]down(?: front)?\b",
                 r"\bbuttons? down the front\b",
-                r"\bbutton(?:ed)? (?:front|closure)\b",
+                r"\bbutton(?:ed)? (?:front|closures?)\b",
+                r"\bfront button closures?\b",
                 r"\bfront closure with buttons\b",
             ),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "closure",
@@ -1639,7 +1957,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=GARMENT_STRUCTURE_TYPES + ("shoes",),
             patterns=(r"\bzipper front\b", r"\bzipped front\b", r"\bfront zipper\b"),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "closure",
@@ -1648,7 +1966,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=GARMENT_STRUCTURE_TYPES + ("shoes",),
             patterns=(r"\btied front\b", r"\bfront tie\b", r"\bbow tie front\b"),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "closure",
@@ -1679,7 +1997,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "closure",
@@ -1691,7 +2009,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "closure",
@@ -1708,7 +2026,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             preferred_evidence="icon",
             multi_value=True,
             max_values=4,
-            base_confidence=0.79,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "closure",
@@ -1717,7 +2035,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "dresses", "shoes", "gloves"),
             patterns=(r"\blace-up\b", r"\blaced front\b"),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "sleeve_length",
@@ -1726,7 +2044,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear", "dresses", "gloves"),
             patterns=(r"\bsleeveless\b", r"\bno sleeves\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "sleeve_length",
@@ -1735,7 +2053,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear", "dresses", "gloves"),
             patterns=(r"\bshort sleeves?\b",),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "sleeve_length",
@@ -1744,7 +2062,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear", "dresses", "gloves"),
             patterns=(r"\bthree-quarter sleeves?\b", r"\b3/4 sleeves?\b"),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "sleeve_length",
@@ -1753,7 +2071,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear", "dresses", "gloves"),
             patterns=(r"\blong sleeves?\b", r"\blong [a-z-]+ sleeves?\b"),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "sleeve_shape",
@@ -1764,7 +2082,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=2,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "sleeve_shape",
@@ -1775,7 +2093,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=2,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "sleeve_shape",
@@ -1786,7 +2104,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=2,
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "sleeve_shape",
@@ -1797,7 +2115,7 @@ def _shared_garment_concepts() -> list[ConceptDefinition]:
             preferred_evidence="overview",
             multi_value=True,
             max_values=2,
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
     ]
 
@@ -1811,7 +2129,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear"),
             patterns=(r"\bjacket\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1820,7 +2138,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bcardigan\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1829,7 +2147,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bvest\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1838,7 +2156,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops", "outerwear"),
             patterns=(r"\bblazer\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1847,7 +2165,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bshirt\b", r"\bbutton[- ]up shirt\b"),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "subcategory",
@@ -1856,7 +2174,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bblouse\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1865,7 +2183,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bsweater\b", r"\bjumper\b", r"\bknit top\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1874,7 +2192,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\btank top\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1883,7 +2201,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bcamisole\b", r"\bcami\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1893,7 +2211,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bhoodie\b", r"\bhooded top\b"),
             aliases=("hooded top",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1903,7 +2221,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bsports bra\b", r"\bbra top\b"),
             aliases=("bra top",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -1912,7 +2230,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bhalter top\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1921,7 +2239,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("tops",),
             patterns=(r"\bcorset\b", r"\bbustier\b"),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1930,7 +2248,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("outerwear",),
             patterns=(r"\bcoat\b",),
             preferred_evidence="overview",
-            base_confidence=0.85,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -1939,7 +2257,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("outerwear",),
             patterns=(r"\bcape\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1948,7 +2266,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("outerwear",),
             patterns=(r"\bcloak\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -1957,7 +2275,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("outerwear",),
             patterns=(r"\bshawl\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1966,7 +2284,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("outerwear",),
             patterns=(r"\bhooded jacket\b",),
             preferred_evidence="overview",
-            base_confidence=0.81,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1975,7 +2293,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("outerwear",),
             patterns=(r"\bbolero\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -1984,7 +2302,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("dresses",),
             patterns=(r"\bdress\b",),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "subcategory",
@@ -1993,7 +2311,33 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("dresses",),
             patterns=(r"\bgown\b",),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
+        ),
+        _concept(
+            "subcategory",
+            "costume",
+            "costume",
+            allowed_item_types=("dresses",),
+            patterns=(
+                r"\bcostume\b",
+                r"\bfull[- ]body suit\b",
+                r"\bbody ?suit\b",
+                r"\bonesie\b",
+                r"\bghost(?: costume| suit| onesie)?\b",
+                r"\bpanda(?: costume| suit| onesie)?\b",
+            ),
+            aliases=(
+                "full body suit",
+                "body suit",
+                "ghost costume",
+                "ghost suit",
+                "ghost onesie",
+                "panda costume",
+                "panda suit",
+                "panda onesie",
+            ),
+            preferred_evidence="overview",
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2002,7 +2346,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\bskirt\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2011,7 +2355,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\bpleated skirt\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2020,7 +2364,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\blayered skirt\b", r"\btiered skirt\b"),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2029,7 +2373,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\bshorts?\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2038,7 +2382,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\bpants\b", r"\btrousers\b"),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2047,7 +2391,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\bbloomers\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2056,7 +2400,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bottoms",),
             patterns=(r"\bleggings\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2065,7 +2409,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bsocks?\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2074,7 +2418,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bstockings?\b", r"\btights\b"),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2083,7 +2427,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bthigh[- ]highs?\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2093,7 +2437,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bgarter stockings?\b", r"\bgarter tights\b"),
             aliases=("garter tights",),
             preferred_evidence="overview",
-            base_confidence=0.88,
+            base_confidence=CONFIDENCE_MAX,
         ),
         _concept(
             "subcategory",
@@ -2102,7 +2446,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bleg warmers?\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2111,7 +2455,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bboots?\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2120,7 +2464,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bankle boots?\b",),
             preferred_evidence="overview",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2129,7 +2473,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bknee[- ]high boots?\b",),
             preferred_evidence="overview",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2138,7 +2482,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bthigh[- ]high boots?\b",),
             preferred_evidence="overview",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2147,7 +2491,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bheels?\b", r"\bhigh heels?\b"),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2156,7 +2500,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bpumps?\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2165,7 +2509,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bmary janes?\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2174,7 +2518,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bloafers?\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2183,7 +2527,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bplatform shoes?\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2192,7 +2536,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bsneakers?\b", r"\btrainers?\b"),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2201,7 +2545,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bsandals?\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2210,89 +2554,106 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bflats?\b", r"\bballet flats?\b"),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
             "headband",
             "headband",
-            allowed_item_types=("hairAccessories",),
-            patterns=(r"\bheadband\b",),
+            allowed_item_types=HAIR_WITH_ACCESSORIES_TYPES,
+            patterns=(r"(?<!no )\bheadbands?\b",),
             preferred_evidence="icon",
-            base_confidence=0.85,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
             "hairpin",
             "hairpin",
-            allowed_item_types=("hairAccessories",),
-            patterns=(r"\bhair ?pin\b", r"\bbarrette\b", r"\bhair clip\b"),
-            aliases=("barrette", "hair clip"),
+            allowed_item_types=HAIR_WITH_ACCESSORIES_TYPES,
+            patterns=(
+                r"\bhair ?pins?\b",
+                r"\bbarrette\b",
+                r"\bhair clips?\b",
+                r"\bdecorative clips?\b",
+                r"\b(?:gold|golden|gold-toned|ornate)\s+clips?\b",
+                r"\bdecorative hairpin\b",
+                r"\bgold(?:-toned)? hairpins?\b",
+            ),
+            aliases=("barrette", "hair clip", "decorative clips"),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
             "hair_bow",
             "hair bow",
-            allowed_item_types=("hairAccessories",),
+            allowed_item_types=HAIR_WITH_ACCESSORIES_TYPES,
             patterns=(r"\bhair bow\b", r"\bbow clip\b", r"\bribbon bow\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
             "hair_crown",
             "hair crown",
-            allowed_item_types=("hairAccessories",),
+            allowed_item_types=HAIR_WITH_ACCESSORIES_TYPES,
             patterns=(r"\bhair crown\b", r"\bhair tiara\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
+        ),
+        _concept(
+            "subcategory",
+            "hair_tie",
+            "hair tie",
+            allowed_item_types=HAIR_WITH_ACCESSORIES_TYPES,
+            patterns=(r"\bhair ties?\b", r"\bdark hair ties?\b", r"\bblack hair tie\b"),
+            preferred_evidence="icon",
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
             "scrunchie",
             "scrunchie",
-            allowed_item_types=("hairAccessories",),
+            allowed_item_types=HAIR_WITH_ACCESSORIES_TYPES,
             patterns=(r"\bscrunchie\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
             "horns",
             "horns",
-            allowed_item_types=("hairAccessories", "headwear"),
+            allowed_item_types=HAIR_OR_HEADPIECE_TYPES,
             patterns=(r"\bhorns?\b", r"\bhorn headpiece\b"),
             aliases=("horn headpiece",),
             preferred_evidence="icon",
-            base_confidence=0.85,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
             "antlers",
             "antlers",
-            allowed_item_types=("hairAccessories", "headwear"),
+            allowed_item_types=HAIR_OR_HEADPIECE_TYPES,
             patterns=(r"\bantlers?\b", r"\bantler headpiece\b"),
             aliases=("antler headpiece",),
             preferred_evidence="icon",
-            base_confidence=0.85,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
             "halo",
             "halo",
-            allowed_item_types=("hairAccessories", "headwear"),
+            allowed_item_types=HAIR_OR_HEADPIECE_TYPES,
             patterns=(r"\bhalo\b", r"\bhalo crown\b"),
             aliases=("halo crown",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
             "animal_ears",
             "animal ears",
-            allowed_item_types=("hairAccessories", "headwear"),
+            allowed_item_types=HAIR_OR_HEADPIECE_TYPES,
             patterns=(
                 r"\banimal ears?\b",
                 r"\bcat ears?\b",
@@ -2301,13 +2662,13 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             ),
             aliases=("cat ears", "fox ears", "bunny ears"),
             preferred_evidence="icon",
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
             "winged_headpiece",
             "winged headpiece",
-            allowed_item_types=("hairAccessories", "headwear"),
+            allowed_item_types=HAIR_OR_HEADPIECE_TYPES,
             patterns=(
                 r"\bwinged headpiece\b",
                 r"\bwing hair accessory\b",
@@ -2315,7 +2676,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             ),
             aliases=("wing hair accessory", "winged crown"),
             preferred_evidence="icon",
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2324,7 +2685,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear",),
             patterns=(r"\bhat\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2333,7 +2694,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear",),
             patterns=(r"\bcap\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2342,7 +2703,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear",),
             patterns=(r"\bbonnet\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2351,7 +2712,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear",),
             patterns=(r"\bberet\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2360,7 +2721,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear", "hairAccessories"),
             patterns=(r"\bcrown\b",),
             preferred_evidence="icon",
-            base_confidence=0.85,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2369,7 +2730,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear", "hairAccessories"),
             patterns=(r"\btiara\b",),
             preferred_evidence="icon",
-            base_confidence=0.85,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2378,7 +2739,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear", "hairAccessories"),
             patterns=(r"\bveil\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2387,7 +2748,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("headwear",),
             patterns=(r"\bhood\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2396,7 +2757,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("earrings",),
             patterns=(r"\bearrings?\b",),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "subcategory",
@@ -2405,7 +2766,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("earrings",),
             patterns=(r"\bstud earrings?\b", r"\bstuds?\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2414,7 +2775,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("earrings",),
             patterns=(r"\bhoop earrings?\b", r"\bhoops?\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2423,7 +2784,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("earrings",),
             patterns=(r"\bdrop earrings?\b", r"\bdangling earrings?\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2432,7 +2793,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("neckwear", "pendants"),
             patterns=(r"\bnecklace\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2441,7 +2802,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("neckwear",),
             patterns=(r"\bscarf\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2450,7 +2811,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("chokers", "neckwear"),
             patterns=(r"\bchoker\b",),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2459,7 +2820,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("chokers",),
             patterns=(r"\bribbon choker\b",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2468,7 +2829,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("neckwear", "pendants"),
             patterns=(r"\bpendant necklace\b",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2478,7 +2839,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bpendant\b", r"\bcharm\b"),
             aliases=("charm",),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2488,7 +2849,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bgarter\b", r"\bgarter belt\b"),
             aliases=("garter belt",),
             preferred_evidence="icon",
-            base_confidence=0.75,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "subcategory",
@@ -2497,7 +2858,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bracelets",),
             patterns=(r"\bbracelet\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2506,7 +2867,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bracelets",),
             patterns=(r"\bbangle\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2515,7 +2876,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bracelets", "armDecorations", "gloves"),
             patterns=(r"\bcuff\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2524,7 +2885,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("gloves",),
             patterns=(r"\bgloves?\b",),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "subcategory",
@@ -2533,7 +2894,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("gloves",),
             patterns=(r"\bmittens?\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2543,7 +2904,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bbag\b", r"\bpurse\b"),
             aliases=("purse",),
             preferred_evidence="icon",
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2552,7 +2913,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("handhelds", "abilityHandhelds"),
             patterns=(r"\bfan\b",),
             preferred_evidence="icon",
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2562,7 +2923,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bumbrella\b", r"\bparasol\b"),
             aliases=("parasol",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2571,7 +2932,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("handhelds", "abilityHandhelds"),
             patterns=(r"\bbook\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2580,7 +2941,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("handhelds",),
             patterns=(r"\bbasket\b",),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2589,7 +2950,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("handhelds", "abilityHandhelds"),
             patterns=(r"\blantern\b",),
             preferred_evidence="icon",
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2598,7 +2959,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("handhelds",),
             patterns=(r"\bbouquet\b", r"\bbunch of flowers\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2607,7 +2968,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("handhelds",),
             patterns=(r"\bplush\b", r"\bstuffed\b"),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2616,7 +2977,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("handhelds", "abilityHandhelds"),
             patterns=(r"\bmirror\b",),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2626,7 +2987,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bstaff\b", r"\bwand\b", r"\bscepter\b"),
             aliases=("wand", "scepter"),
             preferred_evidence="icon",
-            base_confidence=0.83,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2636,7 +2997,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bsword\b", r"\bblade\b"),
             aliases=("blade",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2652,7 +3013,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             ),
             aliases=("violin", "guitar", "flute", "harp"),
             preferred_evidence="icon",
-            base_confidence=0.81,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2661,7 +3022,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("faceDecorations",),
             patterns=(r"\bmask\b",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2670,7 +3031,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("faceDecorations",),
             patterns=(r"\beyepatch\b",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2680,7 +3041,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bglasses\b", r"\beyewear\b", r"\bspectacles\b"),
             aliases=("eyewear", "spectacles", "frames"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2690,7 +3051,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             patterns=(r"\bsunglasses\b", r"\bshades\b"),
             aliases=("shades",),
             preferred_evidence="icon",
-            base_confidence=0.85,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2699,7 +3060,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("faceDecorations",),
             patterns=(r"\bmonocle\b",),
             preferred_evidence="icon",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2708,7 +3069,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("faceDecorations",),
             patterns=(r"\bsticker\b", r"\bdecal\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2717,7 +3078,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("faceDecorations",),
             patterns=(r"\bcheek gem\b", r"\bface gem\b"),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2726,7 +3087,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("chestAccessories",),
             patterns=(r"\bbrooch\b",),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2735,7 +3096,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("chestAccessories",),
             patterns=(r"\bcorsage\b",),
             preferred_evidence="icon",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2744,7 +3105,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("chestAccessories",),
             patterns=(r"\bchest bow\b", r"\bbow brooch\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2753,7 +3114,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("backpieces",),
             patterns=(r"\bwings?\b",),
             preferred_evidence="overview",
-            base_confidence=0.86,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "subcategory",
@@ -2762,7 +3123,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("backpieces",),
             patterns=(r"\bbackpack\b", r"\bpack\b"),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2771,7 +3132,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("backpieces",),
             patterns=(r"\btail\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2780,7 +3141,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("backpieces",),
             patterns=(r"\bcape\b",),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "subcategory",
@@ -2789,7 +3150,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("rings",),
             patterns=(r"\bring\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2798,7 +3159,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("rings",),
             patterns=(r"\bgemstone ring\b", r"\bjeweled ring\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2807,7 +3168,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("rings",),
             patterns=(r"\bfloral ring\b", r"\bflower ring\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2816,7 +3177,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("armDecorations",),
             patterns=(r"\barmlet\b", r"\barmband\b"),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2825,7 +3186,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("armDecorations",),
             patterns=(r"\bsleeve cuff\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "subcategory",
@@ -2834,7 +3195,7 @@ def _subcategory_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("armDecorations",),
             patterns=(r"\bupper[- ]arm band\b",),
             preferred_evidence="icon",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
     ]
 
@@ -2848,7 +3209,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bankle socks?\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "socks.height",
@@ -2857,7 +3218,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bcrew socks?\b",),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "socks.height",
@@ -2866,7 +3227,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bknee[- ]high socks?\b", r"\bknee[- ]high stockings?\b"),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "socks.height",
@@ -2875,7 +3236,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bover[- ]the[- ]knee\b", r"\bthigh[- ]highs?\b"),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "socks.opacity",
@@ -2884,7 +3245,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bsheer\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "socks.opacity",
@@ -2893,7 +3254,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("socks",),
             patterns=(r"\bopaque\b",),
             preferred_evidence="overview",
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "shoes.shaft_height",
@@ -2906,7 +3267,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
                 r"\bankle length\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "shoes.shaft_height",
@@ -2915,7 +3276,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bknee[- ]high boots?\b", r"\bknee[- ]high\b"),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "shoes.shaft_height",
@@ -2924,7 +3285,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bthigh[- ]high boots?\b",),
             preferred_evidence="overview",
-            base_confidence=0.84,
+            base_confidence=CONFIDENCE_HIGH,
         ),
         _concept(
             "shoes.heel_height",
@@ -2933,7 +3294,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bflat heel\b", r"\bflats?\b"),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "shoes.heel_height",
@@ -2942,7 +3303,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bmid heel\b", r"\bmedium heel\b"),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "shoes.heel_height",
@@ -2951,7 +3312,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bhigh heels?\b", r"\bstiletto\b", r"\bheeled\b"),
             preferred_evidence="overview",
-            base_confidence=0.82,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.toe_shape",
@@ -2965,7 +3326,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
                 r"\bpeep[- ]toe\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.toe_shape",
@@ -2974,7 +3335,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bpointed toe\b", r"\btapered toe\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.toe_shape",
@@ -2983,7 +3344,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bround toe\b", r"\brounded toe\b", r"\bcircular toe\b"),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.toe_shape",
@@ -2992,7 +3353,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bsquare toe\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.toe_shape",
@@ -3001,7 +3362,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bscalloped toe\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.toe_shape",
@@ -3015,7 +3376,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
                 r"\bornamented toe\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.toe_shape",
@@ -3024,7 +3385,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("shoes",),
             patterns=(r"\bclosed[- ]toe\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.platform",
@@ -3039,7 +3400,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
                 r"\bmulti-layer sole\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "shoes.sole",
@@ -3053,7 +3414,7 @@ def _sock_and_shoe_concepts() -> list[ConceptDefinition]:
                 r"\boutsoles?\b",
             ),
             preferred_evidence="overview",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
     ]
 
@@ -3067,7 +3428,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("eyebrows",),
             patterns=(r"\bstraight brows?\b", r"\bstraight eyebrows?\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "eyebrows.shape",
@@ -3076,7 +3437,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("eyebrows",),
             patterns=(r"\barched brows?\b", r"\barched eyebrows?\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "eyebrows.shape",
@@ -3085,7 +3446,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("eyebrows",),
             patterns=(r"\bsoft[- ]arched brows?\b",),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "eyelashes.style",
@@ -3094,7 +3455,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("eyelashes",),
             patterns=(r"\bnatural lashes?\b",),
             preferred_evidence="icon",
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "eyelashes.style",
@@ -3103,7 +3464,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("eyelashes",),
             patterns=(r"\bdramatic lashes?\b",),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "eyelashes.style",
@@ -3112,7 +3473,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("eyelashes",),
             patterns=(r"\bcat-eye lashes?\b", r"\bcat eye lashes?\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "contactLenses.effect",
@@ -3121,7 +3482,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("contactLenses",),
             patterns=(r"\bnatural contacts?\b",),
             preferred_evidence="icon",
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "contactLenses.effect",
@@ -3130,7 +3491,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("contactLenses",),
             patterns=(r"\bsparkling contacts?\b", r"\bsparkling irises?\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "contactLenses.effect",
@@ -3139,7 +3500,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("contactLenses",),
             patterns=(r"\bheterochromia\b",),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "contactLenses.effect",
@@ -3148,7 +3509,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("contactLenses",),
             patterns=(r"\bfantasy pupil\b", r"\bstar pupil\b", r"\bheart pupil\b"),
             preferred_evidence="icon",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "lips.finish",
@@ -3157,7 +3518,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("lips",),
             patterns=(r"\bmatte lips?\b",),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "lips.finish",
@@ -3166,7 +3527,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("lips",),
             patterns=(r"\bglossy lips?\b", r"\blip gloss\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "lips.finish",
@@ -3175,7 +3536,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("lips",),
             patterns=(r"\bgradient lips?\b",),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "lips.finish",
@@ -3184,7 +3545,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("lips",),
             patterns=(r"\bfull[- ]color lips?\b",),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "bodyPaint.placement",
@@ -3193,7 +3554,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bodyPaint",),
             patterns=(r"\bcheek paint\b", r"\bon the cheek\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "bodyPaint.placement",
@@ -3202,7 +3563,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bodyPaint",),
             patterns=(r"\bforehead paint\b", r"\bon the forehead\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "bodyPaint.placement",
@@ -3211,7 +3572,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bodyPaint",),
             patterns=(r"\baround the eye\b", r"\baround-eye paint\b"),
             preferred_evidence="icon",
-            base_confidence=0.78,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "bodyPaint.placement",
@@ -3220,7 +3581,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bodyPaint",),
             patterns=(r"\bfull body paint\b",),
             preferred_evidence="overview",
-            base_confidence=0.8,
+            base_confidence=CONFIDENCE_DEFAULT,
         ),
         _concept(
             "bodyPaint.theme",
@@ -3229,7 +3590,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bodyPaint",),
             patterns=(r"\bfloral body paint\b", r"\bflower body paint\b"),
             preferred_evidence="icon",
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "bodyPaint.theme",
@@ -3238,7 +3599,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bodyPaint",),
             patterns=(r"\bstar body paint\b",),
             preferred_evidence="icon",
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "bodyPaint.theme",
@@ -3247,7 +3608,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("bodyPaint",),
             patterns=(r"\bmagical body paint\b",),
             preferred_evidence="icon",
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "fullMakeup.style",
@@ -3256,7 +3617,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("fullMakeup", "baseMakeup"),
             patterns=(r"\bnatural makeup\b",),
             preferred_evidence="icon",
-            base_confidence=0.74,
+            base_confidence=CONFIDENCE_LOW,
         ),
         _concept(
             "fullMakeup.style",
@@ -3265,7 +3626,7 @@ def _makeup_concepts() -> list[ConceptDefinition]:
             allowed_item_types=("fullMakeup", "baseMakeup"),
             patterns=(r"\bdramatic makeup\b",),
             preferred_evidence="icon",
-            base_confidence=0.76,
+            base_confidence=CONFIDENCE_LOW,
         ),
     ]
 
@@ -3323,6 +3684,8 @@ TERM_EXTRACTION_RULES: tuple[ExtractionRule, ...] = (
             r"\bbuttons? down the front\b",
             r"\bbutton[- ]front\b",
             r"\bbutton[- ]down front\b",
+            r"\bbutton closures?\b",
+            r"\bfront button closures?\b",
         ),
         concept_keys=("closure:button_front",),
         preferred_evidence="icon",
@@ -3382,6 +3745,21 @@ TERM_EXTRACTION_RULES: tuple[ExtractionRule, ...] = (
         concept_keys=("trim:lace_trim", "material:lace"),
         preferred_evidence="icon",
         score_bonus=0.12,
+    ),
+    _rule(
+        "cuff_trim",
+        allowed_item_types=(
+            "tops",
+            "outerwear",
+            "dresses",
+            "bottoms",
+            "socks",
+            "gloves",
+        ),
+        patterns=(r"\bsleeve cuffs?\b", r"\bribbed cuffs?\b"),
+        concept_keys=("trim:cuff_trim",),
+        preferred_evidence="icon",
+        score_bonus=0.1,
     ),
     _rule(
         "flower_ornament",

@@ -65,11 +65,24 @@ Development should stay capped at `--limit 10` unless intentionally widened.
 
 ```bash
 python cli.py build-index --limit 10
+python cli.py refresh-derived
 python cli.py sync-upstash
 python cli.py query-upstash --q "blue floral headwear" --item-type headwear
 python cli.py query-upstash --q "midi dress with high collar" --facet length:midi --facet collar:high_collar
 python cli.py evaluate --queries path/to/queries.jsonl
 ```
+
+`refresh-derived` rebuilds only:
+
+- `index/item-unmapped-terms.jsonl`
+- `index/item-search-documents.jsonl`
+
+from:
+
+- `manifest/item-manifest.jsonl`
+- `index/item-captions-debug.jsonl`
+
+Use it when taxonomy or document-generation logic changes and you want to refresh derived outputs without rerunning captioning.
 
 ## Notes
 

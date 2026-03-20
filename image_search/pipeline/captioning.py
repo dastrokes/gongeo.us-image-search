@@ -15,13 +15,21 @@ from image_search.constants.colors import (
 )
 from image_search.constants.settings import DEFAULT_CAPTION_MODEL_ID
 from image_search.constants.text import (
+    ACCESSORY_ATTRIBUTE_PROMPT_RULE,
     ACCESSORY_TYPE_SPECIFIC_PROMPT_RULES,
     APPAREL_LEAK_PATTERNS,
+    APPAREL_ATTRIBUTE_PROMPT_RULE,
+    BODY_PAINT_ATTRIBUTE_PROMPT_RULE,
     BOTTOM_GARMENT_PATTERNS,
+    BOTTOM_ATTRIBUTE_PROMPT_RULE,
     BODY_LEAK_PATTERNS,
     CAPTION_NOISE_PATTERN,
     DEFAULT_PROMPT_FOCUS,
     DRESS_GARMENT_PATTERNS,
+    DRESS_ATTRIBUTE_PROMPT_RULE,
+    FACE_DETAIL_ATTRIBUTE_PROMPT_RULE,
+    GENERIC_ATTRIBUTE_PROMPT_RULE,
+    HAIR_ATTRIBUTE_PROMPT_RULE,
     HAIR_TYPE_SPECIFIC_PROMPT_RULES,
     HAIR_LEAK_PATTERNS,
     JEWELRY_LEAK_PATTERNS,
@@ -30,8 +38,11 @@ from image_search.constants.text import (
     OUTERWEAR_GARMENT_PATTERNS,
     PLAIN_DETAIL_PROMPT_LINES,
     PROMPT_FOCUS_BY_MODALITY,
-    QWEN_JOINT_DETAIL_PROMPT,
-    QWEN_STRUCTURED_DETAIL_PROMPT,
+    JOINT_DETAIL_PROMPT,
+    STRUCTURED_DETAIL_PROMPT,
+    SHOES_ATTRIBUTE_PROMPT_RULE,
+    SKIN_TONE_ATTRIBUTE_PROMPT_RULE,
+    SOCKS_ATTRIBUTE_PROMPT_RULE,
     STOP_VISUAL_PATTERN,
     TOP_GARMENT_PATTERNS,
 )
@@ -181,17 +192,18 @@ class VisionCaptioner:
     def _item_prompt_rules(cls, item_type: str, modality: str) -> str:
         if not item_type:
             return ""
-        return (
-            f"\nTreat the main item as a `{item_type}`."
-            + cls._type_specific_prompt_rules(item_type)
-            + cls._subcategory_prompt_rule(item_type)
-            + cls._attribute_prompt_rule(item_type, modality)
-            + cls._coverage_prompt_rule(item_type, modality)
-        )
+        lines = [
+            f"Treat the main item as a `{item_type}`.",
+            cls._type_specific_prompt_rules(item_type),
+            cls._subcategory_prompt_rule(item_type),
+            cls._attribute_prompt_rule(item_type, modality),
+            cls._coverage_prompt_rule(item_type, modality),
+        ]
+        return "\n" + "\n".join(line for line in lines if line)
 
     @classmethod
     def _build_prompt(cls, item_type: str, modality: str) -> str:
-        prompt = QWEN_STRUCTURED_DETAIL_PROMPT.format(focus=cls._prompt_focus(modality))
+        prompt = STRUCTURED_DETAIL_PROMPT.format(focus=cls._prompt_focus(modality))
         return prompt + cls._item_prompt_rules(item_type, modality)
 
     @classmethod
@@ -208,7 +220,7 @@ class VisionCaptioner:
         has_overview: bool,
         has_icon: bool,
     ) -> str:
-        prompt = QWEN_JOINT_DETAIL_PROMPT
+        prompt = JOINT_DETAIL_PROMPT
         prompt += f"\nTreat the main item as a `{item_type}`."
         prompt += cls._type_specific_prompt_rules(item_type)
         prompt += cls._subcategory_prompt_rule(item_type)
@@ -252,42 +264,42 @@ class VisionCaptioner:
 
         examples = ", ".join(subcategory_labels[:6])
         return (
-            "\nIf visible, include the item's subcategory as one of the first phrases."
-            f"\nSubcategory examples for `{item_type}`: {examples}."
+            "If visible, include the item's subcategory as one of the first phrases.\n"
+            f"Subcategory examples for `{item_type}`: {examples}."
         )
 
     @staticmethod
     def _attribute_prompt_rule(item_type: str, modality: str) -> str:
         if item_type == "hair":
-            return "\nCover visible hair attributes: length, arrangement, bangs, texture, parting, and attached ornaments."
+            return HAIR_ATTRIBUTE_PROMPT_RULE
         if item_type == "dresses":
-            return "\nCover visible dress attributes: subcategory, length, silhouette, neckline, sleeve length, sleeve shape, straps, waist, hem, layering, materials, pattern, motif, trim, ornament, and closures."
+            return DRESS_ATTRIBUTE_PROMPT_RULE
         if item_type in {"tops", "outerwear"}:
-            return "\nCover visible apparel attributes: subcategory, neckline, collar, sleeve length, sleeve shape, garment length, hem, layering, front opening or closure, materials, pattern, motif, trim, and ornament."
+            return APPAREL_ATTRIBUTE_PROMPT_RULE
         if item_type == "bottoms":
-            return "\nCover visible bottom attributes: subcategory, rise, length, silhouette, pleats or layering, hem, materials, pattern, motif, trim, and ornament."
+            return BOTTOM_ATTRIBUTE_PROMPT_RULE
         if item_type == "socks":
-            return "\nCover visible legwear attributes: subcategory, height, opacity, trim, pattern, motif, and ornament."
+            return SOCKS_ATTRIBUTE_PROMPT_RULE
         if item_type == "shoes":
-            return "\nCover visible footwear attributes: subcategory, heel height, shaft height, toe shape, platform, straps, buckles or closures, materials, pattern, trim, and ornament."
+            return SHOES_ATTRIBUTE_PROMPT_RULE
         if item_type in ACCESSORY_TYPES:
-            return "\nCover visible accessory attributes: subcategory, shape, size, placement, attachment style, materials, pattern, motif, trim, ornament, gems, bows, ribbons, and closures."
+            return ACCESSORY_ATTRIBUTE_PROMPT_RULE
         if item_type in FACE_DETAIL_TYPES:
-            return "\nCover visible face-detail attributes: placement, shape, finish, intensity, color, pattern, motif, and decorative accents."
+            return FACE_DETAIL_ATTRIBUTE_PROMPT_RULE
         if item_type == "bodyPaint":
-            return "\nCover visible body-paint attributes: placement, coverage, shape, pattern, motif, finish, and color accents."
+            return BODY_PAINT_ATTRIBUTE_PROMPT_RULE
         if item_type == "skinTones":
-            return "\nDescribe only visible skin tone or complexion cues of the target cosmetic item."
-        return "\nCover visible attributes such as subcategory, shape, placement, length, materials, pattern, motif, trim, ornament, and closures when applicable."
+            return SKIN_TONE_ATTRIBUTE_PROMPT_RULE
+        return GENERIC_ATTRIBUTE_PROMPT_RULE
 
     @staticmethod
     def _coverage_prompt_rule(item_type: str, modality: str) -> str:
         if modality == "overview":
             if item_type in APPAREL_TYPES or item_type == "hair":
-                return "\nThe overview should prioritize whole-item structure first: subcategory, length or height, silhouette, placement, and large construction details."
-            return "\nThe overview should prioritize whole-item shape, placement, scale, and how details are distributed across the item."
+                return "The overview should prioritize whole-item structure first: subcategory, length or height, silhouette, placement, and large construction details."
+            return "The overview should prioritize whole-item shape, placement, scale, and how details are distributed across the item."
         if modality == "icon":
-            return "\nThe icon should prioritize small details second: trim, closures, motifs, ornaments, textures, and accent materials."
+            return "The icon should prioritize small details second: trim, closures, motifs, ornaments, textures, and accent materials."
         return ""
 
     @staticmethod
@@ -374,15 +386,12 @@ class VisionCaptioner:
         has_overview: bool,
         icon_caption: str,
         overview_caption: str,
-        visual: str,
     ) -> list[str]:
         failed: list[str] = []
         if has_icon and not icon_caption:
             failed.append("icon")
         if has_overview and not overview_caption:
             failed.append("overview")
-        if not visual:
-            failed.append("visual")
         return failed
 
     @staticmethod
@@ -406,6 +415,10 @@ class VisionCaptioner:
     def _compact_descriptors(values: list[str]) -> list[str]:
         compacted: list[str] = []
         for value in values:
+            if VisionCaptioner._is_cross_image_filler(value):
+                continue
+            if VisionCaptioner._is_negative_descriptor(value):
+                continue
             if any(
                 value != other
                 and re.search(rf"(?<![a-z0-9]){re.escape(value)}(?![a-z0-9])", other)
@@ -414,6 +427,19 @@ class VisionCaptioner:
                 continue
             compacted.append(value)
         return compacted
+
+    @staticmethod
+    def _is_cross_image_filler(value: str) -> bool:
+        return bool(
+            re.search(
+                r"\b(?:consistent|visible)\s+across?\s+both\s+images\b",
+                value,
+            )
+        )
+
+    @staticmethod
+    def _is_negative_descriptor(value: str) -> bool:
+        return bool(re.match(r"^(?:no|without)\b", value.lower().strip()))
 
     @staticmethod
     def _chunk_records(
@@ -425,38 +451,6 @@ class VisionCaptioner:
             records[index : index + batch_size]
             for index in range(0, len(records), batch_size)
         ]
-
-    def _retry_missing_modalities(
-        self,
-        record: ManifestRecord,
-        modalities: list[str],
-    ) -> dict[str, dict[str, str]]:
-        if not modalities:
-            return {}
-
-        path_by_modality = {
-            label: path for label, path in self._record_image_paths(record)
-        }
-        retry_modalities = [
-            label for label in modalities if path_by_modality.get(label)
-        ]
-        if not retry_modalities:
-            return {}
-
-        normalized: dict[str, dict[str, str]] = {}
-        raw_outputs = self._decode_batch_qwen(
-            [path_by_modality[label] for label in retry_modalities],
-            [record.type] * len(retry_modalities),
-            retry_modalities,
-            prompt_builder=self._build_plain_prompt,
-        )
-        for label, raw_caption in zip(retry_modalities, raw_outputs):
-            normalized[label] = {
-                "caption": self._normalize_caption(raw_caption, record.type, label),
-                "raw_output": raw_caption,
-                "mode": "plain",
-            }
-        return normalized
 
     @staticmethod
     def _type_specific_prompt_rules(item_type: str) -> str:
@@ -631,14 +625,14 @@ class VisionCaptioner:
 
     @staticmethod
     def _parse_joint_response(raw_text: str) -> dict[str, str]:
-        parsed = {"overview": "", "icon": "", "visual": ""}
+        parsed = {"overview": "", "icon": ""}
         current_key = ""
 
         for raw_line in raw_text.splitlines():
             line = raw_line.strip()
             if not line:
                 continue
-            match = re.match(r"^(overview|icon|visual)\s*:\s*(.*)$", line, re.I)
+            match = re.match(r"^(overview|icon)\s*:\s*(.*)$", line, re.I)
             if match:
                 current_key = match.group(1).lower()
                 parsed[current_key] = match.group(2).strip()
@@ -652,7 +646,7 @@ class VisionCaptioner:
 
         fallback = raw_text.strip()
         if fallback:
-            parsed["visual"] = fallback
+            parsed["overview"] = fallback
         return parsed
 
     def _resolve_model_class(self):
@@ -718,8 +712,7 @@ class VisionCaptioner:
             raw_joint = self._decode_joint_qwen(ordered_specs, item_type)
             parsed_joint = self._parse_joint_response(raw_joint)
             missing_expected_line = (
-                not parsed_joint["visual"]
-                or (has_overview and not parsed_joint["overview"])
+                (has_overview and not parsed_joint["overview"])
                 or (has_icon and not parsed_joint["icon"])
             )
             if missing_expected_line:
@@ -740,36 +733,27 @@ class VisionCaptioner:
                 item_type,
                 "overview",
             )
-            visual = self._normalize_caption(
-                parsed_joint["visual"],
-                item_type,
-                "overview",
-            )
-            if not visual:
-                visual = self._normalize_caption(
-                    self._merge_unique_parts(overview_caption, icon_caption),
-                    item_type,
-                    "overview",
-                )
 
             if self._is_low_signal_caption(icon_caption, item_type):
                 icon_caption = ""
             if self._is_low_signal_caption(overview_caption, item_type):
                 overview_caption = ""
-            if self._is_low_signal_caption(visual, item_type):
-                visual = ""
 
+            merged_caption = self._normalize_caption(
+                self._merge_unique_parts(overview_caption, icon_caption),
+                item_type,
+                "overview",
+            )
             if has_icon and not icon_caption:
-                icon_caption = visual
+                icon_caption = merged_caption
             if has_overview and not overview_caption:
-                overview_caption = visual
+                overview_caption = merged_caption
 
             failed_modalities = self._failed_modalities_for_record(
                 has_icon=has_icon,
                 has_overview=has_overview,
                 icon_caption=icon_caption,
                 overview_caption=overview_caption,
-                visual=visual,
             )
 
             results.append(
@@ -777,7 +761,6 @@ class VisionCaptioner:
                     item_id=record.item_id,
                     icon_caption=icon_caption,
                     overview_caption=overview_caption,
-                    visual=visual,
                     failed_modalities=failed_modalities,
                 )
             )

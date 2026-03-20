@@ -32,7 +32,7 @@ ENV/
 
 # Output
 manifest/*
-index/*
+# index/*
 
 # Model cache
 .cache/

@@ -85,7 +85,7 @@ def extract_image_color_stats(
             if alpha < 40 or _is_skin_like(red, green, blue):
                 continue
 
-            label = _rgb_to_label((red, green, blue))
+            label = _rgb_to_label((red, green, blue), item_type=item_type)
             if (
                 not has_transparency
                 and label in {"white", "gray"}

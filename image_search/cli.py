@@ -120,9 +120,49 @@ def _load_caption_cache(captions_path: Path) -> dict[int, dict]:
     return cache
 
 
+def _merge_caption_terms(*values: str) -> str:
+    parts: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        for part in [chunk.strip() for chunk in str(value or "").split(",") if chunk.strip()]:
+            normalized = part.lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            parts.append(part)
+    return ", ".join(parts)
+
+
+def _caption_record_from_payload(payload: dict[str, object]) -> "CaptionRecord":
+    from image_search.models.schemas import CaptionRecord
+
+    return CaptionRecord(
+        item_id=int(payload["item_id"]),
+        icon_caption=str(payload.get("icon_caption", "") or ""),
+        overview_caption=str(payload.get("overview_caption", "") or ""),
+        failed_modalities=[
+            str(value)
+            for value in (payload.get("failed_modalities") or [])
+            if str(value) in {"icon", "overview"}
+        ],
+    )
+
+
+def _load_manifest_records(manifest_path: Path, limit: int | None = None) -> list[dict]:
+    records: list[dict] = []
+    with manifest_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            records.append(json.loads(line))
+            if limit is not None and len(records) >= limit:
+                break
+    return records
+
+
 def _is_complete_cached_caption(caption: dict, item_type: str) -> bool:
     failed_modalities = caption.get("failed_modalities") or []
-    visual = str(caption.get("visual", "")).strip()
     normalized_item_type = str(item_type or "").strip().lower()
 
     def _is_type_only(value: object) -> bool:
@@ -134,21 +174,18 @@ def _is_complete_cached_caption(caption: dict, item_type: str) -> bool:
         parts = [part.strip() for part in text.split(",") if part.strip()]
         return bool(parts) and all(part == normalized_item_type for part in parts)
 
-    if failed_modalities:
-        return False
-    if not visual:
+    if any(modality in {"icon", "overview"} for modality in failed_modalities):
         return False
     if _is_type_only(caption.get("icon_caption")) or _is_type_only(
         caption.get("overview_caption")
     ):
         return False
-    return not _is_type_only(visual)
+    return True
 
 
 def run_build_index(args: argparse.Namespace) -> int:
     from image_search.models.schemas import (
         BuildSummary,
-        CaptionRecord,
         ManifestRecord,
     )
     from image_search.pipeline.captioning import CaptionerConfig, VisionCaptioner
@@ -267,12 +304,16 @@ def run_build_index(args: argparse.Namespace) -> int:
         caption_payload = caption_cache.get(record.item_id)
         if caption_payload is None:
             continue
-        caption = CaptionRecord(**caption_payload)
+        caption = _caption_record_from_payload(caption_payload)
+        merged_caption = _merge_caption_terms(
+            caption.overview_caption,
+            caption.icon_caption,
+        )
         color_tags = tag_item_colors(
             record.overview_path,
             record.icon_path,
             record.type,
-            caption.visual,
+            merged_caption,
         )
         item_input = build_item_input(record)
         visual_features = build_visual_features(
@@ -280,7 +321,6 @@ def run_build_index(args: argparse.Namespace) -> int:
             item_type=record.type,
             caption_icon=caption.icon_caption,
             caption_overview=caption.overview_caption,
-            caption_visual=caption.visual,
             color_tags=color_tags,
         )
         structured_candidates = build_structured_candidates(
@@ -294,7 +334,11 @@ def run_build_index(args: argparse.Namespace) -> int:
             candidates=structured_candidates,
         )
         reviews = build_review_records(assignments)
-        unmapped_terms = build_unmapped_term_records(item_input, visual_features)
+        unmapped_terms = build_unmapped_term_records(
+            item_input,
+            visual_features,
+            assignments,
+        )
         metadata = build_metadata_record(item_input, visual_features, assignments)
         document = build_document_record(metadata, visual_features, assignments)
 
@@ -347,6 +391,180 @@ def run_build_index(args: argparse.Namespace) -> int:
 
     print(
         json.dumps({"summary_path": str(summary_path), **summary.to_dict()}, indent=2)
+    )
+    return 0
+
+
+def run_refresh_derived(args: argparse.Namespace) -> int:
+    from image_search.models.schemas import ManifestRecord
+    from image_search.pipeline.color_tags import tag_item_colors
+    from image_search.pipeline.documents import build_document_record
+    from image_search.pipeline.taxonomy import (
+        build_item_input,
+        build_metadata_record,
+        build_review_records,
+        build_structured_candidates,
+        build_taxonomy_concepts,
+        build_tag_assignments,
+        build_unmapped_term_records,
+        build_visual_features,
+    )
+
+    manifest_path = Path(args.manifest_path)
+    captions_path = Path(args.captions_path)
+    output_root = Path(args.output_root or _default_output_root())
+    taxonomy_concepts_path = output_root / "taxonomy-concepts.jsonl"
+    visual_features_path = output_root / "item-visual-features.jsonl"
+    structured_candidates_path = output_root / "item-structured-candidates.jsonl"
+    assignments_path = output_root / "item-tag-assignments.jsonl"
+    review_path = output_root / "item-review-queue.jsonl"
+    unmapped_terms_path = output_root / "item-unmapped-terms.jsonl"
+    search_documents_path = output_root / "item-search-documents.jsonl"
+    summary_path = output_root / "build-summary.json"
+
+    print(f"Loading manifest from {manifest_path} ...")
+    manifest_records = [
+        ManifestRecord(**row) for row in _load_manifest_records(manifest_path)
+    ]
+    print(f"Loading captions from {captions_path} ...")
+    caption_cache = _load_caption_cache(captions_path)
+
+    summary_payload: dict[str, object] = {}
+    if summary_path.exists():
+        try:
+            summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            summary_payload = {}
+    model_version = str(summary_payload.get("caption_model_id", "cached-caption-model"))
+
+    visual_feature_rows: list[dict[str, object]] = []
+    candidate_rows: list[dict[str, object]] = []
+    assignment_rows: list[dict[str, object]] = []
+    review_rows: list[dict[str, object]] = []
+    unmapped_term_rows: list[dict[str, object]] = []
+    search_document_rows: list[dict[str, object]] = []
+    concept_rows = [record.to_dict() for record in build_taxonomy_concepts()]
+    skipped_missing_captions = 0
+    accepted_tag_count = 0
+    review_tag_count = 0
+    suppressed_tag_count = 0
+
+    for record in manifest_records:
+        caption_payload = caption_cache.get(record.item_id)
+        if caption_payload is None:
+            skipped_missing_captions += 1
+            continue
+
+        caption = _caption_record_from_payload(caption_payload)
+        merged_caption = _merge_caption_terms(
+            caption.overview_caption,
+            caption.icon_caption,
+        )
+        color_tags = tag_item_colors(
+            record.overview_path,
+            record.icon_path,
+            record.type,
+            merged_caption,
+        )
+        item_input = build_item_input(record)
+        visual_features = build_visual_features(
+            item_id=record.item_id,
+            item_type=record.type,
+            caption_icon=caption.icon_caption,
+            caption_overview=caption.overview_caption,
+            color_tags=color_tags,
+        )
+        structured_candidates = build_structured_candidates(
+            item_input=item_input,
+            visual_features=visual_features,
+        )
+        assignments = build_tag_assignments(
+            item_input=item_input,
+            visual_features=visual_features,
+            model_version=model_version,
+            candidates=structured_candidates,
+        )
+        reviews = build_review_records(assignments)
+        unmapped_terms = build_unmapped_term_records(
+            item_input,
+            visual_features,
+            assignments,
+        )
+        metadata = build_metadata_record(item_input, visual_features, assignments)
+        document = build_document_record(metadata, visual_features, assignments)
+
+        visual_feature_rows.append(visual_features.to_dict())
+        candidate_rows.extend(
+            candidate.to_dict() for candidate in structured_candidates
+        )
+        assignment_rows.extend(assignment.to_dict() for assignment in assignments)
+        review_rows.extend(review.to_dict() for review in reviews)
+        unmapped_term_rows.extend(record.to_dict() for record in unmapped_terms)
+        search_document_rows.append(document.to_dict())
+        for assignment in assignments:
+            if assignment.status == "accepted":
+                accepted_tag_count += 1
+            elif assignment.status == "review":
+                review_tag_count += 1
+            elif assignment.status == "suppressed":
+                suppressed_tag_count += 1
+
+    _write_jsonl(taxonomy_concepts_path, concept_rows)
+    _write_jsonl(visual_features_path, visual_feature_rows)
+    _write_jsonl(structured_candidates_path, candidate_rows)
+    _write_jsonl(assignments_path, assignment_rows)
+    _write_jsonl(review_path, review_rows)
+    _write_jsonl(unmapped_terms_path, unmapped_term_rows)
+    _write_jsonl(search_documents_path, search_document_rows)
+    refreshed_at = datetime.now(timezone.utc).isoformat()
+    _write_json(
+        summary_path,
+        {
+            "caption_model_id": model_version,
+            "upstash_embedding_model": str(
+                summary_payload.get(
+                    "upstash_embedding_model",
+                    DEFAULT_EMBEDDING_MODEL,
+                )
+            ),
+            "item_count": len(search_document_rows),
+            "skipped_count": int(summary_payload.get("skipped_count", 0)),
+            "missing_icon_count": int(summary_payload.get("missing_icon_count", 0)),
+            "missing_overview_count": int(
+                summary_payload.get("missing_overview_count", 0)
+            ),
+            "caption_fail_count": int(summary_payload.get("caption_fail_count", 0)),
+            "taxonomy_concept_count": len(concept_rows),
+            "accepted_tag_count": accepted_tag_count,
+            "review_tag_count": review_tag_count,
+            "suppressed_tag_count": suppressed_tag_count,
+            "unmapped_term_count": len(unmapped_term_rows),
+            "build_started_at": str(
+                summary_payload.get("build_started_at", refreshed_at)
+            ),
+            "build_finished_at": refreshed_at,
+            "duration_seconds": float(summary_payload.get("duration_seconds", 0)),
+        },
+    )
+
+    print(
+        json.dumps(
+            {
+                "manifest_path": str(manifest_path),
+                "captions_path": str(captions_path),
+                "taxonomy_concepts_path": str(taxonomy_concepts_path),
+                "visual_features_path": str(visual_features_path),
+                "structured_candidates_path": str(structured_candidates_path),
+                "assignments_path": str(assignments_path),
+                "review_path": str(review_path),
+                "unmapped_terms_path": str(unmapped_terms_path),
+                "search_documents_path": str(search_documents_path),
+                "processed_item_count": len(search_document_rows),
+                "skipped_missing_captions": skipped_missing_captions,
+                "unmapped_term_count": len(unmapped_term_rows),
+            },
+            indent=2,
+        )
     )
     return 0
 
@@ -452,7 +670,7 @@ def build_parser() -> argparse.ArgumentParser:
         "build-index", help="Build local search artifacts"
     )
     build_parser.add_argument("--limit", type=int, default=None)
-    build_parser.add_argument("--batch-size", type=int, default=8)
+    build_parser.add_argument("--batch-size", type=int, default=10)
     build_parser.add_argument("--caption-inference-batch-size", type=int, default=2)
     build_parser.add_argument("--device", default="auto")
     build_parser.add_argument(
@@ -473,6 +691,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Regenerate manifest even if one already exists",
     )
     build_parser.set_defaults(func=run_build_index)
+
+    refresh_parser = subparsers.add_parser(
+        "refresh-derived",
+        help="Rebuild derived outputs from cached manifest and captions",
+    )
+    refresh_parser.add_argument(
+        "--manifest-path",
+        default=str(_default_manifest_root() / "item-manifest.jsonl"),
+    )
+    refresh_parser.add_argument(
+        "--captions-path",
+        default=str(_default_output_root() / "item-captions-debug.jsonl"),
+    )
+    refresh_parser.add_argument("--output-root", default=str(_default_output_root()))
+    refresh_parser.set_defaults(func=run_refresh_derived)
 
     sync_parser = subparsers.add_parser(
         "sync-upstash", help="Upsert documents into Upstash"

@@ -34,6 +34,16 @@ SUBCATEGORY_CONFLICT_MARGIN = 0.08
 DEFAULT_CONFLICT_MARGIN = 0.06
 SUBCATEGORY_ACCEPTED_THRESHOLD = 0.82
 SUBCATEGORY_REVIEW_THRESHOLD = 0.68
+PREFERRED_MODALITY_MATCH_BONUS = 0.05
+NON_PREFERRED_MODALITY_MATCH_BONUS = 0.03
+BOTH_MODALITY_MATCH_BONUS = 0.03
+COMBINED_MODALITY_MATCH_BONUS = 0.02
+CV_ONLY_MATCH_BONUS = 0.08
+DUAL_MODALITY_COVERAGE_BONUS = 0.06
+SINGLE_MODALITY_COVERAGE_BONUS = 0.02
+EXTRA_PATTERN_MATCH_BONUS = 0.02
+MAX_PATTERN_MATCH_BONUS = 0.05
+MAX_CANDIDATE_SCORE = 0.98
 
 _OBVIOUS_UNMAPPED_TERMS = frozenset(
     {
@@ -103,12 +113,17 @@ def _normalize_term(value: str) -> str:
     return normalized.strip(" ,")
 
 
+def _is_negative_term(value: str) -> bool:
+    normalized = _normalize_term(value)
+    return bool(normalized) and bool(re.match(r"^(?:no|without)\b", normalized))
+
+
 def _unique_terms(values: list[str]) -> list[str]:
     terms: list[str] = []
     seen: set[str] = set()
     for value in values:
         normalized = _normalize_term(value)
-        if not normalized or normalized in seen:
+        if not normalized or normalized in seen or _is_negative_term(normalized):
             continue
         seen.add(normalized)
         terms.append(normalized)
@@ -230,7 +245,6 @@ def build_visual_features(
     item_type: str,
     caption_icon: str,
     caption_overview: str,
-    caption_visual: str,
     color_tags: ColorTaggingResult,
 ) -> VisualFeatureRecord:
     palette: list[str] = []
@@ -249,7 +263,7 @@ def build_visual_features(
 
     icon_terms = _split_caption_terms(caption_icon)
     overview_terms = _split_caption_terms(caption_overview)
-    raw_terms = _split_caption_terms(caption_visual)
+    raw_terms = _unique_terms([*overview_terms, *icon_terms])
     derived_search_terms = _unique_terms(raw_terms)
     return VisualFeatureRecord(
         item_id=item_id,
@@ -261,7 +275,6 @@ def build_visual_features(
         palette=palette,
         icon_caption=caption_icon,
         overview_caption=caption_overview,
-        caption_visual=caption_visual,
         icon_terms=icon_terms,
         overview_terms=overview_terms,
         raw_terms=raw_terms,
@@ -286,26 +299,32 @@ def _score_candidate_base(
 
     if preferred_evidence in {"icon", "overview"}:
         if preferred_evidence in matched_modalities:
-            score += 0.08
+            score += PREFERRED_MODALITY_MATCH_BONUS
+        elif "combined" in matched_modalities:
+            score += COMBINED_MODALITY_MATCH_BONUS
         elif matched_modalities:
-            score += 0.02
+            score += NON_PREFERRED_MODALITY_MATCH_BONUS
     elif preferred_evidence == "both":
         if "icon" in matched_modalities:
-            score += 0.04
+            score += BOTH_MODALITY_MATCH_BONUS
         if "overview" in matched_modalities:
-            score += 0.04
+            score += BOTH_MODALITY_MATCH_BONUS
+        if matched_modalities == {"combined"}:
+            score += COMBINED_MODALITY_MATCH_BONUS
     elif preferred_evidence == "cv_only":
-        score += 0.08
+        score += CV_ONLY_MATCH_BONUS
 
     if "icon" in matched_modalities and "overview" in matched_modalities:
-        score += 0.08
+        score += DUAL_MODALITY_COVERAGE_BONUS
     elif matched_modalities:
-        score += 0.03
+        score += SINGLE_MODALITY_COVERAGE_BONUS
 
     if match_count > 1:
-        score += min(0.05, 0.02 * (match_count - 1))
+        score += min(
+            MAX_PATTERN_MATCH_BONUS, EXTRA_PATTERN_MATCH_BONUS * (match_count - 1)
+        )
 
-    return min(score, 0.98)
+    return min(score, MAX_CANDIDATE_SCORE)
 
 
 def _score_candidate(
@@ -456,7 +475,9 @@ def build_structured_candidates(
     ]
     icon_text = visual_features.icon_caption.lower()
     overview_text = visual_features.overview_caption.lower()
-    combined_text = visual_features.caption_visual.lower()
+    combined_text = " ".join(
+        text for text in (icon_text, overview_text) if text
+    ).strip()
 
     for definition in VISUAL_CONCEPTS_BY_TYPE.get(item_input.item_type, ()):
         if definition.preferred_evidence == "cv_only":
@@ -842,13 +863,64 @@ def _term_matches_taxonomy(term: str, item_type: str) -> bool:
     return False
 
 
+def _observed_term_variants(
+    assignment: TagAssignmentRecord,
+    observed_terms: set[str] | None = None,
+) -> list[str]:
+    definition = CONCEPT_BY_KEY.get(assignment.concept_key)
+    candidate_values: list[str] = [_display_label(assignment.concept_key).lower()]
+
+    matched_terms = assignment.evidence.get("matched_terms")
+    if isinstance(matched_terms, list):
+        candidate_values.extend(
+            str(value).lower().strip() for value in matched_terms if str(value).strip()
+        )
+
+    if definition is not None:
+        candidate_values.extend(alias.lower() for alias in definition.aliases)
+
+    variants: list[str] = []
+    seen_variants: set[str] = set()
+    for value in candidate_values:
+        normalized = re.sub(r"\s+", " ", value.strip().lower())
+        if not normalized or normalized in seen_variants:
+            continue
+        seen_variants.add(normalized)
+        if observed_terms is not None and not any(
+            observed == normalized
+            or observed.startswith(f"{normalized} ")
+            or normalized in observed
+            for observed in observed_terms
+        ):
+            continue
+        variants.append(normalized)
+
+    return variants
+
+
 def build_unmapped_term_records(
     item_input: ItemInputRecord,
     visual_features: VisualFeatureRecord,
+    assignments: list[TagAssignmentRecord] | None = None,
 ) -> list[UnmappedTermRecord]:
     records: list[UnmappedTermRecord] = []
     seen: set[str] = set()
     report_terms: list[str] = list(visual_features.search_terms)
+    observed_terms = {
+        re.sub(r"\s+", " ", value.strip().lower())
+        for value in (
+            *visual_features.search_terms,
+            *visual_features.raw_terms,
+            *visual_features.icon_terms,
+            *visual_features.overview_terms,
+        )
+        if value and value.strip()
+    }
+    covered_variants: set[str] = set()
+    for assignment in assignments or []:
+        if assignment.status not in {"accepted", "review"}:
+            continue
+        covered_variants.update(_observed_term_variants(assignment, observed_terms))
 
     for term in visual_features.raw_terms:
         if re.search(
@@ -861,6 +933,7 @@ def build_unmapped_term_records(
         if (
             term in seen
             or _is_obvious_noise_term(term)
+            or _term_is_covered_by_assignments(term, covered_variants)
             or _term_matches_taxonomy(term, item_input.item_type)
         ):
             continue
@@ -879,6 +952,22 @@ def build_unmapped_term_records(
         )
 
     return records
+
+
+def _term_is_covered_by_assignments(
+    term: str,
+    covered_variants: set[str],
+) -> bool:
+    normalized = _normalize_term(term)
+    if not normalized or not covered_variants:
+        return False
+    for variant in _candidate_search_phrases(normalized):
+        if any(
+            covered == variant or covered in variant or variant in covered
+            for covered in covered_variants
+        ):
+            return True
+    return False
 
 
 def _is_obvious_noise_term(term: str) -> bool:
@@ -910,7 +999,7 @@ def _collect_search_terms(
 
     def add_term(value: str) -> None:
         normalized = re.sub(r"\s+", " ", value.strip().lower())
-        if not normalized or normalized in seen:
+        if not normalized or normalized in seen or _is_negative_term(normalized):
             return
         seen.add(normalized)
         terms.append(normalized)
@@ -926,37 +1015,6 @@ def _collect_search_terms(
             for observed in observed_terms
         )
 
-    def observed_variants(
-        assignment: TagAssignmentRecord,
-        definition: ConceptDefinition | None,
-    ) -> list[str]:
-        variants: list[str] = []
-        candidate_values: list[str] = []
-
-        candidate_values.append(_display_label(assignment.concept_key).lower())
-
-        matched_terms = assignment.evidence.get("matched_terms")
-        if isinstance(matched_terms, list):
-            candidate_values.extend(
-                str(value).lower().strip()
-                for value in matched_terms
-                if str(value).strip()
-            )
-
-        if definition is not None:
-            candidate_values.extend(alias.lower() for alias in definition.aliases)
-
-        seen_variants: set[str] = set()
-        for value in candidate_values:
-            normalized = re.sub(r"\s+", " ", value.strip().lower())
-            if not normalized or normalized in seen_variants:
-                continue
-            seen_variants.add(normalized)
-            if was_observed(normalized):
-                variants.append(normalized)
-
-        return variants
-
     for value in visual_features.search_terms:
         add_term(value)
 
@@ -964,7 +1022,7 @@ def _collect_search_terms(
         definition = CONCEPT_BY_KEY.get(assignment.concept_key)
         label = _display_label(assignment.concept_key).lower()
         if assignment.search_only and assignment.status in {"accepted", "review"}:
-            for variant in observed_variants(assignment, definition):
+            for variant in _observed_term_variants(assignment, observed_terms):
                 add_term(variant)
         elif assignment.facet_key == "subcategory" and assignment.status != "accepted":
             add_term(label)

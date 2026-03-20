@@ -28,7 +28,7 @@ def _is_skin_like(red: int, green: int, blue: int) -> bool:
     return 8 <= hue <= 45 and 0.12 <= saturation <= 0.68 and red > blue and red > 120
 
 
-def _rgb_to_label(rgb: tuple[int, int, int]) -> str:
+def _rgb_to_label(rgb: tuple[int, int, int], item_type: str | None = None) -> str:
     red, green, blue = [channel / 255.0 for channel in rgb]
     maximum = max(red, green, blue)
     minimum = min(red, green, blue)
@@ -60,7 +60,7 @@ def _rgb_to_label(rgb: tuple[int, int, int]) -> str:
 
     if 18 <= hue < 40 and value < 0.56:
         return "brown"
-    if 38 <= hue < 52 and value > 0.62 and saturation < 0.68:
+    if item_type == "hair" and 38 <= hue < 52 and value > 0.62 and saturation < 0.68:
         return "blonde"
     if 42 <= hue < 56 and value > 0.58:
         return "gold"
@@ -126,7 +126,7 @@ def extract_dominant_colors(
     for red, green, blue, alpha in image.getdata():
         if alpha < 40 or _is_skin_like(red, green, blue):
             continue
-        label = _rgb_to_label((red, green, blue))
+        label = _rgb_to_label((red, green, blue), item_type=item_type)
         if (
             not has_transparency
             and label in {"white", "gray"}

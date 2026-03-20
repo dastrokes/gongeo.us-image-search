@@ -40,7 +40,6 @@ class CaptionRecord:
     item_id: int
     icon_caption: str
     overview_caption: str
-    visual: str
     failed_modalities: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -103,7 +102,6 @@ class VisualFeatureRecord:
     palette: list[str] = field(default_factory=list)
     icon_caption: str = ""
     overview_caption: str = ""
-    caption_visual: str = ""
     icon_terms: list[str] = field(default_factory=list)
     overview_terms: list[str] = field(default_factory=list)
     raw_terms: list[str] = field(default_factory=list)
