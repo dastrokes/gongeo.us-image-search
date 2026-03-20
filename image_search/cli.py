@@ -17,6 +17,7 @@ from image_search.constants.settings import (
     DEFAULT_SPARSE_EMBEDDING_MODEL,
     PROJECT_ROOT,
 )
+from image_search.models.schemas import CaptionRecord
 
 
 def _load_project_dotenv() -> None:
@@ -124,7 +125,9 @@ def _merge_caption_terms(*values: str) -> str:
     parts: list[str] = []
     seen: set[str] = set()
     for value in values:
-        for part in [chunk.strip() for chunk in str(value or "").split(",") if chunk.strip()]:
+        for part in [
+            chunk.strip() for chunk in str(value or "").split(",") if chunk.strip()
+        ]:
             normalized = part.lower()
             if normalized in seen:
                 continue
@@ -133,9 +136,7 @@ def _merge_caption_terms(*values: str) -> str:
     return ", ".join(parts)
 
 
-def _caption_record_from_payload(payload: dict[str, object]) -> "CaptionRecord":
-    from image_search.models.schemas import CaptionRecord
-
+def _caption_record_from_payload(payload: dict[str, object]) -> CaptionRecord:
     return CaptionRecord(
         item_id=int(payload["item_id"]),
         icon_caption=str(payload.get("icon_caption", "") or ""),

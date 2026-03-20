@@ -1,20 +1,11 @@
 from __future__ import annotations
-
-import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image
 
-from image_search.constants.colors import (
-    ACCENT_DETAIL_NOUNS,
-    APPAREL_BODY_NOUNS,
-    COLOR_PATTERN,
-    HAIR_BODY_PATTERNS,
-    NEUTRAL_COLOR_LABELS,
-    normalize_color_label,
-)
+from image_search.constants.colors import NEUTRAL_COLOR_LABELS
 from image_search.models.type_profiles import APPAREL_TYPES, get_type_profile
 from image_search.vision.palette import (
     _is_skin_like,
@@ -152,66 +143,6 @@ def _unique_ordered(colors: list[str]) -> list[str]:
     return ordered
 
 
-def _extract_colors(pattern: re.Pattern[str], text: str) -> list[str]:
-    matches: list[str] = []
-    for match in pattern.finditer(text):
-        matches.append(normalize_color_label(match.group("color")))
-    return _unique_ordered(matches)
-
-
-def parse_caption_color_mentions(
-    visual: str, item_type: str
-) -> tuple[list[str], list[str]]:
-    lowered = visual.lower()
-
-    if item_type == "hair":
-        body_colors: list[str] = []
-        for pattern, color in HAIR_BODY_PATTERNS:
-            if pattern in lowered and color not in body_colors:
-                body_colors.append(color)
-        return body_colors[:2], []
-
-    accent_pattern = re.compile(
-        rf"\b(?P<color>{COLOR_PATTERN})(?:-colored)?\s+(?P<detail>{'|'.join(ACCENT_DETAIL_NOUNS)})\b"
-    )
-    accent_colors = _unique_ordered(
-        [
-            normalize_color_label(match.group("color"))
-            for match in accent_pattern.finditer(lowered)
-        ]
-    )
-
-    if item_type in APPAREL_TYPES:
-        body_nouns = APPAREL_BODY_NOUNS
-    else:
-        profile = get_type_profile(item_type)
-        noun_candidates = tuple(
-            keyword
-            for keyword in profile.keywords
-            if keyword.isalpha() and keyword not in ACCENT_DETAIL_NOUNS
-        )
-        body_nouns = noun_candidates or APPAREL_BODY_NOUNS
-
-    noun_pattern = "|".join(sorted(set(body_nouns), key=len, reverse=True))
-    body_patterns = [
-        re.compile(rf"\b(?P<color>{COLOR_PATTERN})\s+(?P<body>{noun_pattern})s?\b"),
-        re.compile(
-            rf"\b(?:a|an|the)\s+(?P<body>{noun_pattern})s?\s+(?:is|are)\s+(?P<color>{COLOR_PATTERN})\b"
-        ),
-        re.compile(
-            rf"\b(?P<body>{noun_pattern})s?\s+(?:is|are)\s+(?P<color>{COLOR_PATTERN})\b"
-        ),
-    ]
-
-    body_colors: list[str] = []
-    for pattern in body_patterns:
-        for color in _extract_colors(pattern, lowered):
-            if color not in body_colors:
-                body_colors.append(color)
-
-    return body_colors[:2], accent_colors[:2]
-
-
 def _share(counter: Counter[str], total: float, label: str) -> float:
     if total <= 0:
         return 0.0
@@ -272,34 +203,13 @@ def _select_dominant_from_stats(stats: ImageColorStats) -> list[str]:
     return [primary, secondary] if secondary and secondary != primary else [primary]
 
 
-def _use_caption_body_fallback(
-    dominant_colors: list[str],
-    caption_body_colors: list[str],
-) -> bool:
-    if not caption_body_colors:
-        return False
-    if not dominant_colors:
-        return True
-    if len(dominant_colors) == 1 and dominant_colors[0] in NEUTRAL_COLOR_LABELS:
-        return True
-    return False
-
-
 def _tag_hair_colors(
     overview_path: str,
     icon_path: str,
-    caption_visual: str,
 ) -> ColorTaggingResult:
-    caption_body_colors, _ = parse_caption_color_mentions(caption_visual, "hair")
     palette_colors = extract_dominant_colors(icon_path or overview_path, "hair")
-    dominant = caption_body_colors[:]
-    for color in palette_colors:
-        if color not in dominant and color in {"silver", "white", "gray", "multicolor"}:
-            dominant.append(color)
-        if len(dominant) >= 2:
-            break
     return ColorTaggingResult(
-        dominant_colors=dominant[:2] or palette_colors[:2],
+        dominant_colors=palette_colors[:2],
         accent_colors=[],
     )
 
@@ -315,21 +225,10 @@ def _tag_apparel_colors(
         overview_path, item_type, core_weighting=True
     )
     merged_stats = merge_image_color_stats(icon_stats, overview_stats)
-    caption_body_colors, caption_accent_colors = parse_caption_color_mentions(
-        caption_visual,
-        item_type,
-    )
-
     dominant_colors = _select_dominant_from_stats(merged_stats)
-    if _use_caption_body_fallback(dominant_colors, caption_body_colors):
-        dominant_colors = caption_body_colors[:2]
-
-    accent_colors = [
-        color for color in caption_accent_colors if color not in dominant_colors
-    ][:2]
     return ColorTaggingResult(
         dominant_colors=dominant_colors,
-        accent_colors=accent_colors,
+        accent_colors=[],
     )
 
 
@@ -347,10 +246,6 @@ def _tag_non_apparel_colors(
     if not dominant_colors:
         dominant_colors = extract_dominant_colors(secondary_path, item_type)
 
-    caption_body_colors, _ = parse_caption_color_mentions(caption_visual, item_type)
-    if _use_caption_body_fallback(dominant_colors, caption_body_colors):
-        dominant_colors = caption_body_colors[:2]
-
     return ColorTaggingResult(dominant_colors=dominant_colors, accent_colors=[])
 
 
@@ -361,7 +256,7 @@ def tag_item_colors(
     caption_visual: str,
 ) -> ColorTaggingResult:
     if item_type == "hair":
-        return _tag_hair_colors(overview_path, icon_path, caption_visual)
+        return _tag_hair_colors(overview_path, icon_path)
     if item_type in APPAREL_TYPES:
         return _tag_apparel_colors(overview_path, icon_path, item_type, caption_visual)
     return _tag_non_apparel_colors(overview_path, icon_path, item_type, caption_visual)

@@ -68,6 +68,7 @@ def build_document_record(
         metadata={
             "item_id": metadata.item_id,
             "item_type": metadata.item_type,
+            "subtype": metadata.subtype,
             "dominant_colors": metadata.dominant_colors,
             "accent_colors": metadata.accent_colors,
             "primary_color": metadata.primary_color,

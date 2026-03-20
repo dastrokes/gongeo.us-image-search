@@ -5,111 +5,70 @@ import re
 NEUTRAL_COLOR_LABELS = {"white", "gray", "silver", "black"}
 COLOR_ALIASES = {"grey": "gray"}
 COLOR_WORDS = (
-    "blue",
-    "purple",
-    "pink",
-    "red",
-    "green",
-    "gold",
-    "silver",
-    "gray",
-    "grey",
-    "white",
+    "aqua",
+    "beige",
     "black",
-    "brown",
+    "blue",
     "blonde",
-    "yellow",
+    "bronze",
+    "purple",
+    "brown",
+    "burgundy",
+    "cream",
+    "cyan",
+    "gold",
+    "gradient",
+    "gray",
+    "green",
+    "grey",
+    "indigo",
+    "iridescent",
+    "ivory",
+    "lavender",
+    "maroon",
+    "multicolor",
+    "navy",
+    "ombre",
     "orange",
+    "peach",
+    "pink",
+    "rainbow",
+    "red",
+    "rose",
+    "silver",
+    "teal",
+    "turquoise",
+    "two-tone",
+    "violet",
+    "white",
+    "yellow",
 )
 COLOR_PATTERN = r"(?:(?:light|dark|pale)\s+)?" + rf"(?:{'|'.join(COLOR_WORDS)})"
 COLOR_ONLY_PATTERN = re.compile(rf"^{COLOR_PATTERN}$")
-
-COLOR_DETAIL_NOUNS = (
-    "border",
-    "trim",
-    "collar",
-    "cuff",
-    "hem",
-    "lining",
+MATERIAL_WORDS = (
+    "silk",
+    "silken",
+    "satin",
     "lace",
-    "ribbon",
-    "sash",
+    "velvet",
+    "denim",
+    "knit",
+    "knitted",
+    "leather",
     "fur",
-    "hood",
-    "mask",
-    "cape",
-    "cloak",
-    "robe",
-    "armor",
+    "furry",
+    "tulle",
+    "mesh",
+    "sheer",
+    "metallic",
+    "sequined",
+    "embroidered",
 )
-
-ACCENT_DETAIL_NOUNS = (
-    "button",
-    "buttons",
-    "zipper",
-    "buckle",
-    "trim",
-    "lining",
-    "collar",
-    "cuff",
-    "hem",
-    "fur",
-    "lace",
-    "ribbon",
-    "bow",
-    "hood",
-    "sash",
-    "embroidery",
-    "emblem",
-)
-
-APPAREL_BODY_NOUNS = (
-    "jacket",
-    "coat",
-    "cloak",
-    "cape",
-    "blazer",
-    "shawl",
-    "hoodie",
-    "top",
-    "blouse",
-    "shirt",
-    "bodice",
-    "corset",
-    "vest",
-    "camisole",
-    "skirt",
-    "pants",
-    "trousers",
-    "shorts",
-    "sock",
-    "stocking",
-    "tights",
-    "shoe",
-    "boot",
-    "heel",
-    "sandal",
-    "dress",
-    "gown",
-)
-
-HAIR_BODY_PATTERNS = (
-    ("light blue hair", "blue"),
-    ("grey hair", "gray"),
-    ("gray hair", "gray"),
-    ("silver hair", "silver"),
-    ("white hair", "white"),
-    ("black hair", "black"),
-    ("brown hair", "brown"),
-    ("blonde hair", "blonde"),
-    ("gold hair", "gold"),
-    ("red hair", "red"),
-    ("pink hair", "pink"),
-    ("purple hair", "purple"),
-    ("blue hair", "blue"),
-    ("green hair", "green"),
-    ("orange hair", "orange"),
-    ("yellow hair", "yellow"),
+LEADING_COLOR_OR_MATERIAL_PATTERN = re.compile(
+    r"^(?:(?:light|dark|pale)\s+)?"
+    r"(?:"
+    + "|".join(sorted(set(COLOR_WORDS) | set(MATERIAL_WORDS), key=len, reverse=True))
+    + r")\b\s+"
 )
 
 
@@ -121,3 +80,20 @@ def normalize_color_label(label: str) -> str:
     if normalized.startswith(("light ", "dark ", "pale ")):
         _, _, normalized = normalized.partition(" ")
     return COLOR_ALIASES.get(normalized, normalized)
+
+
+def strip_leading_color_or_material_phrase(value: str) -> str | None:
+    normalized = re.sub(r"\s+", " ", str(value).strip().lower()).strip(" ,")
+    if not normalized:
+        return None
+
+    stripped = normalized
+    while True:
+        updated = LEADING_COLOR_OR_MATERIAL_PATTERN.sub("", stripped, count=1).strip()
+        if not updated or updated == stripped:
+            break
+        stripped = updated
+
+    if stripped == normalized:
+        return None
+    return stripped or None

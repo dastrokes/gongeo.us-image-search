@@ -22,6 +22,7 @@ class ManifestRecord:
 class MetadataRecord:
     item_id: int
     item_type: str
+    subtype: str | None = None
     dominant_colors: list[str] = field(default_factory=list)
     accent_colors: list[str] = field(default_factory=list)
     primary_color: str | None = None

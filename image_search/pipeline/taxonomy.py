@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from image_search.constants.colors import strip_leading_color_or_material_phrase
 from image_search.constants.taxonomy import (
     CONCEPT_BY_KEY,
     EXCLUSIVE_FACETS,
@@ -27,13 +28,13 @@ from image_search.models.schemas import (
 from image_search.models.type_profiles import get_type_profile
 from image_search.pipeline.color_tags import ColorTaggingResult
 
-ACCEPTED_THRESHOLD = 0.88
-REVIEW_THRESHOLD = 0.70
-SEARCH_TERM_THRESHOLD = 0.66
+ACCEPTED_THRESHOLD = 0.8
+REVIEW_THRESHOLD = 0.6
+SEARCH_TERM_THRESHOLD = 0.6
 SUBCATEGORY_CONFLICT_MARGIN = 0.08
 DEFAULT_CONFLICT_MARGIN = 0.06
-SUBCATEGORY_ACCEPTED_THRESHOLD = 0.82
-SUBCATEGORY_REVIEW_THRESHOLD = 0.68
+SUBCATEGORY_ACCEPTED_THRESHOLD = 0.8
+SUBCATEGORY_REVIEW_THRESHOLD = 0.6
 PREFERRED_MODALITY_MATCH_BONUS = 0.05
 NON_PREFERRED_MODALITY_MATCH_BONUS = 0.03
 BOTH_MODALITY_MATCH_BONUS = 0.03
@@ -48,16 +49,20 @@ MAX_CANDIDATE_SCORE = 0.98
 _OBVIOUS_UNMAPPED_TERMS = frozenset(
     {
         "ankle",
-        "front placement",
+        "decorative trim",
+        "hem",
         "material",
+        "motif",
+        "ornate trim",
         "ornament",
         "pattern",
+        "patterned trim",
         "shoe",
-        "shoe icon",
-        "shoe silhouette",
         "shoes",
+        "sparkling trim",
         "toe",
         "trim",
+        "waist",
     }
 )
 
@@ -99,13 +104,51 @@ def build_item_input(record: ManifestRecord) -> ItemInputRecord:
 def _split_caption_terms(value: str) -> list[str]:
     seen: set[str] = set()
     parts: list[str] = []
-    for chunk in value.split(","):
+    for chunk in re.split(r",|\s+with\s+", value):
         normalized = re.sub(r"\s+", " ", chunk.lower()).strip(" ,")
         if not normalized or normalized in seen:
             continue
         seen.add(normalized)
         parts.append(normalized)
     return parts
+
+
+def _strip_leading_color_or_material(term: str) -> str | None:
+    stripped = strip_leading_color_or_material_phrase(term)
+    if stripped is None or len(stripped.split()) < 1:
+        return None
+    return stripped
+
+
+def _expand_compound_caption_terms(item_type: str, terms: list[str]) -> list[str]:
+    expanded: list[str] = []
+    seen: set[str] = set()
+
+    def add_term(value: str) -> None:
+        normalized = _normalize_term(value)
+        if not normalized or normalized in seen:
+            return
+        seen.add(normalized)
+        expanded.append(normalized)
+
+    for term in terms:
+        add_term(term)
+        stripped = _strip_leading_color_or_material(term)
+        if stripped:
+            add_term(stripped)
+        words = term.split()
+        if len(words) < 2:
+            continue
+
+        for start in range(len(words)):
+            for end in range(len(words), start, -1):
+                if end - start >= len(words):
+                    continue
+                candidate = " ".join(words[start:end])
+                if _term_matches_taxonomy(candidate, item_type):
+                    add_term(candidate)
+
+    return expanded
 
 
 def _normalize_term(value: str) -> str:
@@ -178,6 +221,15 @@ def _display_label(concept_key: str) -> str:
 
 def _matches_definition(definition: ConceptDefinition, text: str) -> bool:
     return any(re.search(pattern, text) for pattern in definition.patterns)
+
+
+_TYPE_ECHO_OVERRIDES = {"tops": {"top"}, "shoes": {"shoe"}, "socks": {"sock"}}
+
+
+def _definition_requires_exact_term_match(definition: ConceptDefinition) -> bool:
+    return definition.facet_key == "material" or definition.facet_key.startswith(
+        "color."
+    )
 
 
 def _candidate_search_phrases(term: str) -> list[str]:
@@ -261,8 +313,12 @@ def build_visual_features(
     elif color_tags.accent_colors:
         secondary_color = color_tags.accent_colors[0]
 
-    icon_terms = _split_caption_terms(caption_icon)
-    overview_terms = _split_caption_terms(caption_overview)
+    icon_terms = _expand_compound_caption_terms(
+        item_type, _split_caption_terms(caption_icon)
+    )
+    overview_terms = _expand_compound_caption_terms(
+        item_type, _split_caption_terms(caption_overview)
+    )
     raw_terms = _unique_terms([*overview_terms, *icon_terms])
     derived_search_terms = _unique_terms(raw_terms)
     return VisualFeatureRecord(
@@ -483,6 +539,45 @@ def build_structured_candidates(
         if definition.preferred_evidence == "cv_only":
             continue
 
+        if _definition_requires_exact_term_match(definition):
+            matched_modalities: set[str] = set()
+            matched_patterns: list[str] = []
+            modality_terms = {
+                "icon": visual_features.icon_terms,
+                "overview": visual_features.overview_terms,
+                "combined": visual_features.raw_terms,
+            }
+            for modality, terms in modality_terms.items():
+                for term in terms:
+                    if any(re.fullmatch(pattern, term) for pattern in definition.patterns):
+                        matched_modalities.add(modality)
+                        matched_patterns.extend(definition.patterns)
+            if not matched_modalities:
+                continue
+
+            score = _score_candidate(
+                definition,
+                matched_modalities,
+                len(set(matched_patterns)),
+            )
+            candidates.append(
+                StructuredCandidateRecord(
+                    item_id=item_input.item_id,
+                    facet_key=definition.facet_key,
+                    value_key=definition.value_key,
+                    concept_key=definition.key,
+                    source="caption_parse",
+                    source_modalities=sorted(matched_modalities),
+                    pre_validation_score=score,
+                    search_only=definition.search_only,
+                    evidence={
+                        "matched_patterns": sorted(set(matched_patterns)),
+                        "preferred_evidence": definition.preferred_evidence,
+                    },
+                )
+            )
+            continue
+
         matched_modalities: set[str] = set()
         matched_patterns: list[str] = []
         for pattern in definition.patterns:
@@ -560,6 +655,12 @@ def _prune_parent_candidates(
         child_candidate = by_key.get(child_key)
         if child_candidate is None:
             continue
+        child_status = _status_for_score(
+            child_candidate.pre_validation_score,
+            child_candidate.facet_key,
+        )
+        if child_status != "accepted":
+            continue
         for parent_key in parent_keys:
             parent_candidate = by_key.get(parent_key)
             if parent_candidate is None:
@@ -575,6 +676,40 @@ def _prune_parent_candidates(
         for candidate in candidates
         if candidate.concept_key not in suppressed_keys
     ]
+
+
+def _prefer_specific_subcategory_candidate(
+    candidates: list[StructuredCandidateRecord],
+) -> list[StructuredCandidateRecord]:
+    if not candidates:
+        return candidates
+
+    candidate_by_key = {candidate.concept_key: candidate for candidate in candidates}
+    preferred_child_keys = {
+        candidate.concept_key
+        for candidate in candidates
+        if _status_for_score(candidate.pre_validation_score, candidate.facet_key)
+        == "accepted"
+        and any(
+            parent_key in candidate_by_key
+            for parent_key in PARENT_CHILD_RELATIONSHIPS.get(
+                candidate.concept_key,
+                (),
+            )
+        )
+    }
+    if not preferred_child_keys:
+        return candidates
+
+    return sorted(
+        candidates,
+        key=lambda candidate: (
+            candidate.concept_key in preferred_child_keys,
+            candidate.pre_validation_score,
+            len(candidate.source_modalities),
+        ),
+        reverse=True,
+    )
 
 
 def _assignment_from_candidate(
@@ -673,6 +808,8 @@ def _validate_candidates(
             ),
             reverse=True,
         )
+        if facet_key == "subcategory":
+            facet_candidates = _prefer_specific_subcategory_candidate(facet_candidates)
 
         first_definition = CONCEPT_BY_KEY[facet_candidates[0].concept_key]
         facet_is_exclusive = facet_key in EXCLUSIVE_FACETS
@@ -701,6 +838,19 @@ def _validate_candidates(
                         model_version=model_version,
                         status=status,
                         extra_evidence=extra,
+                    )
+                )
+            continue
+
+        if not facet_is_exclusive:
+            for candidate in facet_candidates:
+                assignments.append(
+                    _assignment_from_candidate(
+                        candidate,
+                        model_version=model_version,
+                        status=_status_for_score(
+                            candidate.pre_validation_score, candidate.facet_key
+                        ),
                     )
                 )
             continue
@@ -853,7 +1003,11 @@ def _term_source_modalities(
 def _term_matches_taxonomy(term: str, item_type: str) -> bool:
     for variant in _candidate_search_phrases(term):
         if any(
-            _matches_definition(definition, variant)
+            (
+                any(re.fullmatch(pattern, variant) for pattern in definition.patterns)
+                if _definition_requires_exact_term_match(definition)
+                else _matches_definition(definition, variant)
+            )
             for definition in VISUAL_CONCEPTS_BY_TYPE.get(item_type, ())
         ):
             return True
@@ -933,6 +1087,7 @@ def build_unmapped_term_records(
         if (
             term in seen
             or _is_obvious_noise_term(term)
+            or _is_type_echo_term(term, item_input.item_type)
             or _term_is_covered_by_assignments(term, covered_variants)
             or _term_matches_taxonomy(term, item_input.item_type)
         ):
@@ -977,6 +1132,21 @@ def _is_obvious_noise_term(term: str) -> bool:
     if normalized in _OBVIOUS_UNMAPPED_TERMS:
         return True
     return bool(_NEGATIVE_UNMAPPED_TERM_PATTERN.fullmatch(normalized))
+
+
+def _is_type_echo_term(term: str, item_type: str) -> bool:
+    normalized_term = _normalize_term(term)
+    normalized_type = _normalize_term(item_type)
+    if not normalized_term or not normalized_type:
+        return False
+    if normalized_term == normalized_type:
+        return True
+    if normalized_term in _TYPE_ECHO_OVERRIDES.get(normalized_type, set()):
+        return True
+    singular_type = normalized_type[:-1] if normalized_type.endswith("s") else ""
+    if singular_type and normalized_term == singular_type:
+        return True
+    return False
 
 
 def _collect_search_terms(
@@ -1069,10 +1239,12 @@ def build_metadata_record(
     facet_values: dict[str, list[str]] = {}
     for assignment in accepted_filterable:
         facet_values.setdefault(assignment.facet_key, []).append(assignment.value_key)
+    subtype_values = facet_values.get("subcategory", [])
 
     return MetadataRecord(
         item_id=item_input.item_id,
         item_type=item_input.item_type,
+        subtype=subtype_values[0] if subtype_values else None,
         dominant_colors=list(visual_features.dominant_colors),
         accent_colors=list(visual_features.accent_colors),
         primary_color=visual_features.primary_color,

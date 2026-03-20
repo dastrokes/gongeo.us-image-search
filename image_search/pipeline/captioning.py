@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -8,10 +9,10 @@ from typing import Any
 from PIL import Image
 
 from image_search.constants.colors import (
-    COLOR_DETAIL_NOUNS,
     COLOR_ONLY_PATTERN,
     COLOR_PATTERN,
     normalize_color_label,
+    strip_leading_color_or_material_phrase,
 )
 from image_search.constants.settings import DEFAULT_CAPTION_MODEL_ID
 from image_search.constants.text import (
@@ -29,6 +30,7 @@ from image_search.constants.text import (
     DRESS_ATTRIBUTE_PROMPT_RULE,
     FACE_DETAIL_ATTRIBUTE_PROMPT_RULE,
     GENERIC_ATTRIBUTE_PROMPT_RULE,
+    GENERIC_SUBCATEGORY_AVOIDANCE_RULE,
     HAIR_ATTRIBUTE_PROMPT_RULE,
     HAIR_TYPE_SPECIFIC_PROMPT_RULES,
     HAIR_LEAK_PATTERNS,
@@ -67,6 +69,15 @@ class CaptionerConfig:
 
 
 class VisionCaptioner:
+    _GENERIC_TYPE_ECHOES: dict[str, tuple[str, ...]] = {
+        "tops": ("tops", "top"),
+        "dresses": ("dresses", "dress"),
+        "bottoms": ("bottoms", "bottom"),
+        "outerwear": ("outerwear",),
+        "socks": ("socks", "sock"),
+        "shoes": ("shoes", "shoe"),
+    }
+
     @staticmethod
     def _extract_style_descriptors(source_text: str, item_type: str) -> list[str]:
         profile = get_type_profile(item_type)
@@ -151,28 +162,9 @@ class VisionCaptioner:
         simplified = simplified.replace("'s", "")
         if not re.search(r"\b(?:is|are|around|near|inside|covering)\b", simplified):
             add_candidate(simplified)
-
-        color_object_match = re.search(
-            rf"\b(?P<color>{COLOR_PATTERN})\s+(?P<object>{'|'.join(COLOR_DETAIL_NOUNS)})\b",
-            simplified,
-        )
-        if color_object_match:
-            add_candidate(
-                f"{color_object_match.group('color')} {color_object_match.group('object')}"
-            )
-
-        subject_color_match = re.search(
-            rf"\b(?P<subject>[a-z]+(?: [a-z]+){{0,2}})\s+(?:is|are)\s+(?P<color>{COLOR_PATTERN})\b",
-            simplified,
-        )
-        if subject_color_match:
-            subject = re.sub(
-                r"^(?:a|an|the)\s+",
-                "",
-                subject_color_match.group("subject"),
-            ).strip()
-            if subject:
-                add_candidate(f"{subject_color_match.group('color')} {subject}")
+        stripped = strip_leading_color_or_material_phrase(simplified)
+        if stripped:
+            add_candidate(stripped)
 
         stripped_clause = re.sub(
             r"\b(?:around|on|at|near|inside|covering)\b.*$",
@@ -264,7 +256,8 @@ class VisionCaptioner:
 
         examples = ", ".join(subcategory_labels[:6])
         return (
-            "If visible, include the item's subcategory as one of the first phrases.\n"
+            "If visible, include the item's specific subcategory as the first phrase.\n"
+            f"{GENERIC_SUBCATEGORY_AVOIDANCE_RULE}\n"
             f"Subcategory examples for `{item_type}`: {examples}."
         )
 
@@ -398,6 +391,16 @@ class VisionCaptioner:
     def _load_rgb_image(image_path: str | Path) -> Any:
         with Image.open(image_path) as image:
             return image.convert("RGB")
+
+    @classmethod
+    def _load_rgb_images(cls, image_paths: list[str | Path]) -> list[Any]:
+        if not image_paths:
+            return []
+        if len(image_paths) == 1:
+            return [cls._load_rgb_image(image_paths[0])]
+        max_workers = min(8, len(image_paths))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            return list(executor.map(cls._load_rgb_image, image_paths))
 
     @staticmethod
     def _merge_unique_parts(*values: str) -> str:
@@ -623,6 +626,88 @@ class VisionCaptioner:
         )
         return decoded[0] if decoded else ""
 
+    def _decode_joint_batch_qwen(
+        self,
+        batch_image_specs: list[list[tuple[str, str | Path]]],
+        item_types: list[str],
+        *,
+        plain: bool = False,
+    ) -> list[str]:
+        import torch
+
+        if not batch_image_specs:
+            return []
+
+        prompt_builder = (
+            self._build_joint_plain_prompt if plain else self._build_joint_prompt
+        )
+        texts: list[str] = []
+        batched_images: list[list[Any]] = []
+        for image_specs, item_type in zip(batch_image_specs, item_types):
+            ordered_specs = [
+                spec
+                for label in ("overview", "icon")
+                for spec in image_specs
+                if spec[0] == label
+            ]
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        *({"type": "image"} for _label, _path in ordered_specs),
+                        {
+                            "type": "text",
+                            "text": prompt_builder(
+                                item_type,
+                                has_overview=any(
+                                    label == "overview" for label, _ in ordered_specs
+                                ),
+                                has_icon=any(
+                                    label == "icon" for label, _ in ordered_specs
+                                ),
+                            ),
+                        },
+                    ],
+                }
+            ]
+            texts.append(
+                self.processor.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            )
+            batched_images.append(
+                self._load_rgb_images([Path(path) for _label, path in ordered_specs])
+            )
+
+        inputs = self.processor(
+            text=texts,
+            images=batched_images,
+            padding=True,
+            return_tensors="pt",
+        )
+        inputs = self._normalize_inputs(inputs, torch)
+        generation_config = self._sanitized_generation_config(self.model)
+
+        with torch.inference_mode():
+            generated_ids = self.model.generate(
+                **inputs,
+                generation_config=generation_config,
+                use_model_defaults=False,
+                max_new_tokens=160,
+            )
+
+        generated_ids_trimmed = [
+            out_ids[len(in_ids) :]
+            for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
+        ]
+        return self.processor.batch_decode(
+            generated_ids_trimmed,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        )
+
     @staticmethod
     def _parse_joint_response(raw_text: str) -> dict[str, str]:
         parsed = {"overview": "", "icon": ""}
@@ -697,73 +782,90 @@ class VisionCaptioner:
             return []
 
         results: list[CaptionRecord] = []
-        for record in records:
-            image_specs = self._record_image_paths(record)
-            ordered_specs = [
-                spec
-                for label in ("overview", "icon")
-                for spec in image_specs
-                if spec[0] == label
+        inference_batch_size = max(1, int(self.config.inference_batch_size))
+        record_batches = self._chunk_records(records, inference_batch_size)
+        for record_batch in record_batches:
+            batch_specs = [self._record_image_paths(record) for record in record_batch]
+            batch_types = [record.type for record in record_batch]
+            raw_joint_batch = self._decode_joint_batch_qwen(batch_specs, batch_types)
+
+            parsed_joint_batch = [
+                self._parse_joint_response(raw_joint) for raw_joint in raw_joint_batch
             ]
-            has_icon = any(label == "icon" for label, _ in ordered_specs)
-            has_overview = any(label == "overview" for label, _ in ordered_specs)
-            item_type = record.type
-
-            raw_joint = self._decode_joint_qwen(ordered_specs, item_type)
-            parsed_joint = self._parse_joint_response(raw_joint)
-            missing_expected_line = (
-                (has_overview and not parsed_joint["overview"])
-                or (has_icon and not parsed_joint["icon"])
-            )
-            if missing_expected_line:
-                retry_joint = self._parse_joint_response(
-                    self._decode_joint_qwen(ordered_specs, item_type, plain=True)
+            retry_indices = [
+                index
+                for index, (image_specs, parsed_joint) in enumerate(
+                    zip(batch_specs, parsed_joint_batch)
                 )
-                for key, value in retry_joint.items():
-                    if value:
-                        parsed_joint[key] = value
+                if (
+                    any(label == "overview" for label, _ in image_specs)
+                    and not parsed_joint["overview"]
+                )
+                or (
+                    any(label == "icon" for label, _ in image_specs)
+                    and not parsed_joint["icon"]
+                )
+            ]
+            if retry_indices:
+                retry_joint_batch = self._decode_joint_batch_qwen(
+                    [batch_specs[index] for index in retry_indices],
+                    [batch_types[index] for index in retry_indices],
+                    plain=True,
+                )
+                for batch_index, retry_raw_joint in zip(retry_indices, retry_joint_batch):
+                    retry_joint = self._parse_joint_response(retry_raw_joint)
+                    for key, value in retry_joint.items():
+                        if value:
+                            parsed_joint_batch[batch_index][key] = value
 
-            icon_caption = self._normalize_caption(
-                parsed_joint["icon"],
-                item_type,
-                "icon",
-            )
-            overview_caption = self._normalize_caption(
-                parsed_joint["overview"],
-                item_type,
-                "overview",
-            )
+            for record, image_specs, parsed_joint in zip(
+                record_batch, batch_specs, parsed_joint_batch
+            ):
+                has_icon = any(label == "icon" for label, _ in image_specs)
+                has_overview = any(label == "overview" for label, _ in image_specs)
+                item_type = record.type
 
-            if self._is_low_signal_caption(icon_caption, item_type):
-                icon_caption = ""
-            if self._is_low_signal_caption(overview_caption, item_type):
-                overview_caption = ""
+                icon_caption = self._normalize_caption(
+                    parsed_joint["icon"],
+                    item_type,
+                    "icon",
+                )
+                overview_caption = self._normalize_caption(
+                    parsed_joint["overview"],
+                    item_type,
+                    "overview",
+                )
 
-            merged_caption = self._normalize_caption(
-                self._merge_unique_parts(overview_caption, icon_caption),
-                item_type,
-                "overview",
-            )
-            if has_icon and not icon_caption:
-                icon_caption = merged_caption
-            if has_overview and not overview_caption:
-                overview_caption = merged_caption
+                if self._is_low_signal_caption(icon_caption, item_type):
+                    icon_caption = ""
+                if self._is_low_signal_caption(overview_caption, item_type):
+                    overview_caption = ""
 
-            failed_modalities = self._failed_modalities_for_record(
-                has_icon=has_icon,
-                has_overview=has_overview,
-                icon_caption=icon_caption,
-                overview_caption=overview_caption,
-            )
+                merged_caption = self._normalize_caption(
+                    self._merge_unique_parts(overview_caption, icon_caption),
+                    item_type,
+                    "overview",
+                )
+                if has_icon and not icon_caption:
+                    icon_caption = merged_caption
+                if has_overview and not overview_caption:
+                    overview_caption = merged_caption
 
-            results.append(
-                CaptionRecord(
-                    item_id=record.item_id,
+                failed_modalities = self._failed_modalities_for_record(
+                    has_icon=has_icon,
+                    has_overview=has_overview,
                     icon_caption=icon_caption,
                     overview_caption=overview_caption,
-                    failed_modalities=failed_modalities,
                 )
-            )
+
+                results.append(
+                    CaptionRecord(
+                        item_id=record.item_id,
+                        icon_caption=icon_caption,
+                        overview_caption=overview_caption,
+                        failed_modalities=failed_modalities,
+                    )
+                )
 
         return results
 
@@ -871,7 +973,23 @@ class VisionCaptioner:
             add_descriptor(fallback, descriptor)
 
         descriptors = VisionCaptioner._compact_descriptors(grounded + fallback)
+        descriptors = VisionCaptioner._drop_generic_type_echoes(descriptors, item_type)
         return ", ".join(descriptors[:10])
+
+    @classmethod
+    def _drop_generic_type_echoes(
+        cls,
+        descriptors: list[str],
+        item_type: str,
+    ) -> list[str]:
+        generic_values = cls._GENERIC_TYPE_ECHOES.get(item_type, ())
+        if len(descriptors) < 2 or not generic_values:
+            return descriptors
+        return [
+            descriptor
+            for index, descriptor in enumerate(descriptors)
+            if index != 0 or descriptor not in generic_values
+        ]
 
     @classmethod
     def _is_cross_item_leak(cls, candidate: str, item_type: str) -> bool:
