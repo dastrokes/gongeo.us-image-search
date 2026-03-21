@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from image_search.models.schemas import SearchDocumentRecord, StructuredItemRecord
 
+
 def _dedupe(values: list[str]) -> list[str]:
     deduped: list[str] = []
     seen: set[str] = set()

@@ -14,6 +14,7 @@ from image_search.constants.settings import (
     DEFAULT_INDEX_NAME,
     DEFAULT_INDEX_REGION,
     DEFAULT_INDEX_TYPE,
+    DEFAULT_MODEL_QUANTIZATION,
     DEFAULT_SPARSE_EMBEDDING_MODEL,
     PROJECT_ROOT,
 )
@@ -153,7 +154,9 @@ def _structured_record_from_payload(payload: dict[str, object]) -> StructuredIte
         source_version=str(payload.get("source_version", "")),
         data=dict(payload.get("data", {}) or {}),
         parse_error=(
-            str(payload["parse_error"]) if payload.get("parse_error") is not None else None
+            str(payload["parse_error"])
+            if payload.get("parse_error") is not None
+            else None
         ),
     )
 
@@ -173,7 +176,9 @@ def _structured_debug_from_payload(payload: dict[str, object]) -> StructuredDebu
         ),
         normalized_data=dict(payload.get("normalized_data", {}) or {}),
         parse_error=(
-            str(payload["parse_error"]) if payload.get("parse_error") is not None else None
+            str(payload["parse_error"])
+            if payload.get("parse_error") is not None
+            else None
         ),
     )
 
@@ -272,10 +277,14 @@ def run_build_index(args: argparse.Namespace) -> int:
             source_version=args.source_version,
         )
         if args.item_id is None:
-            _write_jsonl(manifest_path, [record.to_dict() for record in manifest_records])
+            _write_jsonl(
+                manifest_path, [record.to_dict() for record in manifest_records]
+            )
 
     if args.item_id is not None and not manifest_records:
-        print(json.dumps({"item_id": args.item_id, "error": "item_not_found"}, indent=2))
+        print(
+            json.dumps({"item_id": args.item_id, "error": "item_not_found"}, indent=2)
+        )
         return 1
 
     extractor = VisionStructuredExtractor(
@@ -317,7 +326,11 @@ def run_build_index(args: argparse.Namespace) -> int:
             structured_cache[structured_record.item_id] = structured_record.to_dict()
             debug_cache[debug_record.item_id] = debug_record.to_dict()
         done_so_far = len(
-            [record for record in manifest_records if record.item_id in structured_cache]
+            [
+                record
+                for record in manifest_records
+                if record.item_id in structured_cache
+            ]
         )
         print(f"  extracted {done_so_far}/{len(manifest_records)}", flush=True)
 
@@ -421,7 +434,9 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
                 summary_payload.get("missing_overview_count", 0)
             ),
             "structured_parse_fail_count": structured_parse_fail_count,
-            "build_started_at": str(summary_payload.get("build_started_at", refreshed_at)),
+            "build_started_at": str(
+                summary_payload.get("build_started_at", refreshed_at)
+            ),
             "build_finished_at": refreshed_at,
             "duration_seconds": float(summary_payload.get("duration_seconds", 0)),
         },
@@ -548,7 +563,9 @@ def build_parser() -> argparse.ArgumentParser:
     build_parser.add_argument("--extraction-inference-batch-size", type=int, default=2)
     build_parser.add_argument("--device", default="auto")
     build_parser.add_argument(
-        "--quantization", choices=("none", "8bit"), default="none"
+        "--quantization",
+        choices=("none", "8bit", "4bit"),
+        default=DEFAULT_MODEL_QUANTIZATION,
     )
     build_parser.add_argument("--extraction-model", default=DEFAULT_EXTRACTION_MODEL_ID)
     build_parser.add_argument("--tracker-root", default=os.getenv("TRACKER_ROOT"))

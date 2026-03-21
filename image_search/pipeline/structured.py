@@ -9,7 +9,14 @@ from typing import Any
 
 from PIL import Image
 
-from image_search.constants.settings import DEFAULT_EXTRACTION_MODEL_ID
+from image_search.constants.settings import (
+    DEFAULT_EXTRACTION_MODEL_ID,
+    DEFAULT_MODEL_QUANTIZATION,
+)
+from image_search.constants.prompts import (
+    STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
+    SUBTYPE_GUIDANCE,
+)
 from image_search.constants.structured import (
     StructuredFieldDefinition,
     StructuredShapeDefinition,
@@ -26,138 +33,23 @@ from image_search.models.schemas import (
 class StructuredExtractorConfig:
     model_id: str = DEFAULT_EXTRACTION_MODEL_ID
     device: str = "auto"
-    quantization: str = "none"
+    quantization: str = DEFAULT_MODEL_QUANTIZATION
     inference_batch_size: int = 2
 
 
 class VisionStructuredExtractor:
-    _SUBTYPE_GUIDANCE: dict[str, str] = {
-        "outerwear": (
-            "Choose the closest visible outerwear class, such as jacket, coat, cape, "
-            "cardigan, shawl, bolero, or shrug."
-        ),
-        "tops": (
-            "Choose the closest visible top class, such as blouse, shirt, t_shirt, "
-            "sweater, vest, camisole, corset, or hoodie."
-        ),
-        "bottoms": (
-            "Choose the closest visible bottom class, such as skirt, pleated_skirt, "
-            "pants, shorts, leggings, jeans, or overalls."
-        ),
-        "dresses": (
-            "Choose the closest visible dress class, such as dress, gown, slip_dress, "
-            "pinafore, cheongsam, or sundress."
-        ),
-        "shoes": (
-            "Choose the closest visible shoe class, such as boots, heels, sandals, "
-            "flats, loafers, sneakers, pumps, or mary_janes."
-        ),
-        "socks": (
-            "Choose the closest visible legwear class, such as socks, stockings, "
-            "tights, thigh_highs, ankle_socks, or leg_warmers."
-        ),
-        "hairAccessories": (
-            "Choose the closest visible accessory class, such as bow, ribbon, flower, "
-            "clip, headband, veil, or fascinator."
-        ),
-        "headwear": (
-            "Choose the closest visible headwear class, such as hat, bonnet, beret, "
-            "hood, crown, tiara, or headpiece."
-        ),
-        "earrings": (
-            "Choose the closest visible earring class, such as studs, hoops, drops, "
-            "dangling_earrings, or cuffs."
-        ),
-        "neckwear": (
-            "Choose the closest visible neckwear class, such as necklace, scarf, tie, "
-            "cravat, or pendant_necklace."
-        ),
-        "bracelets": (
-            "Choose the closest visible bracelet class, such as bracelet, bangle, cuff, "
-            "beaded_bracelet, or charm_bracelet."
-        ),
-        "chokers": (
-            "Choose the closest visible choker class, such as choker, ribbon_choker, "
-            "lace_choker, collar_choker, or pendant_choker."
-        ),
-        "gloves": (
-            "Choose the closest visible glove class, such as gloves, mittens, "
-            "fingerless_gloves, opera_gloves, or arm_warmers."
-        ),
-        "handhelds": (
-            "Choose the closest visible handheld class, such as bag, basket, parasol, "
-            "umbrella, fan, lantern, or book."
-        ),
-        "chestAccessories": (
-            "Choose the closest visible chest accessory class, such as brooch, corsage, "
-            "badge, sash, or chest_pin."
-        ),
-        "pendants": (
-            "Choose the closest visible pendant class, such as pendant, locket, charm, "
-            "medallion, or tassel."
-        ),
-        "backpieces": (
-            "Choose the closest visible backpiece class, such as wings, capelet, backpack, "
-            "back_bow, or back_ornament."
-        ),
-        "rings": (
-            "Choose the closest visible ring class, such as ring, signet_ring, gemstone_ring, "
-            "band, or stacked_rings."
-        ),
-        "armDecorations": (
-            "Choose the closest visible arm decoration class, such as armlet, arm_band, "
-            "sleeve_garter, or upper_arm_cuff."
-        ),
-        "abilityHandhelds": (
-            "Choose the closest visible handheld class, such as wand, staff, lantern, fan, "
-            "parasol, or magical_tool."
-        ),
-        "baseMakeup": (
-            "Choose the closest visible cosmetic class, such as foundation, blush, contour, "
-            "highlight, or face_base."
-        ),
-        "eyebrows": (
-            "Choose the closest visible eyebrow class, such as straight_brows, arched_brows, "
-            "soft_brows, or bold_brows."
-        ),
-        "eyelashes": (
-            "Choose the closest visible eyelash class, such as natural_lashes, dramatic_lashes, "
-            "cat_eye_lashes, or lower_lashes."
-        ),
-        "contactLenses": (
-            "Choose the closest visible lens class, such as natural_lenses, circle_lenses, "
-            "gradient_lenses, or fantasy_lenses."
-        ),
-        "lips": (
-            "Choose the closest visible lip class, such as lipstick, gloss, tint, gradient_lips, "
-            "or matte_lips."
-        ),
-        "skinTones": (
-            "Choose the closest visible skin-tone effect class, such as natural_skin, rosy_skin, "
-            "tan_skin, or cool_tone_skin."
-        ),
-        "faceDecorations": (
-            "Choose the closest visible face decoration class, such as face_sticker, cheek_mark, "
-            "freckles, beauty_mark, or gem_decor."
-        ),
-        "fullMakeup": (
-            "Choose the closest visible makeup set class, such as natural_makeup, glam_makeup, "
-            "fantasy_makeup, or themed_makeup."
-        ),
-    }
-
     def __init__(self, config: StructuredExtractorConfig) -> None:
         self.config = config
         self.model = None
         self.processor = None
         self.model_id = config.model_id
         self.device = None
-        self.torch_dtype = None
+        self.dtype = None
 
     def _resolve_model_class(self):
-        from transformers import Qwen3VLForConditionalGeneration
+        from transformers import AutoModelForImageTextToText
 
-        return Qwen3VLForConditionalGeneration
+        return AutoModelForImageTextToText
 
     def _resolve_torch(self):
         import torch
@@ -168,11 +60,11 @@ class VisionStructuredExtractor:
             self.device = self.config.device
 
         if self.device == "cuda":
-            self.torch_dtype = (
+            self.dtype = (
                 torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
             )
         else:
-            self.torch_dtype = torch.float32
+            self.dtype = torch.float32
         return torch
 
     def _single_device_map(self) -> dict[str, int | str]:
@@ -210,53 +102,88 @@ class VisionStructuredExtractor:
                 normalized_inputs[key] = value
                 continue
             if torch.is_floating_point(value):
-                normalized_inputs[key] = value.to(target_device, dtype=self.torch_dtype)
+                normalized_inputs[key] = value.to(target_device, dtype=self.dtype)
             else:
                 normalized_inputs[key] = value.to(target_device)
         return normalized_inputs
 
     @staticmethod
-    def _sanitized_generation_config(model: Any):
-        import copy
+    def _sanitized_generation_config(
+        model: Any,
+        *,
+        max_new_tokens: int,
+        pad_token_id: int | None = None,
+    ):
+        from transformers import GenerationConfig
 
-        generation_config = copy.deepcopy(model.generation_config)
+        generation_config = GenerationConfig.from_model_config(model.config)
         generation_config.do_sample = False
-        for key in ("temperature", "top_p", "top_k"):
-            if hasattr(generation_config, key):
-                setattr(generation_config, key, None)
+        generation_config.max_new_tokens = max_new_tokens
+        if pad_token_id is not None:
+            generation_config.pad_token_id = pad_token_id
         return generation_config
+
+    @staticmethod
+    def _normalize_model_generation_config(model: Any) -> None:
+        generation_config = getattr(model, "generation_config", None)
+        if generation_config is None:
+            return
+        generation_config.do_sample = False
+        generation_config.temperature = 1.0
+        generation_config.top_p = 1.0
+        generation_config.top_k = 50
 
     def ensure_loaded(self) -> None:
         if self.model is not None and self.processor is not None:
             return
 
-        self._resolve_torch()
+        torch = self._resolve_torch()
         from transformers import AutoProcessor, BitsAndBytesConfig
 
         model_class = self._resolve_model_class()
-        self.processor = AutoProcessor.from_pretrained(self.config.model_id)
+        self.processor = AutoProcessor.from_pretrained(
+            self.config.model_id,
+            trust_remote_code=True,
+        )
         if (
             hasattr(self.processor, "tokenizer")
             and self.processor.tokenizer is not None
         ):
             self.processor.tokenizer.padding_side = "left"
         model_kwargs: dict[str, Any] = {}
-        use_quantization = self.config.quantization == "8bit"
+        quantization = self.config.quantization
+        use_quantization = quantization in {"4bit", "8bit"}
         if use_quantization:
             if not self.device.startswith("cuda"):
-                raise RuntimeError("8-bit quantization requires a CUDA device.")
+                raise RuntimeError(
+                    f"{quantization} quantization requires a CUDA device."
+                )
             try:
                 import bitsandbytes  # noqa: F401
             except ImportError as exc:
                 raise RuntimeError(
-                    "8-bit quantization requires bitsandbytes in the active environment. "
+                    f"{quantization} quantization requires bitsandbytes in the active environment. "
                     "bitsandbytes is not available for this Python install; use Python 3.12 or 3.13."
                 ) from exc
-            model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
+            if quantization == "4bit":
+                model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16,
+                )
+            else:
+                model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_8bit=True
+                )
             model_kwargs["device_map"] = self._single_device_map()
+            model_kwargs["dtype"] = torch.float16
         else:
-            model_kwargs["dtype"] = self.torch_dtype
-        self.model = model_class.from_pretrained(self.config.model_id, **model_kwargs)
+            model_kwargs["dtype"] = self.dtype
+        self.model = model_class.from_pretrained(
+            self.config.model_id,
+            trust_remote_code=True,
+            **model_kwargs,
+        )
+        self._normalize_model_generation_config(self.model)
         if not use_quantization:
             self.model.to(self.device)
         self.model.eval()
@@ -353,10 +280,14 @@ class VisionStructuredExtractor:
         return normalized_values
 
     @staticmethod
-    def _output_template(shape_definition: StructuredShapeDefinition) -> dict[str, object]:
+    def _output_template(
+        shape_definition: StructuredShapeDefinition,
+    ) -> dict[str, object]:
         template: dict[str, object] = {}
         for field_definition in shape_definition.fields:
-            template[field_definition.name] = [] if field_definition.kind == "array" else None
+            template[field_definition.name] = (
+                [] if field_definition.kind == "array" else None
+            )
         return template
 
     @classmethod
@@ -373,37 +304,21 @@ class VisionStructuredExtractor:
     @classmethod
     def build_prompt(cls, item_type: str) -> str:
         shape_definition = shape_definition_for_item_type(item_type)
-        subtype_guidance = cls._SUBTYPE_GUIDANCE.get(item_type)
-        subtype_guidance_line = (
-            f"Subtype guidance: {subtype_guidance}\n" if subtype_guidance else ""
-        )
+        guidance = SUBTYPE_GUIDANCE.get(item_type)
+        guidance_line = f"Subtype guidance: {guidance}\n" if guidance else ""
         field_lines = [
             f'- "{field_definition.name}": '
-            f'{"array" if field_definition.kind == "array" else "string_or_null"}'
+            f"{'array' if field_definition.kind == 'array' else 'string_or_null'}"
             f" ({field_definition.description})"
             for field_definition in shape_definition.fields
         ]
         output_template = cls._output_template(shape_definition)
         return (
-            "You are a deterministic structured extraction engine for Infinity Nikki items.\n"
-            "Return exactly one JSON object and nothing else.\n"
-            "Do not include markdown.\n"
-            "Do not include comments.\n"
-            "Do not include explanations.\n"
-            "Do not include keys not listed in the schema.\n"
-            "Describe only the target item shown in the provided image set.\n"
-            "Use only directly visible details.\n"
-            "Do not infer hidden details.\n"
-            "Use short lowercase underscore tokens.\n"
-            "If a single-value field is unclear, use null.\n"
-            "If a multi-value field is unclear, use [].\n"
-            "For subtype, make a best-effort visible category decision instead of using null.\n"
-            "Use null for subtype only when the item class is genuinely not visually distinguishable.\n"
-            "If the exact fashion term is uncertain, choose the closest generic visible class.\n"
+            f"{STRUCTURED_EXTRACTION_SYSTEM_PROMPT}\n"
             f"Item type: {item_type}\n"
             f"Shape: {shape_definition.name}\n"
             "Image order: overview first, icon second when both are present.\n"
-            f"{subtype_guidance_line}"
+            f"{guidance_line}"
             "Schema:\n"
             f"{chr(10).join(field_lines)}\n"
             "Output template:\n"
@@ -415,7 +330,7 @@ class VisionStructuredExtractor:
         image_specs: list[tuple[str, str | Path]],
         prompt: str,
         *,
-        max_new_tokens: int = 320,
+        max_new_tokens: int = 160,
     ) -> str:
         import torch
 
@@ -437,7 +352,9 @@ class VisionStructuredExtractor:
             add_generation_prompt=True,
         )
 
-        loaded_images = self._load_rgb_images([Path(path) for _label, path in image_specs])
+        loaded_images = self._load_rgb_images(
+            [Path(path) for _label, path in image_specs]
+        )
         inputs = self.processor(
             text=[text],
             images=loaded_images,
@@ -445,14 +362,22 @@ class VisionStructuredExtractor:
             return_tensors="pt",
         )
         inputs = self._normalize_inputs(inputs, torch)
-        generation_config = self._sanitized_generation_config(self.model)
+        pad_token_id = None
+        tokenizer = getattr(self.processor, "tokenizer", None)
+        if tokenizer is not None:
+            pad_token_id = getattr(tokenizer, "pad_token_id", None)
+            if pad_token_id is None:
+                pad_token_id = getattr(tokenizer, "eos_token_id", None)
+        generation_config = self._sanitized_generation_config(
+            self.model,
+            max_new_tokens=max_new_tokens,
+            pad_token_id=pad_token_id,
+        )
 
         with torch.inference_mode():
             generated_ids = self.model.generate(
                 **inputs,
                 generation_config=generation_config,
-                use_model_defaults=False,
-                max_new_tokens=max_new_tokens,
             )
 
         generated_ids_trimmed = [
@@ -467,7 +392,9 @@ class VisionStructuredExtractor:
         return decoded[0] if decoded else ""
 
     @staticmethod
-    def _parse_json_object(raw_text: str) -> tuple[dict[str, object] | None, str | None]:
+    def _parse_json_object(
+        raw_text: str,
+    ) -> tuple[dict[str, object] | None, str | None]:
         stripped = raw_text.strip()
         if not stripped:
             return None, "empty_response"
@@ -499,9 +426,13 @@ class VisionStructuredExtractor:
             if field_definition is None:
                 continue
             if field_definition.kind == "array":
-                normalized[field_name] = cls._normalize_array(raw_value, field_definition)
+                normalized[field_name] = cls._normalize_array(
+                    raw_value, field_definition
+                )
             else:
-                normalized[field_name] = cls._normalize_scalar(raw_value, field_definition)
+                normalized[field_name] = cls._normalize_scalar(
+                    raw_value, field_definition
+                )
         return normalized
 
     def extract_record(

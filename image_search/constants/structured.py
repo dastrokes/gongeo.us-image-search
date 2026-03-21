@@ -76,8 +76,15 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
         item_types=("outerwear", "tops", "dresses", "bottoms"),
         fields=(
             _field("subtype", "scalar", "specific garment subtype when visible"),
-            _field("primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES),
-            _field("secondary_color", "scalar", "secondary visible color", aliases=_COLOR_ALIASES),
+            _field(
+                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
+            ),
+            _field(
+                "secondary_color",
+                "scalar",
+                "secondary visible color",
+                aliases=_COLOR_ALIASES,
+            ),
             _field("pattern", "array", "visible surface patterns"),
             _field("material", "array", "visible materials or surface construction"),
             _field("length", "scalar", "overall length or coverage"),
@@ -86,15 +93,24 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             _field("collar", "array", "visible collar details"),
             _field("closure", "array", "visible closures or front openings"),
             _field("sleeve_length", "scalar", "sleeve length when present"),
-            _field("sleeve_shape", "array", "distinct sleeve shapes or cuff treatments"),
+            _field(
+                "sleeve_shape", "array", "distinct sleeve shapes or cuff treatments"
+            ),
         ),
     ),
     "hair": StructuredShapeDefinition(
         name="hair",
         item_types=("hair",),
         fields=(
-            _field("primary_color", "scalar", "main hair color", aliases=_COLOR_ALIASES),
-            _field("secondary_color", "scalar", "secondary hair color", aliases=_COLOR_ALIASES),
+            _field(
+                "primary_color", "scalar", "main hair color", aliases=_COLOR_ALIASES
+            ),
+            _field(
+                "secondary_color",
+                "scalar",
+                "secondary hair color",
+                aliases=_COLOR_ALIASES,
+            ),
             _field("length", "scalar", "overall hair length"),
             _field("texture", "scalar", "hair texture"),
             _field("parting", "scalar", "hair parting"),
@@ -108,8 +124,15 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
         item_types=("shoes",),
         fields=(
             _field("subtype", "scalar", "specific shoe subtype when visible"),
-            _field("primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES),
-            _field("secondary_color", "scalar", "secondary visible color", aliases=_COLOR_ALIASES),
+            _field(
+                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
+            ),
+            _field(
+                "secondary_color",
+                "scalar",
+                "secondary visible color",
+                aliases=_COLOR_ALIASES,
+            ),
             _field("pattern", "array", "visible surface patterns"),
             _field("material", "array", "visible materials"),
             _field("shaft_height", "scalar", "boot or upper height"),
@@ -124,8 +147,15 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
         item_types=("socks",),
         fields=(
             _field("subtype", "scalar", "specific legwear subtype when visible"),
-            _field("primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES),
-            _field("secondary_color", "scalar", "secondary visible color", aliases=_COLOR_ALIASES),
+            _field(
+                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
+            ),
+            _field(
+                "secondary_color",
+                "scalar",
+                "secondary visible color",
+                aliases=_COLOR_ALIASES,
+            ),
             _field("pattern", "array", "visible surface patterns"),
             _field("material", "array", "visible materials"),
             _field("height", "scalar", "overall height"),
@@ -138,8 +168,15 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
         item_types=ACCESSORY_ITEM_TYPES,
         fields=(
             _field("subtype", "scalar", "specific accessory subtype when visible"),
-            _field("primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES),
-            _field("secondary_color", "scalar", "secondary visible color", aliases=_COLOR_ALIASES),
+            _field(
+                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
+            ),
+            _field(
+                "secondary_color",
+                "scalar",
+                "secondary visible color",
+                aliases=_COLOR_ALIASES,
+            ),
             _field("pattern", "array", "visible surface patterns"),
             _field("material", "array", "visible materials"),
             _field("placement", "scalar", "where the accessory sits on the body"),
@@ -152,8 +189,15 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
         item_types=FACE_ITEM_TYPES,
         fields=(
             _field("subtype", "scalar", "specific cosmetic subtype when visible"),
-            _field("primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES),
-            _field("secondary_color", "scalar", "secondary visible color", aliases=_COLOR_ALIASES),
+            _field(
+                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
+            ),
+            _field(
+                "secondary_color",
+                "scalar",
+                "secondary visible color",
+                aliases=_COLOR_ALIASES,
+            ),
             _field("pattern", "array", "visible marks or motifs"),
             _field("placement", "scalar", "where the effect appears"),
             _field("finish", "scalar", "finish such as glossy or matte"),
@@ -165,8 +209,15 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
         name="body_paint",
         item_types=("bodyPaint",),
         fields=(
-            _field("primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES),
-            _field("secondary_color", "scalar", "secondary visible color", aliases=_COLOR_ALIASES),
+            _field(
+                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
+            ),
+            _field(
+                "secondary_color",
+                "scalar",
+                "secondary visible color",
+                aliases=_COLOR_ALIASES,
+            ),
             _field("pattern", "array", "visible marks or motifs"),
             _field("placement", "scalar", "where the effect appears"),
             _field("coverage", "scalar", "overall spread or extent"),

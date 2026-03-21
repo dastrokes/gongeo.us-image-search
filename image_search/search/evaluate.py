@@ -62,7 +62,9 @@ def lexical_baseline(
         filtered = [
             row
             for row in filtered
-            if requested_colors.intersection({str(value) for value in row.get("colors", [])})
+            if requested_colors.intersection(
+                {str(value) for value in row.get("colors", [])}
+            )
         ]
 
     query_tokens = set(_tokenize(query))
@@ -78,7 +80,10 @@ def lexical_baseline(
                                     str(row.get("item_type", "")),
                                     str(row.get("shape", "")),
                                     str(row.get("subtype", "")),
-                                    " ".join(str(value) for value in row.get("colors", []) or []),
+                                    " ".join(
+                                        str(value)
+                                        for value in row.get("colors", []) or []
+                                    ),
                                     str(row.get("search_text", "")),
                                 ]
                             )

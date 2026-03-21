@@ -46,15 +46,3 @@ TYPE_KEY_MAP = {
     "LGS03_31": "fullMakeup",
     "LGS03_32": "abilityHandhelds",
 }
-
-UPPER_FOCUS_TYPES = {
-    "hair",
-    "hairAccessories",
-    "headwear",
-    "earrings",
-    "neckwear",
-    "bracelets",
-    "chokers",
-    "faceDecorations",
-    "pendants",
-}
