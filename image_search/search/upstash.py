@@ -17,7 +17,8 @@ from image_search.constants.settings import (
     DEFAULT_MANAGEMENT_URL,
     DEFAULT_SPARSE_EMBEDDING_MODEL,
 )
-from image_search.models.schemas import DocumentRecord, QueryRequest, QueryResult
+from image_search.constants.structured import shape_definition_for_item_type
+from image_search.models.schemas import QueryRequest, QueryResult, SearchDocumentRecord
 
 EMBEDDING_MODEL_API_NAMES = {
     "BAAI/bge-small-en-v1.5": "BGE_SMALL_EN_V1_5",
@@ -106,8 +107,8 @@ class UpstashConfig:
         )
 
 
-def load_documents(documents_path: str | Path) -> list[DocumentRecord]:
-    records: list[DocumentRecord] = []
+def load_documents(documents_path: str | Path) -> list[SearchDocumentRecord]:
+    records: list[SearchDocumentRecord] = []
     with Path(documents_path).open("r", encoding="utf-8") as handle:
         for line in handle:
             payload = json.loads(line)
@@ -117,7 +118,7 @@ def load_documents(documents_path: str | Path) -> list[DocumentRecord]:
             if isinstance(raw_id, str) and raw_id.startswith("item:"):
                 raw_id = raw_id.split(":", 1)[1]
             records.append(
-                DocumentRecord(
+                SearchDocumentRecord(
                     id=int(raw_id),
                     data=str(payload["data"]),
                     metadata=dict(payload["metadata"]),
@@ -219,21 +220,7 @@ def build_filter_expression(request: QueryRequest) -> str | None:
     if request.colors:
         escaped = [value.replace("'", "\\'") for value in request.colors]
         clauses.append(
-            "("
-            + " OR ".join(
-                [
-                    *(f"dominant_colors CONTAINS '{value}'" for value in escaped),
-                    *(f"accent_colors CONTAINS '{value}'" for value in escaped),
-                ]
-            )
-            + ")"
-        )
-    if request.facets:
-        escaped = [value.replace("'", "\\'") for value in request.facets]
-        clauses.append(
-            "("
-            + " OR ".join(f"accepted_facets CONTAINS '{value}'" for value in escaped)
-            + ")"
+            "(" + " OR ".join(f"colors CONTAINS '{value}'" for value in escaped) + ")"
         )
 
     return " AND ".join(clauses) if clauses else None
@@ -255,15 +242,25 @@ def query_upstash(request: QueryRequest, config: UpstashConfig) -> list[QueryRes
         metadata = getattr(match, "metadata", {}) or {}
         if "item_id" not in metadata:
             continue
+        item_type = str(metadata.get("item_type", "unknown"))
+        shape_definition = shape_definition_for_item_type(item_type)
+        structured_data = {
+            field_definition.name: metadata.get(field_definition.name)
+            for field_definition in shape_definition.fields
+            if field_definition.name in metadata
+        }
+        if not structured_data and isinstance(metadata.get("structured_data"), dict):
+            structured_data = dict(metadata.get("structured_data", {}) or {})
         results.append(
             QueryResult(
                 item_id=int(metadata.get("item_id")),
                 score=float(getattr(match, "score", 0.0)),
-                item_type=str(metadata.get("item_type", "unknown")),
-                dominant_colors=list(metadata.get("dominant_colors", [])),
-                accent_colors=list(metadata.get("accent_colors", [])),
-                accepted_facets=list(metadata.get("accepted_facets", [])),
-                search_terms=list(metadata.get("search_terms", [])),
+                item_type=item_type,
+                shape=str(metadata.get("shape", "")),
+                colors=list(metadata.get("colors", [])),
+                primary_color=metadata.get("primary_color"),
+                secondary_color=metadata.get("secondary_color"),
+                structured_data=structured_data,
             )
         )
     return results

@@ -106,6 +106,7 @@ def build_manifest(
     config_root: str | None = None,
     sync_report_path: str | None = None,
     limit: int | None = None,
+    item_id: int | None = None,
     source_version: str | None = None,
 ) -> tuple[list[ManifestRecord], dict[str, int | str]]:
     paths = resolve_manifest_paths(
@@ -135,17 +136,20 @@ def build_manifest(
     }
 
     for raw in items:
-        item_id = int(raw["id"])
+        current_item_id = int(raw["id"])
 
-        if not _is_base_item(item_id):
+        if item_id is not None and current_item_id != item_id:
+            continue
+
+        if not _is_base_item(current_item_id):
             stats["non_base_skipped_count"] += 1
             continue
 
-        item_payload = item_config.get(str(item_id))
+        item_payload = item_config.get(str(current_item_id))
         item_type = _resolve_item_type(item_payload, minor_type_info)
 
-        icon_path = _find_image_path(paths.item_icon_root, item_id)
-        overview_path = _find_image_path(paths.item_image_root, item_id)
+        icon_path = _find_image_path(paths.item_icon_root, current_item_id)
+        overview_path = _find_image_path(paths.item_image_root, current_item_id)
         has_icon = icon_path is not None
         has_overview = overview_path is not None
 
@@ -160,7 +164,7 @@ def build_manifest(
 
         manifest.append(
             ManifestRecord(
-                item_id=item_id,
+                item_id=current_item_id,
                 type=item_type,
                 icon_path=str(icon_path or ""),
                 overview_path=str(overview_path or ""),

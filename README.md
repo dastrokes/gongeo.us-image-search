@@ -1,20 +1,19 @@
 # Image Search
 
-Offline structured tagging and Upstash-backed semantic item search for Infinity Nikki items.
+Offline structured extraction and Upstash-backed semantic item search for Infinity Nikki items.
 
 ## Layout
 
-Core code now lives under `image_search/`:
+Core code lives under `image_search/`:
 
-- `image_search/constants/` for prompts, color maps, and taxonomy registry definitions
-- `image_search/models/` for build and search artifact schemas
-- `image_search/pipeline/` for manifest ingestion, captioning, structured tagging, and search-document generation
+- `image_search/constants/` for settings and structured shape definitions
+- `image_search/models/` for manifest, structured output, and search schemas
+- `image_search/pipeline/` for manifest ingestion, strict JSON extraction, and search-document generation
 - `image_search/search/` for Upstash sync and evaluation
-- `image_search/vision/` for palette extraction
 
 Root `cli.py` and `generate_manifest.py` stay as thin compatibility entrypoints.
 
-## What it builds
+## What It Builds
 
 `build-index` reads:
 
@@ -26,14 +25,9 @@ Root `cli.py` and `generate_manifest.py` stay as thin compatibility entrypoints.
 It produces:
 
 - `manifest/item-manifest.jsonl`
-- `index/taxonomy-concepts.jsonl`
-- `index/item-visual-features.jsonl`
-- `index/item-structured-candidates.jsonl`
-- `index/item-tag-assignments.jsonl`
-- `index/item-review-queue.jsonl`
-- `index/item-unmapped-terms.jsonl`
+- `index/item-structured-data.jsonl`
+- `index/item-structured-debug.jsonl`
 - `index/item-search-documents.jsonl`
-- `index/item-captions-debug.jsonl`
 - `index/build-summary.json`
 
 ## Install
@@ -42,11 +36,11 @@ It produces:
 pip install -r requirements.txt
 ```
 
-Default captioning now uses `Qwen/Qwen3-VL-4B-Instruct` for more structured visual extraction. This requires the upgraded `transformers==4.57.6` dependency pin, which includes `Qwen3VLForConditionalGeneration`.
+Default extraction uses `Qwen/Qwen3-VL-4B-Instruct`. The pinned `transformers==4.57.6` dependency includes `Qwen3VLForConditionalGeneration`.
 
 ## Environment
 
-Set these in the processor `.env` or shell:
+Set these in `.env` or your shell:
 
 - `TRACKER_ROOT`
 - `CONFIG_DECODER_OUTPUT`
@@ -65,34 +59,31 @@ Development should stay capped at `--limit 10` unless intentionally widened.
 
 ```bash
 python cli.py build-index --limit 10
+python cli.py build-index --item-id 123456
 python cli.py refresh-derived
 python cli.py sync-upstash
 python cli.py query-upstash --q "blue floral headwear" --item-type headwear
-python cli.py query-upstash --q "midi dress with high collar" --facet length:midi --facet collar:high_collar
 python cli.py evaluate --queries path/to/queries.jsonl
 ```
 
-`refresh-derived` rebuilds only:
+`build-index --item-id <ID>` runs a fast single-item debug path and prints one JSON bundle with the strict prompt, raw response, parsed payload, and normalized structured output.
 
-- `index/item-unmapped-terms.jsonl`
+`refresh-derived` rebuilds:
+
 - `index/item-search-documents.jsonl`
+- `index/build-summary.json`
 
 from:
 
 - `manifest/item-manifest.jsonl`
-- `index/item-captions-debug.jsonl`
+- `index/item-structured-data.jsonl`
 
-Use it when taxonomy or document-generation logic changes and you want to refresh derived outputs without rerunning captioning.
+Use it when search-document formatting changes and you want to refresh derived outputs without rerunning extraction.
 
 ## Notes
 
-- Qwen 3 VL structured captions are now the default intermediate evidence for structured facet mapping, not the primary search payload.
-- The canonical output contract is visual-only and keyed by `item_id`. Official game metadata is not part of the tagging artifacts.
-- Search documents are derived from accepted structured tags plus vetted `search_terms`; review tags are emitted to a separate QA artifact.
-- The report set is intentionally small: manifest, captions, taxonomy concepts, structured candidates, assignments, review queue, unmapped terms, search documents, and build summary.
-- Explicit filters are passed to Upstash metadata filtering. Natural-language-to-filter parsing is not part of v1.
-- Indexed metadata separates `dominant_colors` from `accent_colors`; `--color` filters match either bucket.
-- Structured facet filtering is available via repeated `--facet` flags against `accepted_facets`.
-- Extraction policy treats the overview image as authoritative for silhouette, length, placement, layering, and item identity.
-- Extraction policy treats the icon image as authoritative for trim, closures, embroidery, small motifs, ornaments, and tiny accent colors.
-- Structured visual tags are intentionally conservative. Low-confidence or conflicting facet matches are routed to the review queue or preserved as `search_terms` instead of being promoted into strict filters.
+- The canonical output contract is one normalized JSON object per item, keyed by `item_id`.
+- The extractor uses shape-specific prompts and shape-specific response templates with only relevant fields.
+- Model-authored `primary_color` and `secondary_color` are part of the canonical structured payload.
+- Search documents are derived directly from normalized structured JSON, not caption terms or taxonomy assignments.
+- Upstash filtering currently supports item type and color metadata only.

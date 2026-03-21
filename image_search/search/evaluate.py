@@ -62,19 +62,7 @@ def lexical_baseline(
         filtered = [
             row
             for row in filtered
-            if requested_colors.intersection(
-                {str(value) for value in row.get("dominant_colors", [])}
-                | {str(value) for value in row.get("accent_colors", [])}
-            )
-        ]
-    if filters.get("facets"):
-        requested_facets = {str(value) for value in filters["facets"]}
-        filtered = [
-            row
-            for row in filtered
-            if requested_facets.intersection(
-                {str(value) for value in row.get("accepted_facets", [])}
-            )
+            if requested_colors.intersection({str(value) for value in row.get("colors", [])})
         ]
 
     query_tokens = set(_tokenize(query))
@@ -88,24 +76,10 @@ def lexical_baseline(
                             " ".join(
                                 [
                                     str(row.get("item_type", "")),
-                                    " ".join(
-                                        str(value)
-                                        for value in row.get("accepted_facets", [])
-                                        or []
-                                    ),
-                                    " ".join(
-                                        str(value)
-                                        for value in row.get("search_terms", []) or []
-                                    ),
-                                    " ".join(
-                                        str(value)
-                                        for value in row.get("dominant_colors", [])
-                                        or []
-                                    ),
-                                    " ".join(
-                                        str(value)
-                                        for value in row.get("accent_colors", []) or []
-                                    ),
+                                    str(row.get("shape", "")),
+                                    str(row.get("subtype", "")),
+                                    " ".join(str(value) for value in row.get("colors", []) or []),
+                                    str(row.get("search_text", "")),
                                 ]
                             )
                         )
@@ -182,7 +156,6 @@ def evaluate_queries(
                 for value in filters.get("item_type", filters.get("type", []))
             ],
             colors=[str(value) for value in filters.get("colors", [])],
-            facets=[str(value) for value in filters.get("facets", [])],
         )
 
         semantic_started = time.perf_counter()
@@ -221,15 +194,13 @@ def evaluate_queries(
             }
         )
 
-    semantic_summary = _summarize_metrics(semantic_rows)
-    lexical_summary = _summarize_metrics(lexical_rows)
-
     return {
         "summary": {
             "query_count": len(queries),
-            "semantic": asdict(semantic_summary),
-            "lexical": asdict(lexical_summary),
-            "semantic_latency_ms_avg": (
+            "limit": limit,
+            "semantic": asdict(_summarize_metrics(semantic_rows)),
+            "lexical": asdict(_summarize_metrics(lexical_rows)),
+            "avg_semantic_latency_ms": (
                 sum(semantic_latencies_ms) / len(semantic_latencies_ms)
                 if semantic_latencies_ms
                 else 0.0
