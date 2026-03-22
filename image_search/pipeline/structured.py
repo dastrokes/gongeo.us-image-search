@@ -16,7 +16,7 @@ from image_search.constants.settings import (
 from image_search.constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
-    CANONICAL_SUBCATEGORY_TOKENS,
+    FILTERED_CANONICAL_ATTRIBUTE_FIELDS,
     SUBCATEGORY_HIERARCHY,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
     build_extraction_user_message,
@@ -505,10 +505,10 @@ class VisionStructuredExtractor:
             normalized_values = cls._normalized_raw_values(raw_value, field_definition)
             if field_name == "category":
                 canonical_tokens = set(CANONICAL_CATEGORY_TOKENS.get(item_type, ()))
-            elif field_name == "subcategory":
-                canonical_tokens = set(CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ()))
-            else:
+            elif field_name in FILTERED_CANONICAL_ATTRIBUTE_FIELDS:
                 canonical_tokens = set(CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ()))
+            else:
+                canonical_tokens = set()
             if not canonical_tokens:
                 continue
             for token in normalized_values:
