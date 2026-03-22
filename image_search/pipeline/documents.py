@@ -39,23 +39,56 @@ def _item_colors(data: dict[str, object]) -> list[str]:
     )
 
 
+def _item_tokens(data: dict[str, object], field_name: str) -> list[str]:
+    return _dedupe(_flatten_values(data.get(field_name)))
+
+
 def build_search_text(record: StructuredItemRecord) -> str:
     lines = [
         f"item id: {record.item_id}",
-        f"item type: {record.item_type}",
+        f"slot: {record.item_type}",
         f"shape: {record.shape}",
     ]
-    subtype = str(record.data.get("subtype") or "").strip()
-    if subtype:
-        lines.append(f"subtype: {subtype}")
+    category = str(record.data.get("category") or "").strip()
+    if category:
+        lines.append(f"category: {category}")
+    subcategory = str(record.data.get("subcategory") or "").strip()
+    if subcategory:
+        lines.append(f"subcategory: {subcategory}")
+    placement = str(record.data.get("placement") or "").strip()
+    if placement:
+        lines.append(f"placement: {placement}")
     colors = _item_colors(record.data)
     if colors:
         lines.append(f"colors: {', '.join(colors)}")
+    ornament = _item_tokens(record.data, "ornament")
+    if ornament:
+        lines.append(f"ornament: {', '.join(ornament)}")
+    style = _item_tokens(record.data, "style")
+    if style:
+        lines.append(f"style: {', '.join(style)}")
+    theme = _item_tokens(record.data, "theme")
+    if theme:
+        lines.append(f"theme: {', '.join(theme)}")
+    occasion = _item_tokens(record.data, "occasion")
+    if occasion:
+        lines.append(f"occasion: {', '.join(occasion)}")
 
     attribute_values = _dedupe(
         value
         for field_name, field_value in record.data.items()
-        if field_name not in {"subtype", "primary_color", "secondary_color"}
+        if field_name
+        not in {
+            "category",
+            "subcategory",
+            "placement",
+            "primary_color",
+            "secondary_color",
+            "ornament",
+            "style",
+            "theme",
+            "occasion",
+        }
         for value in _flatten_values(field_value)
     )
     if attribute_values:
@@ -68,6 +101,7 @@ def build_document_record(record: StructuredItemRecord) -> SearchDocumentRecord:
     metadata = {
         "item_id": record.item_id,
         "item_type": record.item_type,
+        "slot": record.item_type,
         "shape": record.shape,
         "colors": colors,
     }

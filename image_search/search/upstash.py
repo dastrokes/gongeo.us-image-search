@@ -17,7 +17,10 @@ from image_search.constants.settings import (
     DEFAULT_MANAGEMENT_URL,
     DEFAULT_SPARSE_EMBEDDING_MODEL,
 )
-from image_search.constants.structured import shape_definition_for_item_type
+from image_search.constants.structured import (
+    is_supported_item_type,
+    shape_definition_for_item_type,
+)
 from image_search.models.schemas import QueryRequest, QueryResult, SearchDocumentRecord
 
 EMBEDDING_MODEL_API_NAMES = {
@@ -243,6 +246,8 @@ def query_upstash(request: QueryRequest, config: UpstashConfig) -> list[QueryRes
         if "item_id" not in metadata:
             continue
         item_type = str(metadata.get("item_type", "unknown"))
+        if not is_supported_item_type(item_type):
+            continue
         shape_definition = shape_definition_for_item_type(item_type)
         structured_data = {
             field_definition.name: metadata.get(field_definition.name)

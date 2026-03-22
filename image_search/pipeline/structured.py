@@ -14,8 +14,13 @@ from image_search.constants.settings import (
     DEFAULT_MODEL_QUANTIZATION,
 )
 from image_search.constants.prompts import (
+    CANONICAL_ATTRIBUTE_TOKENS,
+    CANONICAL_CATEGORY_TOKENS,
+    CANONICAL_SUBCATEGORY_TOKENS,
+    SUBCATEGORY_HIERARCHY,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
-    SUBTYPE_GUIDANCE,
+    build_extraction_user_message,
+    normalise_token,
 )
 from image_search.constants.structured import (
     StructuredFieldDefinition,
@@ -291,46 +296,22 @@ class VisionStructuredExtractor:
         return template
 
     @classmethod
-    def shape_schema(cls, item_type: str) -> dict[str, dict[str, object]]:
-        shape_definition = shape_definition_for_item_type(item_type)
-        return {
-            field_definition.name: {
-                "type": field_definition.kind,
-                "description": field_definition.description,
-            }
-            for field_definition in shape_definition.fields
-        }
-
-    @classmethod
     def build_prompt(cls, item_type: str) -> str:
-        shape_definition = shape_definition_for_item_type(item_type)
-        guidance = SUBTYPE_GUIDANCE.get(item_type)
-        guidance_line = f"Subtype guidance: {guidance}\n" if guidance else ""
-        field_lines = [
-            f'- "{field_definition.name}": '
-            f"{'array' if field_definition.kind == 'array' else 'string_or_null'}"
-            f" ({field_definition.description})"
-            for field_definition in shape_definition.fields
-        ]
-        output_template = cls._output_template(shape_definition)
-        return (
-            f"{STRUCTURED_EXTRACTION_SYSTEM_PROMPT}\n"
-            f"Item type: {item_type}\n"
-            f"Shape: {shape_definition.name}\n"
-            "Image order: overview first, icon second when both are present.\n"
-            f"{guidance_line}"
-            "Schema:\n"
-            f"{chr(10).join(field_lines)}\n"
-            "Output template:\n"
-            f"{json.dumps(output_template, indent=2, ensure_ascii=False)}"
+        user_message = build_extraction_user_message(
+            item_type,
+            field_names=tuple(
+                field_definition.name
+                for field_definition in shape_definition_for_item_type(item_type).fields
+            ),
         )
+        return f"{STRUCTURED_EXTRACTION_SYSTEM_PROMPT}\n{user_message}"
 
     def _decode_prompted_joint_qwen(
         self,
         image_specs: list[tuple[str, str | Path]],
         prompt: str,
         *,
-        max_new_tokens: int = 160,
+        max_new_tokens: int = 256,
     ) -> str:
         import torch
 
@@ -392,6 +373,26 @@ class VisionStructuredExtractor:
         return decoded[0] if decoded else ""
 
     @staticmethod
+    def _response_looks_truncated(
+        raw_text: str,
+        parse_error: str | None,
+    ) -> bool:
+        if not raw_text.strip():
+            return False
+        if not parse_error or not parse_error.startswith("json_decode_error:"):
+            return False
+        truncated_markers = (
+            "Unterminated string",
+            "Expecting value",
+            "Expecting ',' delimiter",
+            "Expecting property name enclosed in double quotes",
+        )
+        if any(marker in parse_error for marker in truncated_markers):
+            return True
+        stripped = raw_text.rstrip()
+        return stripped.startswith("{") and not stripped.endswith("}")
+
+    @staticmethod
     def _parse_json_object(
         raw_text: str,
     ) -> tuple[dict[str, object] | None, str | None]:
@@ -435,6 +436,106 @@ class VisionStructuredExtractor:
                 )
         return normalized
 
+    @classmethod
+    def _normalized_raw_values(
+        cls,
+        value: object,
+        field_definition: StructuredFieldDefinition,
+    ) -> list[str]:
+        if value in (None, ""):
+            return []
+        candidates = value if isinstance(value, list) else [value]
+        normalized_values: list[str] = []
+        for candidate in candidates:
+            normalized = cls._collapse_alias(
+                cls._normalize_token(candidate),
+                field_definition,
+            )
+            if normalized:
+                normalized_values.append(normalized)
+        return normalized_values
+
+    @staticmethod
+    def _category_mismatch(
+        item_type: str,
+        normalized_payload: dict[str, object],
+    ) -> dict[str, str] | None:
+        category = str(normalized_payload.get("category") or "").strip()
+        subcategory = str(normalized_payload.get("subcategory") or "").strip()
+        if not category or not subcategory:
+            return None
+        parent = SUBCATEGORY_HIERARCHY.get(subcategory)
+        if parent is None:
+            return None
+        ancestors: list[str] = []
+        current = subcategory
+        while current in SUBCATEGORY_HIERARCHY:
+            current = SUBCATEGORY_HIERARCHY[current]
+            ancestors.append(current)
+        if category in ancestors:
+            return None
+        return {
+            "item_type": item_type,
+            "category": category,
+            "subcategory": subcategory,
+            "expected_parent": parent,
+        }
+
+    @classmethod
+    def build_filter_report(
+        cls,
+        item_type: str,
+        raw_payload: dict[str, object] | None,
+        normalized_payload: dict[str, object],
+    ) -> dict[str, object]:
+        if not isinstance(raw_payload, dict):
+            raw_payload = {}
+
+        shape_definition = shape_definition_for_item_type(item_type)
+        field_definitions = {
+            field_definition.name: field_definition
+            for field_definition in shape_definition.fields
+        }
+
+        non_canonical: list[dict[str, str]] = []
+        for field_name, raw_value in raw_payload.items():
+            field_definition = field_definitions.get(field_name)
+            if field_definition is None:
+                continue
+            normalized_values = cls._normalized_raw_values(raw_value, field_definition)
+            if field_name == "category":
+                canonical_tokens = set(CANONICAL_CATEGORY_TOKENS.get(item_type, ()))
+            elif field_name == "subcategory":
+                canonical_tokens = set(CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ()))
+            else:
+                canonical_tokens = set(CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ()))
+            if not canonical_tokens:
+                continue
+            for token in normalized_values:
+                canonical_token = normalise_token(token)
+                if canonical_token not in canonical_tokens:
+                    non_canonical.append(
+                        {
+                            "field": field_name,
+                            "token": token,
+                        }
+                    )
+
+        unknown_fields = sorted(
+            field_name
+            for field_name in raw_payload
+            if field_name not in field_definitions
+        )
+        category_mismatch = cls._category_mismatch(item_type, normalized_payload)
+        return {
+            "non_canonical": non_canonical,
+            "non_canonical_count": len(non_canonical),
+            "unknown_fields": unknown_fields,
+            "unknown_field_count": len(unknown_fields),
+            "parent_child_mismatch": category_mismatch,
+            "parent_child_mismatch_count": 1 if category_mismatch else 0,
+        }
+
     def extract_record(
         self,
         record: ManifestRecord,
@@ -446,7 +547,19 @@ class VisionStructuredExtractor:
         prompt = self.build_prompt(record.type)
         raw_response = self._decode_prompted_joint_qwen(image_specs, prompt)
         raw_payload, parse_error = self._parse_json_object(raw_response)
+        if self._response_looks_truncated(raw_response, parse_error):
+            raw_response = self._decode_prompted_joint_qwen(
+                image_specs,
+                prompt,
+                max_new_tokens=512,
+            )
+            raw_payload, parse_error = self._parse_json_object(raw_response)
         normalized_payload = self.normalize_payload(record.type, raw_payload)
+        filter_report = self.build_filter_report(
+            record.type,
+            raw_payload,
+            normalized_payload,
+        )
 
         structured_record = StructuredItemRecord(
             item_id=record.item_id,
@@ -468,6 +581,7 @@ class VisionStructuredExtractor:
             raw_response=raw_response,
             raw_payload=raw_payload,
             normalized_data=normalized_payload,
+            filter_report=filter_report,
             parse_error=parse_error,
         )
         return structured_record, debug_record

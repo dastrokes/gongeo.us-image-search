@@ -79,7 +79,7 @@ def lexical_baseline(
                                 [
                                     str(row.get("item_type", "")),
                                     str(row.get("shape", "")),
-                                    str(row.get("subtype", "")),
+                                    str(row.get("subcategory", "")),
                                     " ".join(
                                         str(value)
                                         for value in row.get("colors", []) or []

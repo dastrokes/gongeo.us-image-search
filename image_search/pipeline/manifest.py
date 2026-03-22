@@ -12,6 +12,7 @@ from image_search.constants.items import (
     TYPE_KEY_MAP,
 )
 from image_search.constants.settings import PROJECT_ROOT
+from image_search.constants.structured import is_supported_item_type
 from image_search.models.schemas import ManifestRecord
 
 DEFAULT_TRACKER_ROOT = PROJECT_ROOT.parent / "gongeo.us-nikki-tracker"
@@ -147,6 +148,9 @@ def build_manifest(
 
         item_payload = item_config.get(str(current_item_id))
         item_type = _resolve_item_type(item_payload, minor_type_info)
+        if not is_supported_item_type(item_type):
+            stats["skipped_count"] += 1
+            continue
 
         icon_path = _find_image_path(paths.item_icon_root, current_item_id)
         overview_path = _find_image_path(paths.item_image_root, current_item_id)

@@ -15,7 +15,7 @@ Root `cli.py` and `generate_manifest.py` stay as thin compatibility entrypoints.
 
 ## What It Builds
 
-`build-index` reads:
+`index` reads:
 
 - `reports/database-sync-report.json`
 - tracker item names from `gongeo.us-nikki-tracker/app/locales/en/item.json`
@@ -58,17 +58,17 @@ Optional for index creation:
 Development should stay capped at `--limit 10` unless intentionally widened.
 
 ```bash
-python cli.py build-index --limit 10
-python cli.py build-index --item-id 123456
-python cli.py refresh-derived
-python cli.py sync-upstash
-python cli.py query-upstash --q "blue floral headwear" --item-type headwear
+python cli.py index --limit 10
+python cli.py index --item-id 123456
+python cli.py refresh
+python cli.py sync
+python cli.py query --q "blue floral headwear" --item-type headwear
 python cli.py evaluate --queries path/to/queries.jsonl
 ```
 
-`build-index --item-id <ID>` runs a fast single-item debug path and prints one JSON bundle with the strict prompt, raw response, parsed payload, and normalized structured output.
+`index --item-id <ID>` runs a fast single-item debug path and prints one JSON bundle with the strict prompt, raw response, parsed payload, and normalized structured output.
 
-`refresh-derived` rebuilds:
+`refresh` rebuilds:
 
 - `index/item-search-documents.jsonl`
 - `index/build-summary.json`

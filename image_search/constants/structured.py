@@ -7,7 +7,6 @@ from dataclasses import dataclass
 class StructuredFieldDefinition:
     name: str
     kind: str
-    description: str
     alias_pairs: tuple[tuple[str, str], ...] = ()
 
 
@@ -21,14 +20,12 @@ class StructuredShapeDefinition:
 def _field(
     name: str,
     kind: str,
-    description: str,
     *,
     aliases: tuple[tuple[str, str], ...] = (),
 ) -> StructuredFieldDefinition:
     return StructuredFieldDefinition(
         name=name,
         kind=kind,
-        description=description,
         alias_pairs=aliases,
     )
 
@@ -41,16 +38,7 @@ _COLOR_ALIASES: tuple[tuple[str, str], ...] = (
     ("multi_coloured", "multicolor"),
 )
 
-FACE_ITEM_TYPES: tuple[str, ...] = (
-    "baseMakeup",
-    "eyebrows",
-    "eyelashes",
-    "contactLenses",
-    "lips",
-    "skinTones",
-    "faceDecorations",
-    "fullMakeup",
-)
+GARMENT_ITEM_TYPES: tuple[str, ...] = ("outerwear", "tops", "dresses", "bottoms")
 
 ACCESSORY_ITEM_TYPES: tuple[str, ...] = (
     "hairAccessories",
@@ -69,173 +57,151 @@ ACCESSORY_ITEM_TYPES: tuple[str, ...] = (
     "abilityHandhelds",
 )
 
+WEARABLE_ITEM_TYPES: tuple[str, ...] = (
+    "hair",
+    *GARMENT_ITEM_TYPES,
+    "socks",
+    "shoes",
+    *ACCESSORY_ITEM_TYPES,
+)
+
+
+def _shared_color_fields() -> tuple[StructuredFieldDefinition, ...]:
+    return (
+        _field("primary_color", "scalar", aliases=_COLOR_ALIASES),
+        _field(
+            "secondary_color",
+            "scalar",
+            aliases=_COLOR_ALIASES,
+        ),
+    )
+
+
+def _shared_visual_fields() -> tuple[StructuredFieldDefinition, ...]:
+    return (
+        _field("pattern", "array"),
+        _field("material", "array"),
+        _field("ornament", "array"),
+        _field("style", "array"),
+        _field("theme", "array"),
+        _field("occasion", "array"),
+    )
+
+
+def _garment_fields(
+    length_name: str,
+) -> tuple[StructuredFieldDefinition, ...]:
+    return (
+        _field("category", "scalar"),
+        _field("subcategory", "scalar"),
+        *_shared_color_fields(),
+        *_shared_visual_fields(),
+        _field(length_name, "scalar"),
+        _field("silhouette", "scalar"),
+        _field("neckline", "scalar"),
+        _field("collar", "array"),
+        _field("closure", "array"),
+        _field("sleeve_length", "scalar"),
+        _field("sleeve_shape", "array"),
+    )
+
 
 STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
-    "garment": StructuredShapeDefinition(
+    "outerwear": StructuredShapeDefinition(
         name="garment",
-        item_types=("outerwear", "tops", "dresses", "bottoms"),
-        fields=(
-            _field("subtype", "scalar", "specific garment subtype when visible"),
-            _field(
-                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
-            ),
-            _field(
-                "secondary_color",
-                "scalar",
-                "secondary visible color",
-                aliases=_COLOR_ALIASES,
-            ),
-            _field("pattern", "array", "visible surface patterns"),
-            _field("material", "array", "visible materials or surface construction"),
-            _field("length", "scalar", "overall length or coverage"),
-            _field("silhouette", "scalar", "overall shape or cut"),
-            _field("neckline", "scalar", "neck opening shape"),
-            _field("collar", "array", "visible collar details"),
-            _field("closure", "array", "visible closures or front openings"),
-            _field("sleeve_length", "scalar", "sleeve length when present"),
-            _field(
-                "sleeve_shape", "array", "distinct sleeve shapes or cuff treatments"
-            ),
-        ),
+        item_types=("outerwear",),
+        fields=_garment_fields("outerwear_length"),
+    ),
+    "tops": StructuredShapeDefinition(
+        name="garment",
+        item_types=("tops",),
+        fields=_garment_fields("top_length"),
+    ),
+    "bottoms": StructuredShapeDefinition(
+        name="garment",
+        item_types=("bottoms",),
+        fields=_garment_fields("bottom_length"),
+    ),
+    "dresses": StructuredShapeDefinition(
+        name="garment",
+        item_types=("dresses",),
+        fields=_garment_fields("dress_length"),
     ),
     "hair": StructuredShapeDefinition(
         name="hair",
         item_types=("hair",),
         fields=(
-            _field(
-                "primary_color", "scalar", "main hair color", aliases=_COLOR_ALIASES
-            ),
-            _field(
-                "secondary_color",
-                "scalar",
-                "secondary hair color",
-                aliases=_COLOR_ALIASES,
-            ),
-            _field("length", "scalar", "overall hair length"),
-            _field("texture", "scalar", "hair texture"),
-            _field("parting", "scalar", "hair parting"),
-            _field("bangs", "scalar", "bangs or fringe treatment"),
-            _field("hairstyle", "array", "visible arrangement or styling"),
-            _field("adornment", "array", "hair-attached decorations"),
+            _field("category", "scalar"),
+            _field("subcategory", "scalar"),
+            *_shared_color_fields(),
+            _field("hair_length", "scalar"),
+            _field("texture", "scalar"),
+            _field("parting", "scalar"),
+            _field("bangs", "scalar"),
+            _field("hairstyle", "array"),
+            _field("adornment", "array"),
+            _field("style", "array"),
+            _field("theme", "array"),
+            _field("occasion", "array"),
         ),
     ),
     "shoes": StructuredShapeDefinition(
         name="shoes",
         item_types=("shoes",),
         fields=(
-            _field("subtype", "scalar", "specific shoe subtype when visible"),
-            _field(
-                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
-            ),
-            _field(
-                "secondary_color",
-                "scalar",
-                "secondary visible color",
-                aliases=_COLOR_ALIASES,
-            ),
-            _field("pattern", "array", "visible surface patterns"),
-            _field("material", "array", "visible materials"),
-            _field("shaft_height", "scalar", "boot or upper height"),
-            _field("heel_height", "scalar", "heel height"),
-            _field("toe_shape", "scalar", "toe shape"),
-            _field("platform", "scalar", "platform presence or size"),
-            _field("closure", "array", "straps, buckles, laces, or other closures"),
+            _field("category", "scalar"),
+            _field("subcategory", "scalar"),
+            *_shared_color_fields(),
+            *_shared_visual_fields(),
+            _field("shaft_height", "scalar"),
+            _field("heel_height", "scalar"),
+            _field("toe_shape", "scalar"),
+            _field("platform", "scalar"),
+            _field("closure", "array"),
         ),
     ),
     "socks": StructuredShapeDefinition(
         name="socks",
         item_types=("socks",),
         fields=(
-            _field("subtype", "scalar", "specific legwear subtype when visible"),
-            _field(
-                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
-            ),
-            _field(
-                "secondary_color",
-                "scalar",
-                "secondary visible color",
-                aliases=_COLOR_ALIASES,
-            ),
-            _field("pattern", "array", "visible surface patterns"),
-            _field("material", "array", "visible materials"),
-            _field("height", "scalar", "overall height"),
-            _field("opacity", "scalar", "sheer, opaque, or similar visibility"),
-            _field("trim", "array", "visible trim or edge details"),
+            _field("category", "scalar"),
+            _field("subcategory", "scalar"),
+            *_shared_color_fields(),
+            *_shared_visual_fields(),
+            _field("sock_height", "scalar"),
+            _field("opacity", "scalar"),
+            _field("trim", "array"),
         ),
     ),
     "accessory": StructuredShapeDefinition(
         name="accessory",
         item_types=ACCESSORY_ITEM_TYPES,
         fields=(
-            _field("subtype", "scalar", "specific accessory subtype when visible"),
-            _field(
-                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
-            ),
-            _field(
-                "secondary_color",
-                "scalar",
-                "secondary visible color",
-                aliases=_COLOR_ALIASES,
-            ),
-            _field("pattern", "array", "visible surface patterns"),
-            _field("material", "array", "visible materials"),
-            _field("placement", "scalar", "where the accessory sits on the body"),
-            _field("attachment", "array", "how it attaches or hangs"),
-            _field("shape", "array", "distinct overall shapes or decorative forms"),
-        ),
-    ),
-    "face": StructuredShapeDefinition(
-        name="face",
-        item_types=FACE_ITEM_TYPES,
-        fields=(
-            _field("subtype", "scalar", "specific cosmetic subtype when visible"),
-            _field(
-                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
-            ),
-            _field(
-                "secondary_color",
-                "scalar",
-                "secondary visible color",
-                aliases=_COLOR_ALIASES,
-            ),
-            _field("pattern", "array", "visible marks or motifs"),
-            _field("placement", "scalar", "where the effect appears"),
-            _field("finish", "scalar", "finish such as glossy or matte"),
-            _field("effect", "scalar", "main cosmetic effect"),
-            _field("shape", "array", "distinct visible shapes"),
-        ),
-    ),
-    "body_paint": StructuredShapeDefinition(
-        name="body_paint",
-        item_types=("bodyPaint",),
-        fields=(
-            _field(
-                "primary_color", "scalar", "main visible color", aliases=_COLOR_ALIASES
-            ),
-            _field(
-                "secondary_color",
-                "scalar",
-                "secondary visible color",
-                aliases=_COLOR_ALIASES,
-            ),
-            _field("pattern", "array", "visible marks or motifs"),
-            _field("placement", "scalar", "where the effect appears"),
-            _field("coverage", "scalar", "overall spread or extent"),
-            _field("shape", "array", "distinct visible shapes"),
+            _field("category", "scalar"),
+            _field("subcategory", "scalar"),
+            *_shared_color_fields(),
+            *_shared_visual_fields(),
+            _field("placement", "scalar"),
+            _field("attachment", "array"),
+            _field("shape", "array"),
         ),
     ),
 }
 
-ITEM_TYPE_TO_SHAPE: dict[str, str] = {
-    item_type: shape.name
-    for shape in STRUCTURED_SHAPES.values()
+ITEM_TYPE_TO_SHAPE_KEY: dict[str, str] = {
+    item_type: shape_key
+    for shape_key, shape in STRUCTURED_SHAPES.items()
     for item_type in shape.item_types
 }
 
 
 def shape_for_item_type(item_type: str) -> str:
-    return ITEM_TYPE_TO_SHAPE.get(item_type, "accessory")
+    return STRUCTURED_SHAPES[ITEM_TYPE_TO_SHAPE_KEY.get(item_type, "accessory")].name
 
 
 def shape_definition_for_item_type(item_type: str) -> StructuredShapeDefinition:
-    return STRUCTURED_SHAPES[shape_for_item_type(item_type)]
+    return STRUCTURED_SHAPES[ITEM_TYPE_TO_SHAPE_KEY.get(item_type, "accessory")]
+
+
+def is_supported_item_type(item_type: str) -> bool:
+    return item_type in WEARABLE_ITEM_TYPES

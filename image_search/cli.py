@@ -69,6 +69,7 @@ def _cleanup_stale_outputs(output_root: Path) -> None:
         "item-review-queue.jsonl",
         "item-unmapped-terms.jsonl",
         "item-captions-debug.jsonl",
+        "item-filter-report.jsonl",
     ):
         try:
             (output_root / filename).unlink(missing_ok=True)
@@ -175,12 +176,40 @@ def _structured_debug_from_payload(payload: dict[str, object]) -> StructuredDebu
             else None
         ),
         normalized_data=dict(payload.get("normalized_data", {}) or {}),
+        filter_report=dict(payload.get("filter_report", {}) or {}),
         parse_error=(
             str(payload["parse_error"])
             if payload.get("parse_error") is not None
             else None
         ),
     )
+
+
+def _build_filter_report_rows(
+    debug_records: list[StructuredDebugRecord],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for debug_record in debug_records:
+        filter_report = debug_record.filter_report or {}
+        if not any(
+            (
+                filter_report.get("non_canonical"),
+                filter_report.get("parent_child_mismatch"),
+                filter_report.get("unknown_fields"),
+            )
+        ):
+            continue
+        rows.append(
+            {
+                "item_id": debug_record.item_id,
+                "item_type": debug_record.item_type,
+                "shape": debug_record.shape,
+                "non_canonical": list(filter_report.get("non_canonical", []) or []),
+                "parent_child_mismatch": filter_report.get("parent_child_mismatch"),
+                "unknown_fields": list(filter_report.get("unknown_fields", []) or []),
+            }
+        )
+    return rows
 
 
 def _is_complete_cached_structured(
@@ -229,6 +258,7 @@ def _run_single_item_debug(
 
 
 def run_build_index(args: argparse.Namespace) -> int:
+    from image_search.constants.structured import is_supported_item_type
     from image_search.pipeline.documents import build_document_record
     from image_search.pipeline.manifest import build_manifest
     from image_search.pipeline.structured import (
@@ -242,6 +272,7 @@ def run_build_index(args: argparse.Namespace) -> int:
     structured_data_path = output_root / "item-structured-data.jsonl"
     structured_debug_path = output_root / "item-structured-debug.jsonl"
     search_documents_path = output_root / "item-search-documents.jsonl"
+    filter_report_path = output_root / "item-filter-report.jsonl"
     summary_path = output_root / "build-summary.json"
     started_at = datetime.now(timezone.utc)
 
@@ -256,6 +287,8 @@ def run_build_index(args: argparse.Namespace) -> int:
             for line in handle:
                 record = ManifestRecord(**json.loads(line))
                 if args.item_id is not None and record.item_id != args.item_id:
+                    continue
+                if not is_supported_item_type(record.type):
                     continue
                 manifest_records.append(record)
                 if args.limit is not None and len(manifest_records) >= args.limit:
@@ -338,6 +371,7 @@ def run_build_index(args: argparse.Namespace) -> int:
 
     structured_rows: list[dict[str, object]] = []
     debug_rows: list[dict[str, object]] = []
+    debug_records_for_summary: list[StructuredDebugRecord] = []
     search_document_rows: list[dict[str, object]] = []
     structured_parse_fail_count = 0
 
@@ -350,6 +384,7 @@ def run_build_index(args: argparse.Namespace) -> int:
         debug_record = _structured_debug_from_payload(debug_payload)
         structured_rows.append(structured_record.to_dict())
         debug_rows.append(debug_record.to_dict())
+        debug_records_for_summary.append(debug_record)
         search_document_rows.append(build_document_record(structured_record).to_dict())
         if structured_record.parse_error is not None:
             structured_parse_fail_count += 1
@@ -358,6 +393,8 @@ def run_build_index(args: argparse.Namespace) -> int:
     _write_jsonl(structured_data_path, structured_rows)
     _write_jsonl(structured_debug_path, debug_rows)
     _write_jsonl(search_documents_path, search_document_rows)
+    filter_report_rows = _build_filter_report_rows(debug_records_for_summary)
+    _write_jsonl(filter_report_path, filter_report_rows)
 
     finished_at = datetime.now(timezone.utc)
     summary = BuildSummary(
@@ -371,6 +408,7 @@ def run_build_index(args: argparse.Namespace) -> int:
         build_started_at=started_at.isoformat(),
         build_finished_at=finished_at.isoformat(),
         duration_seconds=(finished_at - started_at).total_seconds(),
+        filter_report_path=str(filter_report_path),
     )
     _write_json(summary_path, summary.to_dict())
 
@@ -381,20 +419,27 @@ def run_build_index(args: argparse.Namespace) -> int:
 
 
 def run_refresh_derived(args: argparse.Namespace) -> int:
+    from image_search.constants.structured import is_supported_item_type
     from image_search.pipeline.documents import build_document_record
 
     manifest_path = Path(args.manifest_path)
     structured_path = Path(args.structured_path)
+    structured_debug_path = Path(args.structured_debug_path)
     output_root = Path(args.output_root or _default_output_root())
     search_documents_path = output_root / "item-search-documents.jsonl"
+    filter_report_path = output_root / "item-filter-report.jsonl"
     summary_path = output_root / "build-summary.json"
 
     print(f"Loading manifest from {manifest_path} ...")
     manifest_records = [
-        ManifestRecord(**row) for row in _load_manifest_records(manifest_path)
+        ManifestRecord(**row)
+        for row in _load_manifest_records(manifest_path)
+        if is_supported_item_type(str(row.get("type", "")))
     ]
     print(f"Loading structured data from {structured_path} ...")
     structured_cache = _load_record_cache(structured_path)
+    print(f"Loading structured debug from {structured_debug_path} ...")
+    debug_cache = _load_record_cache(structured_debug_path)
 
     summary_payload: dict[str, object] = {}
     if summary_path.exists():
@@ -407,6 +452,7 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
     )
 
     search_document_rows: list[dict[str, object]] = []
+    filter_report_rows: list[dict[str, object]] = []
     structured_parse_fail_count = 0
 
     for record in manifest_records:
@@ -415,10 +461,15 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
             continue
         structured_record = _structured_record_from_payload(structured_payload)
         search_document_rows.append(build_document_record(structured_record).to_dict())
+        debug_payload = debug_cache.get(record.item_id)
+        if debug_payload is not None:
+            debug_record = _structured_debug_from_payload(debug_payload)
+            filter_report_rows.extend(_build_filter_report_rows([debug_record]))
         if structured_record.parse_error is not None:
             structured_parse_fail_count += 1
 
     _write_jsonl(search_documents_path, search_document_rows)
+    _write_jsonl(filter_report_path, filter_report_rows)
     refreshed_at = datetime.now(timezone.utc).isoformat()
     _write_json(
         summary_path,
@@ -439,6 +490,7 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
             ),
             "build_finished_at": refreshed_at,
             "duration_seconds": float(summary_payload.get("duration_seconds", 0)),
+            "filter_report_path": str(filter_report_path),
         },
     )
 
@@ -447,7 +499,9 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
             {
                 "manifest_path": str(manifest_path),
                 "structured_path": str(structured_path),
+                "structured_debug_path": str(structured_debug_path),
                 "search_documents_path": str(search_documents_path),
+                "filter_report_path": str(filter_report_path),
                 "processed_item_count": len(search_document_rows),
                 "structured_parse_fail_count": structured_parse_fail_count,
             },
@@ -555,7 +609,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     build_parser = subparsers.add_parser(
-        "build-index", help="Build local structured search artifacts"
+        "index", help="Build local structured search artifacts"
     )
     build_parser.add_argument("--item-id", type=int, default=None)
     build_parser.add_argument("--limit", type=int, default=None)
@@ -584,7 +638,7 @@ def build_parser() -> argparse.ArgumentParser:
     build_parser.set_defaults(func=run_build_index)
 
     refresh_parser = subparsers.add_parser(
-        "refresh-derived",
+        "refresh",
         help="Rebuild search documents from cached manifest and structured data",
     )
     refresh_parser.add_argument(
@@ -595,12 +649,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--structured-path",
         default=str(_default_output_root() / "item-structured-data.jsonl"),
     )
+    refresh_parser.add_argument(
+        "--structured-debug-path",
+        default=str(_default_output_root() / "item-structured-debug.jsonl"),
+    )
     refresh_parser.add_argument("--output-root", default=str(_default_output_root()))
     refresh_parser.set_defaults(func=run_refresh_derived)
 
-    sync_parser = subparsers.add_parser(
-        "sync-upstash", help="Upsert documents into Upstash"
-    )
+    sync_parser = subparsers.add_parser("sync", help="Upsert documents into Upstash")
     sync_parser.add_argument(
         "--documents-path",
         default=str(_default_output_root() / "item-search-documents.jsonl"),
@@ -622,9 +678,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_parser.add_argument("--metric", default=DEFAULT_INDEX_METRIC)
     sync_parser.set_defaults(func=run_sync_upstash)
 
-    query_parser = subparsers.add_parser(
-        "query-upstash", help="Query Upstash with raw text"
-    )
+    query_parser = subparsers.add_parser("query", help="Query Upstash with raw text")
     query_parser.add_argument("--q", required=True)
     query_parser.add_argument("--limit", type=int, default=20)
     query_parser.add_argument(
