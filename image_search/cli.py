@@ -148,12 +148,16 @@ def _load_record_cache(path: Path) -> dict[int, dict]:
 
 
 def _structured_record_from_payload(payload: dict[str, object]) -> StructuredItemRecord:
+    from image_search.pipeline.structured import VisionStructuredExtractor
+
+    item_type = str(payload["item_type"])
+    data = dict(payload.get("data", {}) or {})
     return StructuredItemRecord(
         item_id=int(payload["item_id"]),
-        item_type=str(payload["item_type"]),
+        item_type=item_type,
         shape=str(payload["shape"]),
         source_version=str(payload.get("source_version", "")),
-        data=dict(payload.get("data", {}) or {}),
+        data=VisionStructuredExtractor.normalize_payload(item_type, data),
         parse_error=(
             str(payload["parse_error"])
             if payload.get("parse_error") is not None

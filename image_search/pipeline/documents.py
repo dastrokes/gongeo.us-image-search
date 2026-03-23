@@ -64,15 +64,6 @@ def build_search_text(record: StructuredItemRecord) -> str:
     ornament = _item_tokens(record.data, "ornament")
     if ornament:
         lines.append(f"ornament: {', '.join(ornament)}")
-    style = _item_tokens(record.data, "style")
-    if style:
-        lines.append(f"style: {', '.join(style)}")
-    theme = _item_tokens(record.data, "theme")
-    if theme:
-        lines.append(f"theme: {', '.join(theme)}")
-    occasion = _item_tokens(record.data, "occasion")
-    if occasion:
-        lines.append(f"occasion: {', '.join(occasion)}")
 
     attribute_values = _dedupe(
         value
@@ -85,9 +76,6 @@ def build_search_text(record: StructuredItemRecord) -> str:
             "primary_color",
             "secondary_color",
             "ornament",
-            "style",
-            "theme",
-            "occasion",
         }
         for value in _flatten_values(field_value)
     )
