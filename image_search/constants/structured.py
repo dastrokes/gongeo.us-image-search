@@ -90,8 +90,8 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "neckline": _field("neckline", "scalar"),
     "shoulder_style": _field("shoulder_style", "scalar"),
     "sleeve_length": _field("sleeve_length", "scalar"),
-    "sleeve_style": _field("sleeve_style", "array"),
-    "closure_style": _field("closure_style", "array"),
+    "sleeve_style": _field("sleeve_style", "scalar"),
+    "closure_style": _field("closure_style", "scalar"),
     "hem": _field("hem", "scalar"),
     # bottoms-specific
     "skirt_silhouette": _field("skirt_silhouette", "scalar"),
@@ -114,10 +114,10 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     # socks
     "sock_height": _field("sock_height", "scalar"),
     "opacity": _field("opacity", "scalar"),
-    "trim": _field("trim", "array"),
+    "trim": _field("trim", "scalar"),
     # accessories
     "placement": _field("placement", "scalar"),
-    "attachment": _field("attachment", "array"),
+    "attachment": _field("attachment", "scalar"),
     "shape": _field("shape", "array"),
     "pairing": _field("pairing", "scalar"),
 }
@@ -186,29 +186,29 @@ _FIELD_NAMES_BY_ITEM_TYPE: dict[str, tuple[str, ...]] = {
         "category",
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
-        *_SHARED_VISUAL_FIELD_NAMES,
         *OUTERWEAR_FIELDS,
+        *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "tops": (
         "category",
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
-        *_SHARED_VISUAL_FIELD_NAMES,
         *TOP_FIELDS,
+        *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "bottoms": (
         "category",
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
-        *_SHARED_VISUAL_FIELD_NAMES,
         *BOTTOM_FIELDS,
+        *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "dresses": (
         "category",
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
-        *_SHARED_VISUAL_FIELD_NAMES,
         *DRESS_FIELDS,
+        *_SHARED_VISUAL_FIELD_NAMES,
     ),
 }
 
@@ -259,8 +259,8 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "category",
             "subcategory",
             *_SHARED_COLOR_FIELD_NAMES,
-            *_SHARED_VISUAL_FIELD_NAMES,
             *SHOE_FIELDS,
+            *_SHARED_VISUAL_FIELD_NAMES,
         ),
     ),
     "socks": StructuredShapeDefinition(
@@ -270,8 +270,8 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "category",
             "subcategory",
             *_SHARED_COLOR_FIELD_NAMES,
-            *_SHARED_VISUAL_FIELD_NAMES,
             *SOCK_FIELDS,
+            *_SHARED_VISUAL_FIELD_NAMES,
         ),
     ),
     "accessory": StructuredShapeDefinition(
@@ -281,11 +281,11 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "category",
             "subcategory",
             *_SHARED_COLOR_FIELD_NAMES,
-            *_SHARED_VISUAL_FIELD_NAMES,
             "placement",
             "attachment",
             "shape",
             "pairing",
+            *_SHARED_VISUAL_FIELD_NAMES,
         ),
     ),
 }

@@ -19,7 +19,13 @@ STRUCTURED_EXTRACTION_SYSTEM_PROMPT = (
     # Taxonomy rules
     "category is the broadest stable visible class of the item.\n"
     "subcategory must be a valid refinement of category, or null if none applies.\n"
+    "Avoid repeating the category name itself in the subcategory field.\n"
     "Never output an incompatible category/subcategory pair.\n\n"
+    # Visual fields
+    "pattern = repeated surface motif or print.\n"
+    "material = fabric or surface construction.\n"
+    "ornament = attached or applied decorative detail.\n"
+    "Do not encode the same concept in more than one field.\n\n"
     # Confidence policy
     "Prefer fewer high-confidence attributes over many uncertain ones.\n"
     "When uncertain, choose the more general label.\n"
@@ -95,7 +101,6 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "frock_coat",
             "opera_coat",
             "duffle_coat",
-            "double_breasted_coat",
             "cape_coat",
             # cape variants
             "hooded_cape",
@@ -176,7 +181,7 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "suspender_shorts",
             "ruffle_shorts",
             "tailored_shorts",
-            # --- skirts (visual constructions, not silhouette duplication) ---
+            # --- skirts visual constructions ---
             "wrap_skirt",
             "tiered_skirt",
             "layered_skirt",
@@ -218,6 +223,15 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "apron_dress",
             "coat_dress",
             "babydoll_dress",
+            # --- dress visual constructions ---
+            "wrap_dress",
+            "smocked_dress",
+            "ruched_dress",
+            "draped_dress",
+            "tiered_dress",
+            "pleated_dress",
+            "cutout_dress",
+            "corset_dress",
             "tunic_dress",
             "maid_dress",
             "empire_dress",
@@ -483,18 +497,7 @@ _SLEEVE_LENGTH_TOKENS: tuple[str, ...] = (
     "long",
     "extra_long",
 )
-_SHAFT_HEIGHT_TOKENS: tuple[str, ...] = (
-    "ankle",
-    "mid_calf",
-    "knee_high",
-    "over_knee",
-)
-_HEEL_HEIGHT_TOKENS: tuple[str, ...] = (
-    "flat",
-    "low",
-    "mid",
-    "high",
-)
+
 _SOCK_HEIGHT_TOKENS: tuple[str, ...] = (
     "ankle",
     "knee",
@@ -531,16 +534,33 @@ _COLOR_ENUM_TOKENS: tuple[str, ...] = (
 # Shared fields apply to every slot that includes the field in its schema.
 # Must not overlap with CANONICAL_ATTRIBUTE_TOKENS.
 EXAMPLE_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
-    "pattern": ("floral", "plaid", "polka_dot", "star", "gingham", "gradient"),
-    "material": ("lace", "tulle", "velvet", "sheer", "knit", "metallic"),
+    "pattern": (
+        "solid",
+        "floral",
+        "plaid",
+        "striped",
+        "polka_dot",
+        "checkered",
+        "gradient",
+    ),
+    "material": (
+        "cotton",
+        "denim",
+        "knit",
+        "lace",
+        "tulle",
+        "velvet",
+        "leather",
+        "sheer",
+    ),
     "ornament": (
         "bow",
         "ruffle",
         "embroidery",
         "pearl",
         "lace_trim",
-        "star",
-        "pleated",
+        "button_detail",
+        "buckle",
     ),
 }
 
@@ -625,27 +645,34 @@ _HEM_TOKENS: tuple[str, ...] = (
 )
 
 _UPPER_CLOSURE_STYLE_TOKENS: tuple[str, ...] = (
-    # primary front closures
+    # front fastening
     "front_button",
     "front_zipper",
     "front_toggle",
     "front_hook",
     "front_snap",
-    # primary back closures
+    # back fastening
     "back_zipper",
     "back_button",
     "back_hook",
-    # side closure
+    # side fastening
     "side_zipper",
-    # structural shaping
+    # structural fastening systems (still closures)
     "front_lace_up",
     "back_lace_up",
     "corset_back",
-    # wrap systems
-    "wrap_front",
-    # wearing mode
-    "open_front",
+    # no visible closure
     "pull_on",
+)
+_FRONT_STYLE_TOKENS: tuple[str, ...] = (
+    "single_breasted",
+    "double_breasted",
+    "wrap_front",
+    "asymmetric_front",
+    "off_center",
+    "open_front",
+    "concealed_placket",
+    "exposed_placket",
 )
 _LOWER_CLOSURE_STYLE_TOKENS: tuple[str, ...] = (
     # primary waist fastening
@@ -655,8 +682,6 @@ _LOWER_CLOSURE_STYLE_TOKENS: tuple[str, ...] = (
     # secondary closures
     "side_zipper",
     "back_zipper",
-    # wrap
-    "wrap_waist",
     # integrated waist systems (mutually exclusive bucket)
     "elastic_waist",
     "drawstring_waist",
@@ -687,13 +712,12 @@ _SKIRT_SILHOUETTE_TOKENS: tuple[str, ...] = (
     "trumpet",
     "asymmetric",
 )
-_pant_shape_TOKENS: tuple[str, ...] = (
+_PANT_SHAPE_TOKENS: tuple[str, ...] = (
     "straight",
     "slim",
     "wide_leg",
     "flared",
     "tapered",
-    "cropped",
 )
 _WAIST_HEIGHT_TOKENS: tuple[str, ...] = (
     "low_rise",
@@ -705,6 +729,10 @@ _WAISTLINE_TOKENS: tuple[str, ...] = (
     "natural_waist",
     "empire_waist",
     "drop_waist",
+    "no_waist",
+    "princess_seam",
+    "basque_waist",
+    "wrap_waist",
 )
 _HEEL_TYPE_TOKENS: tuple[str, ...] = (
     "flat",
@@ -715,11 +743,24 @@ _HEEL_TYPE_TOKENS: tuple[str, ...] = (
     "cone",
     "platform",
 )
+_HEEL_HEIGHT_TOKENS: tuple[str, ...] = (
+    "flat",
+    "low",
+    "mid",
+    "high",
+)
 _SOLE_HEIGHT_TOKENS: tuple[str, ...] = (
     "flat",
     "low_platform",
     "high_platform",
 )
+_SHAFT_HEIGHT_TOKENS: tuple[str, ...] = (
+    "ankle",
+    "mid_calf",
+    "knee_high",
+    "over_knee",
+)
+
 _HAIR_TEXTURE_TOKENS: tuple[str, ...] = (
     "straight",
     "wavy",
@@ -819,7 +860,7 @@ SLOT_EXAMPLE_ATTRIBUTE_TOKENS: dict[str, dict[str, tuple[str, ...]]] = {
     },
     "bottoms": {
         "skirt_silhouette": _SKIRT_SILHOUETTE_TOKENS,
-        "pant_shape": _pant_shape_TOKENS,
+        "pant_shape": _PANT_SHAPE_TOKENS,
         "closure_style": _LOWER_CLOSURE_STYLE_TOKENS,
         "hem": _HEM_TOKENS,
     },
@@ -910,7 +951,14 @@ def _canonical_block(slot: str, field_names: tuple[str, ...]) -> str:
         filtered_lines.append(f"  category: {', '.join(category_tokens)}")
     subcategory_tokens = CANONICAL_SUBCATEGORY_TOKENS.get(slot)
     if "subcategory" in field_names and subcategory_tokens:
-        example_lines.append(f"  subcategory examples: {', '.join(subcategory_tokens)}")
+        category_set = set(category_tokens or ())
+        filtered_subcategory = tuple(
+            t for t in subcategory_tokens if t not in category_set
+        )
+        if filtered_subcategory:
+            example_lines.append(
+                f"  subcategory: {', '.join(filtered_subcategory)} (category terms are filtered out)"
+            )
     for name in field_names:
         if name in FILTERED_CANONICAL_ATTRIBUTE_FIELDS:
             tokens = CANONICAL_ATTRIBUTE_TOKENS.get(name)
@@ -951,11 +999,6 @@ def build_extraction_user_message(
     sections: list[str] = []
     if canonical:
         sections.append(canonical)
-    slot_field_guidance = _slot_field_guidance(slot)
-    if field_guidance and slot_field_guidance:
-        field_guidance = f"{field_guidance}\n\n{slot_field_guidance}"
-    elif slot_field_guidance:
-        field_guidance = slot_field_guidance
     if field_guidance:
         sections.append(field_guidance)
     if visual_tags and visual_tags.strip():
@@ -979,16 +1022,6 @@ def get_subcategory_ancestors(subcategory: str) -> list[str]:
         current = SUBCATEGORY_HIERARCHY[current]
         ancestors.append(current)
     return ancestors
-
-
-def _slot_field_guidance(slot: str) -> str:
-    if slot != "bottoms":
-        return ""
-    return (
-        "Length guidance: use bottom_length for visible lower-body coverage only, "
-        "independent of garment type. Choose the closest coverage token from hem "
-        "or leg extent rather than a fashion-specific term."
-    )
 
 
 def _validate_slot_config() -> None:
