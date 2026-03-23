@@ -30,13 +30,7 @@ def _field(
     )
 
 
-_COLOR_ALIASES: tuple[tuple[str, str], ...] = (
-    ("grey", "gray"),
-    ("multi_color", "multicolor"),
-    ("multi_colored", "multicolor"),
-    ("multi_colour", "multicolor"),
-    ("multi_coloured", "multicolor"),
-)
+_COLOR_ALIASES: tuple[tuple[str, str], ...] = (("grey", "gray"),)
 
 GARMENT_ITEM_TYPES: tuple[str, ...] = ("outerwear", "tops", "dresses", "bottoms")
 
@@ -86,33 +80,46 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "pattern": _SHARED_VISUAL_FIELDS[0],
     "material": _SHARED_VISUAL_FIELDS[1],
     "ornament": _SHARED_VISUAL_FIELDS[2],
+    # length / height fields
+    "outerwear_length": _field("outerwear_length", "scalar"),
     "top_length": _field("top_length", "scalar"),
     "bottom_length": _field("bottom_length", "scalar"),
-    "dress_length": _field("dress_length", "scalar"),
-    "fit": _field("fit", "scalar"),
-    "dress_silhouette": _field("dress_silhouette", "scalar"),
-    "neckline": _field("neckline", "scalar"),
-    "shoulder": _field("shoulder", "scalar"),
-    "collar": _field("collar", "array"),
-    "closure": _field("closure", "array"),
-    "sleeve_length": _field("sleeve_length", "scalar"),
-    "sleeve_shape": _field("sleeve_shape", "array"),
     "hair_length": _field("hair_length", "scalar"),
+    # upper-body structure
+    "fit": _field("fit", "scalar"),
+    "neckline": _field("neckline", "scalar"),
+    "shoulder_style": _field("shoulder_style", "scalar"),
+    "sleeve_length": _field("sleeve_length", "scalar"),
+    "sleeve_style": _field("sleeve_style", "array"),
+    "closure_style": _field("closure_style", "array"),
+    "hem": _field("hem", "scalar"),
+    # bottoms-specific
+    "skirt_silhouette": _field("skirt_silhouette", "scalar"),
+    "pant_shape": _field("pant_shape", "scalar"),
+    "waist_height": _field("waist_height", "scalar"),
+    # dresses-specific
+    "dress_silhouette": _field("dress_silhouette", "scalar"),
+    "waistline": _field("waistline", "scalar"),
+    # hair
     "texture": _field("texture", "scalar"),
     "parting": _field("parting", "scalar"),
     "bangs": _field("bangs", "scalar"),
-    "hairstyle": _field("hairstyle", "array"),
     "adornment": _field("adornment", "array"),
-    "shaft_height": _field("shaft_height", "scalar"),
+    # shoes
+    "heel_type": _field("heel_type", "scalar"),
     "heel_height": _field("heel_height", "scalar"),
+    "sole_height": _field("sole_height", "scalar"),
+    "shaft_height": _field("shaft_height", "scalar"),
     "toe_shape": _field("toe_shape", "scalar"),
-    "platform": _field("platform", "scalar"),
+    # socks
     "sock_height": _field("sock_height", "scalar"),
     "opacity": _field("opacity", "scalar"),
     "trim": _field("trim", "array"),
+    # accessories
     "placement": _field("placement", "scalar"),
     "attachment": _field("attachment", "array"),
     "shape": _field("shape", "array"),
+    "pairing": _field("pairing", "scalar"),
 }
 
 _SHARED_COLOR_FIELD_NAMES: tuple[str, ...] = ("primary_color", "secondary_color")
@@ -121,14 +128,57 @@ _SHARED_VISUAL_FIELD_NAMES: tuple[str, ...] = (
     "material",
     "ornament",
 )
+# Shared upper-body structure fields (outerwear, tops, dresses)
 _UPPER_BODY_FIELD_NAMES: tuple[str, ...] = (
-    "neckline",
-    "shoulder",
-    "collar",
-    "closure",
     "fit",
+    "neckline",
+    "shoulder_style",
     "sleeve_length",
-    "sleeve_shape",
+    "sleeve_style",
+    "closure_style",
+    "hem",
+)
+
+OUTERWEAR_FIELDS: tuple[str, ...] = (
+    "outerwear_length",
+    *_UPPER_BODY_FIELD_NAMES,
+)
+TOP_FIELDS: tuple[str, ...] = (
+    "top_length",
+    *_UPPER_BODY_FIELD_NAMES,
+)
+BOTTOM_FIELDS: tuple[str, ...] = (
+    "bottom_length",
+    "skirt_silhouette",
+    "pant_shape",
+    "waist_height",
+    "closure_style",
+    "hem",
+)
+DRESS_FIELDS: tuple[str, ...] = (
+    "bottom_length",
+    "dress_silhouette",
+    "fit",
+    "waistline",
+    "neckline",
+    "shoulder_style",
+    "sleeve_length",
+    "sleeve_style",
+    "closure_style",
+    "hem",
+)
+SHOE_FIELDS: tuple[str, ...] = (
+    "heel_type",
+    "heel_height",
+    "sole_height",
+    "shaft_height",
+    "toe_shape",
+    "closure_style",
+)
+SOCK_FIELDS: tuple[str, ...] = (
+    "sock_height",
+    "opacity",
+    "trim",
 )
 
 _FIELD_NAMES_BY_ITEM_TYPE: dict[str, tuple[str, ...]] = {
@@ -137,34 +187,28 @@ _FIELD_NAMES_BY_ITEM_TYPE: dict[str, tuple[str, ...]] = {
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
         *_SHARED_VISUAL_FIELD_NAMES,
-        "top_length",
-        *_UPPER_BODY_FIELD_NAMES,
+        *OUTERWEAR_FIELDS,
     ),
     "tops": (
         "category",
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
         *_SHARED_VISUAL_FIELD_NAMES,
-        "top_length",
-        *_UPPER_BODY_FIELD_NAMES,
+        *TOP_FIELDS,
     ),
     "bottoms": (
         "category",
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
         *_SHARED_VISUAL_FIELD_NAMES,
-        "bottom_length",
-        "closure",
-        "fit",
+        *BOTTOM_FIELDS,
     ),
     "dresses": (
         "category",
         "subcategory",
         *_SHARED_COLOR_FIELD_NAMES,
         *_SHARED_VISUAL_FIELD_NAMES,
-        "dress_length",
-        "dress_silhouette",
-        *_UPPER_BODY_FIELD_NAMES,
+        *DRESS_FIELDS,
     ),
 }
 
@@ -205,7 +249,6 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "texture",
             "parting",
             "bangs",
-            "hairstyle",
             "adornment",
         ),
     ),
@@ -217,11 +260,7 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "subcategory",
             *_SHARED_COLOR_FIELD_NAMES,
             *_SHARED_VISUAL_FIELD_NAMES,
-            "shaft_height",
-            "heel_height",
-            "toe_shape",
-            "platform",
-            "closure",
+            *SHOE_FIELDS,
         ),
     ),
     "socks": StructuredShapeDefinition(
@@ -232,9 +271,7 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "subcategory",
             *_SHARED_COLOR_FIELD_NAMES,
             *_SHARED_VISUAL_FIELD_NAMES,
-            "sock_height",
-            "opacity",
-            "trim",
+            *SOCK_FIELDS,
         ),
     ),
     "accessory": StructuredShapeDefinition(
@@ -248,6 +285,7 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "placement",
             "attachment",
             "shape",
+            "pairing",
         ),
     ),
 }

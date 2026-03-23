@@ -36,7 +36,7 @@ It produces:
 pip install -r requirements.txt
 ```
 
-Default extraction uses `Qwen/Qwen3-VL-4B-Instruct`. The pinned `transformers==4.57.6` dependency includes `Qwen3VLForConditionalGeneration`.
+Default extraction uses `Qwen/Qwen3-VL-8B-Instruct`.
 
 ## Environment
 

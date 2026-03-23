@@ -6,17 +6,21 @@ from image_search.constants.structured import (
 )
 
 STRUCTURED_EXTRACTION_SYSTEM_PROMPT = (
-    "You are a deterministic structured extraction engine for Infinity Nikki items.\n"
-    "Output exactly one JSON object. No markdown, no code fences, no prose.\n"
-    "Use only the schema keys exactly as written; do not add, rename, or omit keys.\n"
+    "You are a deterministic structured extraction engine for Infinity Nikki items.\n\n"
+    # Output format
+    "Output exactly one raw JSON object. No markdown, no code fences, no prose.\n"
+    "Use schema keys exactly as written; do not add, rename, or omit keys.\n\n"
+    # Value constraints
     "All non-null values must be short lowercase underscore_tokens.\n"
-    "Scalar fields must be one token or null. Array fields must contain zero or more unique tokens, or [].\n"
-    "Describe only the target item from the provided images using directly visible evidence only.\n"
-    "Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n"
+    "Scalar fields: one token or null. Array fields: zero or more unique tokens, or [].\n\n"
+    # Evidence scope
+    "Describe only the target item using directly visible evidence from the provided images.\n"
+    "Do not infer or describe hidden, back-side, off-frame, gameplay, or lore details.\n\n"
+    # Taxonomy rules
     "category is the broadest stable visible class of the item.\n"
-    "subcategory is a narrower visible refinement of category, or null if no valid refinement is visible.\n"
-    "Never use the slot name as category or subcategory.\n"
-    "Never encode the same concept in more than one field or output an incompatible category/subcategory pair.\n"
+    "subcategory must be a valid refinement of category, or null if none applies.\n"
+    "Never output an incompatible category/subcategory pair.\n\n"
+    # Confidence policy
     "Prefer fewer high-confidence attributes over many uncertain ones.\n"
     "When uncertain, choose the more general label.\n"
     "If a field is unclear or inapplicable, output null or [].\n"
@@ -74,36 +78,44 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "stole",
         ),
         "subcategory_tokens": (
-            # jacket variants — blazer/bolero/shrug are cropped or tailored
+            # jacket variants
             "blazer",
             "bolero",
             "shrug",
-            "cropped_jacket",
-            "lace_jacket",
-            "leather_jacket",
-            "haori",
             "windbreaker",
+            "bomber_jacket",
+            "puffer_jacket",
+            "military_jacket",
             # coat variants
             "trench_coat",
             "fur_coat",
             "pea_coat",
             "duster_coat",
             "tailcoat",
-            # cape variants — cloak/poncho are structural cape silhouettes
+            "frock_coat",
+            "opera_coat",
+            "duffle_coat",
+            "double_breasted_coat",
+            "cape_coat",
+            # cape variants
             "hooded_cape",
             "capelet",
             "mantle",
             "cloak",
             "poncho",
-            # robe variants — kimono is a robe-silhouette outerwear
-            "kimono",
+            "cape_jacket",
+            # cardigan / robe variants
+            "long_cardigan",
+            # Chinese outer-layer forms
+            "beizi",
+            "pifeng",
+            "zhaoshan",
+            "daxiushan",
         ),
     },
     "tops": {
         "category_tokens": (
             # Distinct garment types by structure and silhouette
-            # crop_top/halter_top are length/neckline modifiers, not garment types
-            # bustier is a boned bodice variant of corset
             "blouse",
             "shirt",
             "sweater",
@@ -115,80 +127,87 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "bodysuit",
         ),
         "subcategory_tokens": (
-            # length and neckline modifiers
-            "crop_top",
-            "halter_top",
-            "off_shoulder_top",
-            "bardot_top",
             # structural cut variants
             "wrap_top",
             "smock_top",
-            # corset/bodice variants
+            "peplum_top",
+            # corset / bodice variants
             "bustier",
-            # blouse variants
-            "puff_sleeve_blouse",
+            # shirt / blouse variants
             "sailor_blouse",
-            "ruffled_blouse",
-            # sweater variants
-            "knit_sweater",
-            "turtleneck_sweater",
+            "polo_shirt",
+            "henley_shirt",
+            "peasant_blouse",
+            "milkmaid_top",
+            "school_uniform_blouse",
+            "maid_blouse",
+            "officer_shirt",
+            # knit / layered forms with stable shape
+            "sweater_top",
+            "cardigan_top",
+            "sweater_vest",
+            "vest_top",
         ),
     },
     "bottoms": {
         "category_tokens": (
             # Fundamental lower-body silhouette types
-            # bloomers/culottes/harem_pants/palazzo are pants variants
             "skirt",
             "pants",
             "shorts",
             "leggings",
             "overalls",
-            "hakama",
             "skort",
         ),
         "subcategory_tokens": (
-            # pants variants
+            # --- pants / structured lowers ---
             "bloomers",
             "culottes",
             "harem_pants",
             "palazzo_pants",
-            "wide_leg_pants",
-            "straight_leg_pants",
+            "jodhpurs",
             "tapered_pants",
-            "cropped_pants",
-            # skirt variants by cut — length is handled by skirt_length field
-            "pleated_skirt",
-            "tiered_skirt",
-            "bubble_skirt",
-            "circle_skirt",
-            "pencil_skirt",
+            "straight_leg_pants",
+            "wide_leg_pants",
+            "flare_pants",
+            "cargo_pants",
+            # --- shorts ---
+            "bermuda_shorts",
+            "suspender_shorts",
+            "ruffle_shorts",
+            "tailored_shorts",
+            # --- skirts (visual constructions, not silhouette duplication) ---
             "wrap_skirt",
-            "gathered_skirt",
+            "tiered_skirt",
             "layered_skirt",
-            "a_line_skirt",
+            "pleated_skirt",
+            "bubble_skirt",
+            "pencil_skirt",
+            # --- hybrids / special ---
+            "sarong",
+            # Chinese lower-body forms
+            "ma_mian_skirt",
+            "bijia_skirt",
         ),
     },
     "dresses": {
         "category_tokens": (
-            # dress: all one-piece skirted garments
-            # jumpsuit: one-piece with legs, kept here until a dedicated slot exists
+            # dress: one-piece skirted garments
+            # jumpsuit: one-piece with legs
             "dress",
             "jumpsuit",
             "onesie",
         ),
         "subcategory_tokens": (
-            # jumpsuit variants — romper/playsuit are short
+            # jumpsuit variants
             "romper",
             "playsuit",
-            # dress variants — keep garment types here; silhouette-like cuts belong
-            # in dress_silhouette instead
+            # dress variants with stable or highly recognizable form
             "gown",
             "sundress",
             "kaftan",
             "chemise",
             "qipao",
-            "hanbok",
-            "yukata",
             "pinafore_dress",
             "overall_dress",
             "shirt_dress",
@@ -196,12 +215,25 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "lolita_dress",
             "sweater_dress",
             "sailor_dress",
+            "apron_dress",
+            "coat_dress",
+            "babydoll_dress",
+            "tunic_dress",
+            "maid_dress",
+            "empire_dress",
+            "drop_waist_dress",
+            # Chinese one-piece forms
+            "hanfu",
+            "ruqun",
+            "shenyi",
+            "qiyao_ruqun",
+            "panxi_ruqun",
+            "duijin_dress",
         ),
     },
     "hair": {
         "category_tokens": (
-            # Organised by style silhouette, not length
-            # Length is a separate attribute field (hair_length)
+            # Organized by visible arrangement, not length
             "loose",
             "ponytail",
             "twin_tails",
@@ -212,7 +244,7 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "bob",
         ),
         "subcategory_tokens": (
-            # ponytail variants by position
+            # ponytail variants
             "high_ponytail",
             "low_ponytail",
             "side_ponytail",
@@ -221,24 +253,28 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "top_knot",
             "side_bun",
             "chignon",
-            "odango",
+            "braided_bun",
             # braid variants
             "twin_braids",
             "french_braid",
             "fishtail_braid",
-            # twin_tails variants
-            "pigtails",
-            # style-specific
-            "drill_hair",
-            "hime_cut",
-            "curled_bob",
+            "side_braid",
+            "crown_braid",
+            # half-up variants
+            "half_up_bun",
+            "half_up_ponytail",
+            # conditional fixed-form styles
+            "drill_tails",
+            # Chinese hair arrangements
+            "ji_hair",
+            "liangbatou",
+            "double_ring_bun",
+            "flying_immortal_bun",
         ),
     },
     "shoes": {
         "category_tokens": (
-            # Fundamental footwear types by sole/structure
-            # pumps = heel variant; mary_janes = flat variant
-            # platform is a modifier, not a shoe type
+            # Fundamental footwear types by structure
             "boots",
             "heels",
             "sandals",
@@ -250,77 +286,71 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "slippers",
         ),
         "subcategory_tokens": (
-            # boot variants by shaft height
-            "ankle_boots",
-            "knee_boots",
-            "over_knee_boots",
-            "thigh_boots",
-            "platform_boots",
-            # heel variants by shape
+            # named shoe forms
             "pumps",
-            "stiletto_heels",
-            "block_heels",
-            "kitten_heels",
-            "wedge_heels",
-            "platform_heels",
-            "t_strap_heels",
-            # flat variants
             "mary_janes",
             "ballet_flats",
             "lace_up_flats",
-            # cultural footwear with distinct silhouette
-            "geta",
-            "zori",
+            # heel / sandal forms with stable recognizable construction
+            "t_strap_heels",
+            "ankle_strap_heels",
+            "slingback_heels",
+            "dorsay_heels",
+            "gladiator_sandals",
+            "platform_sandals",
+            # boot forms
+            "cowboy_boots",
+            "combat_boots",
+            "riding_boots",
+            # Chinese traditional footwear
+            "embroidered_shoes",
+            "cloud_tip_shoes",
+            "silk_platform_shoes",
         ),
     },
     "socks": {
         "category_tokens": (
             # Fundamental legwear types by construction
-            # thigh_highs = stockings variant; pantyhose = tights variant
-            # height-specific socks (ankle/knee/over_knee) are length modifiers
             "socks",
             "stockings",
             "tights",
             "leg_warmers",
         ),
         "subcategory_tokens": (
-            # socks by height
-            "ankle_socks",
-            "knee_socks",
-            "over_knee_socks",
-            # stockings variants
-            "thigh_highs",
-            "lace_stockings",
+            # structurally distinct / high-signal variants
             "garter_stockings",
-            # tights variants
+            "lace_stockings",
             "pantyhose",
             "fishnet_tights",
             "sheer_tights",
             "printed_tights",
-            # detail variants
-            "ruffled_socks",
             "ribbed_socks",
+            "ruffled_socks",
         ),
     },
     "accessory": {
         "category_tokens": (
-            # Visually distinct object forms
-            # Items with unique silhouettes must be listed explicitly
-            # or the model will default to a generic nearby token
+            # Broad accessory slot; visually distinct forms only
             "headband",
             "bow",
             "ribbon",
             "flower",
             "clip",
+            "hairpin",
+            "hairclip",
             "hat",
             "bonnet",
+            "beret",
             "crown",
             "tiara",
             "veil",
             "mask",
+            "monocle",
+            "eyepatch",
+            "goggles",
             "earring",
+            "ear_cuff",
             "necklace",
-            "pendant",
             "choker",
             "collar",
             "brooch",
@@ -328,6 +358,7 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "cuff",
             "ring",
             "armlet",
+            "anklet",
             "gloves",
             "scarf",
             "fan",
@@ -339,14 +370,17 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "wings",
             "pin",
             "badge",
+            "headpiece",
+            "headdress",
+            "corsage",
+            "cape_pin",
         ),
         "subcategory_tokens": (),
     },
     "pendants": {
         "category_tokens": (
-            # Decorative hanging/attached items
-            # Bags retained here until a dedicated bags slot is added
-            # garter refers to decorative leg garter pieces, not legwear
+            # Game-specific mixed slot; intentionally includes hanging ornaments,
+            # decorative garters, and bag-like accessories
             "pendant",
             "locket",
             "charm",
@@ -354,7 +388,13 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
             "tassel",
             "keychain",
             "garter",
+            "leg_garter",
+            "thigh_garter",
             "bag",
+            "handbag",
+            "mini_bag",
+            "pouch",
+            "belt_bag",
             "crossbody_bag",
             "shoulder_bag",
             "satchel",
@@ -364,60 +404,29 @@ _SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
 }
 
 
-def _validate_slot_config() -> None:
-    slot_meta_keys = set(_SLOT_META)
-    slot_spec_keys = set(_SLOT_SPECS)
-    if slot_meta_keys != slot_spec_keys:
-        missing_specs = sorted(slot_meta_keys - slot_spec_keys)
-        missing_meta = sorted(slot_spec_keys - slot_meta_keys)
-        raise RuntimeError(
-            "slot config mismatch: "
-            f"missing specs={missing_specs}, missing meta={missing_meta}"
-        )
+SUBCATEGORY_HIERARCHY: dict[str, str] = {
+    # "platform_boots": "boots",
+}
 
+TOKEN_ALIASES: dict[str, str] = {
+    # "tee": "shirt",
+}
 
-_validate_slot_config()
-
-
-def _format_token_list(tokens: tuple[str, ...]) -> str:
-    if not tokens:
-        return ""
-    if len(tokens) == 1:
-        return tokens[0]
-    if len(tokens) == 2:
-        return f"{tokens[0]} or {tokens[1]}"
-    return f"{', '.join(tokens[:-1])}, or {tokens[-1]}"
-
-
-def _build_slot_guidance(
-    slot: str,
-    *,
-    category_tokens: tuple[str, ...],
-    subcategory_tokens: tuple[str, ...],
-) -> dict[str, str]:
-    preamble = _SLOT_CATEGORY_PREAMBLES.get(slot)
-    category_parts = []
-    if preamble:
-        category_parts.append(preamble)
-    category_parts.append(
-        f"{_SLOT_CATEGORY_PREFIXES[slot]}: {_format_token_list(category_tokens)}."
-    )
-    subcategory = _SLOT_SUBCATEGORY_PREFIXES[slot]
-    if subcategory_tokens:
-        preview = _format_token_list(subcategory_tokens[:3])
-        subcategory = f"{subcategory} Examples include {preview}."
-    else:
-        subcategory = str(subcategory)
-    if slot in _GARMENT_SLOTS:
-        subcategory = (
-            f"{subcategory} Garment rule: always output a non-null subcategory token. "
-        )
-    else:
-        subcategory = f"{subcategory} Null if unclear."
-    return {
-        "category": " ".join(category_parts),
-        "subcategory": subcategory,
+FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
+    {
+        "outerwear_length",
+        "top_length",
+        "bottom_length",
+        "hair_length",
+        "sleeve_length",
+        "shaft_height",
+        "heel_height",
+        "sole_height",
+        "sock_height",
+        "waist_height",
+        "pairing",
     }
+)
 
 
 CANONICAL_CATEGORY_TOKENS: dict[str, tuple[str, ...]] = {
@@ -435,23 +444,62 @@ CANONICAL_SUBCATEGORY_TOKENS: dict[str, tuple[str, ...]] = {
     slot: spec["subcategory_tokens"] for slot, spec in _SLOT_SPECS.items()
 }
 
-SLOT_GUIDANCE: dict[str, dict[str, str]] = {
-    slot: _build_slot_guidance(
-        slot,
-        category_tokens=CANONICAL_CATEGORY_TOKENS[slot],
-        subcategory_tokens=CANONICAL_SUBCATEGORY_TOKENS[slot],
-    )
-    for slot in _SLOT_SPECS
-}
-
-_BOTTOMS_LENGTH_TOKENS: tuple[str, ...] = (
-    "micro",
+_UPPER_LENGTH_TOKENS: tuple[str, ...] = (
+    "ultra_crop",
+    "crop",
+    "waist_length",
+    "hip_length",
     "upper_thigh",
     "mid_thigh",
     "knee_length",
-    "mid_calf",
+    "midi",
+    "maxi",
     "ankle_length",
     "floor_length",
+)
+_LOWER_LENGTH_TOKENS: tuple[str, ...] = (
+    "micro",
+    "mini",
+    "upper_thigh",
+    "mid_thigh",
+    "knee_length",
+    "midi",
+    "maxi",
+    "ankle_length",
+    "floor_length",
+)
+_HAIR_LENGTH_TOKENS: tuple[str, ...] = (
+    "short",
+    "medium",
+    "long",
+    "very_long",
+)
+_SLEEVE_LENGTH_TOKENS: tuple[str, ...] = (
+    "sleeveless",
+    "cap",
+    "short",
+    "elbow",
+    "three_quarter",
+    "long",
+    "extra_long",
+)
+_SHAFT_HEIGHT_TOKENS: tuple[str, ...] = (
+    "ankle",
+    "mid_calf",
+    "knee_high",
+    "over_knee",
+)
+_HEEL_HEIGHT_TOKENS: tuple[str, ...] = (
+    "flat",
+    "low",
+    "mid",
+    "high",
+)
+_SOCK_HEIGHT_TOKENS: tuple[str, ...] = (
+    "ankle",
+    "knee",
+    "over_knee",
+    "thigh_high",
 )
 
 _COLOR_ENUM_TOKENS: tuple[str, ...] = (
@@ -479,90 +527,45 @@ _COLOR_ENUM_TOKENS: tuple[str, ...] = (
     "rose_gold",
 )
 
-# Closed-list fields only — model must pick from these tokens exclusively.
-# Contains only fields present in FILTERED_CANONICAL_ATTRIBUTE_FIELDS
-# plus genuinely closed enumerations (colors).
-# Must not overlap with EXAMPLE_ATTRIBUTE_TOKENS.
-CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
-    # garment length fields (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
-    "top_length": (
-        "ultra_crop",
-        "crop",
-        "waist_length",
-        "hip_length",
-        "thigh_length",
-        "knee_length",
-        "ankle_length",
-        "floor_length",
-    ),
-    "bottom_length": _BOTTOMS_LENGTH_TOKENS,
-    "dress_length": (
-        "mini",
-        "knee_length",
-        "midi",
-        "maxi",
-        "ankle_length",
-        "floor_length",
-    ),
-    "hair_length": (
-        "short",
-        "medium",
-        "long",
-        "very_long",
-    ),
-    # sleeve length (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
-    "sleeve_length": (
-        "sleeveless",
-        "cap",
-        "short",
-        "elbow",
-        "three_quarter",
-        "long",
-        "extra_long",
-    ),
-    # shoe/boot measurement fields (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
-    "shaft_height": (
-        "ankle",
-        "mid_calf",
-        "knee_high",
-        "over_knee",
-    ),
-    "heel_height": (
-        "flat",
-        "low",
-        "mid",
-        "high",
-    ),
-    # legwear measurement field (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
-    "sock_height": (
-        "ankle",
-        "knee",
-        "over_knee",
-        "thigh_high",
-    ),
-    # color enumerations (genuinely closed)
-    "primary_color": _COLOR_ENUM_TOKENS,
-    "secondary_color": _COLOR_ENUM_TOKENS,
-}
-
 # Illustrative examples only — not exhaustive, model may go beyond these.
 # Shared fields apply to every slot that includes the field in its schema.
 # Must not overlap with CANONICAL_ATTRIBUTE_TOKENS.
 EXAMPLE_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
     "pattern": ("floral", "plaid", "polka_dot", "star", "gingham", "gradient"),
     "material": ("lace", "tulle", "velvet", "sheer", "knit", "metallic"),
-    "ornament": ("bow", "ruffle", "embroidery", "pearl", "lace_trim", "star", "pleated"),
+    "ornament": (
+        "bow",
+        "ruffle",
+        "embroidery",
+        "pearl",
+        "lace_trim",
+        "star",
+        "pleated",
+    ),
 }
 
-_UPPER_BODY_NECKLINE_TOKENS: tuple[str, ...] = (
-    "sweetheart",
+_NECKLINE_TOKENS: tuple[str, ...] = (
+    "crew_neck",
     "v_neck",
-    "high_neck",
     "square_neck",
-    "scoop_neck",
+    "sweetheart_neck",
     "boat_neck",
+    "scoop_neck",
+    "keyhole_neck",
+    "halter_neck",
+    "turtleneck",
+    "mock_neck",
+    "collared",
+    # collar variants folded into neckline
+    "peter_pan_collar",
+    "sailor_collar",
+    "mandarin_collar",
+    # Chinese neckline forms
+    "cross_collar",
+    "right_cross_collar",
+    "duijin_collar",
 )
-_UPPER_BODY_SHOULDER_TOKENS: tuple[str, ...] = (
+_SHOULDER_STYLE_TOKENS: tuple[str, ...] = (
     "off_shoulder",
     "one_shoulder",
     "cold_shoulder",
@@ -570,147 +573,296 @@ _UPPER_BODY_SHOULDER_TOKENS: tuple[str, ...] = (
     "strapless",
 )
 _GARMENT_FIT_TOKENS: tuple[str, ...] = (
-    "oversized",
-    "relaxed",
-    "regular",
-    "tailored",
-    "slim",
+    "bodycon",
     "fitted",
+    "slim",
+    "tailored",
+    "regular",
+    "relaxed",
+    "loose",
+    "oversized",
 )
-_UPPER_BODY_COLLAR_TOKENS: tuple[str, ...] = (
-    "peter_pan",
-    "sailor",
-    "mandarin",
-    "lace_collar",
-    "bertha_collar",
-    "ruffle_collar",
+_SLEEVE_STYLE_TOKENS: tuple[str, ...] = (
+    # --- construction (very distinct) ---
+    "raglan_sleeve",
+    "dolman_sleeve",
+    # --- volume / shape (core set) ---
+    "puff_sleeve",
+    "bishop_sleeve",
+    "bell_sleeve",
+    "flare_sleeve",
+    # --- structure / notable design ---
+    "slit_sleeve",
+    "split_sleeve",
+    "detached_sleeves",
+    # --- shoulder-specific ---
+    "cap_sleeve",
+    # --- Chinese traditional sleeve forms ---
+    "shuixiu_sleeve",
+    "daxiu_sleeve",
+    "pipa_sleeve",
+    "zhishou_sleeve",
 )
-_UPPER_BODY_SLEEVE_SHAPE_TOKENS: tuple[str, ...] = (
-    "puff",
-    "bell",
-    "bishop",
-    "flutter",
-    "detached",
+_HEM_TOKENS: tuple[str, ...] = (
+    # basic structure
+    "straight_hem",
+    "curved_hem",
+    "asymmetrical_hem",
+    "high_low_hem",
+    # decorative edges
+    "scalloped_hem",
+    "ruffled_hem",
+    "frilled_hem",
+    "pleated_hem",
+    # layered / volume
+    "tiered_hem",
+    "layered_hem",
+    # pants-specific finishes
+    "cuffed_hem",
+    "rolled_hem",
+    "split_hem",
+    "flared_hem",
 )
 
-_OUTERWEAR_CLOSURE_TOKENS: tuple[str, ...] = (
-    "button_front",
-    "zipper_front",
-    "toggle_front",
-    "belted",
+_UPPER_CLOSURE_STYLE_TOKENS: tuple[str, ...] = (
+    # primary front closures
+    "front_button",
+    "front_zipper",
+    "front_toggle",
+    "front_hook",
+    "front_snap",
+    # primary back closures
+    "back_zipper",
+    "back_button",
+    "back_hook",
+    # side closure
+    "side_zipper",
+    # structural shaping
+    "front_lace_up",
+    "back_lace_up",
+    "corset_back",
+    # wrap systems
+    "wrap_front",
+    # wearing mode
     "open_front",
+    "pull_on",
 )
-_TOP_CLOSURE_TOKENS: tuple[str, ...] = (
-    "button_front",
-    "zipper_back",
-    "lace_up",
-    "tie_front",
-    "corset_lacing",
-)
-_BOTTOM_CLOSURE_TOKENS: tuple[str, ...] = (
+_LOWER_CLOSURE_STYLE_TOKENS: tuple[str, ...] = (
+    # primary waist fastening
+    "fly_zipper",
+    "fly_button",
+    "fly_hook",
+    # secondary closures
+    "side_zipper",
+    "back_zipper",
+    # wrap
+    "wrap_waist",
+    # integrated waist systems (mutually exclusive bucket)
     "elastic_waist",
     "drawstring_waist",
-    "button_fly",
-    "zip_fly",
-    "side_zip",
+    "belted_waist",
+    # no closure
+    "pull_on",
 )
-_DRESS_CLOSURE_TOKENS: tuple[str, ...] = (
-    "zipper_back",
-    "button_front",
-    "lace_up_back",
-    "wrap_tie",
-    "corset_lacing",
+
+_DRESS_SILHOUETTE_TOKENS: tuple[str, ...] = (
+    "shift",
+    "sheath",
+    "a_line",
+    "fit_and_flare",
+    "trumpet",
+    "mermaid",
+    "trapeze",
+    "balloon",
+    "tiered",
 )
-_SHOE_CLOSURE_TOKENS: tuple[str, ...] = (
-    "lace_up",
-    "buckle_strap",
-    "ankle_strap",
-    "slip_on",
-    "zipper_side",
+_SKIRT_SILHOUETTE_TOKENS: tuple[str, ...] = (
+    "straight",
+    "a_line",
+    "circle",
+    "pencil",
+    "pleated",
+    "tiered",
+    "bubble",
+    "trumpet",
+    "asymmetric",
 )
+_pant_shape_TOKENS: tuple[str, ...] = (
+    "straight",
+    "slim",
+    "wide_leg",
+    "flared",
+    "tapered",
+    "cropped",
+)
+_WAIST_HEIGHT_TOKENS: tuple[str, ...] = (
+    "low_rise",
+    "mid_rise",
+    "high_rise",
+    "ultra_high_rise",
+)
+_WAISTLINE_TOKENS: tuple[str, ...] = (
+    "natural_waist",
+    "empire_waist",
+    "drop_waist",
+)
+_HEEL_TYPE_TOKENS: tuple[str, ...] = (
+    "flat",
+    "block",
+    "stiletto",
+    "kitten",
+    "wedge",
+    "cone",
+    "platform",
+)
+_SOLE_HEIGHT_TOKENS: tuple[str, ...] = (
+    "flat",
+    "low_platform",
+    "high_platform",
+)
+_HAIR_TEXTURE_TOKENS: tuple[str, ...] = (
+    "straight",
+    "wavy",
+    "curly",
+    "coiled",
+    "drill",
+)
+_HAIR_PARTING_TOKENS: tuple[str, ...] = ("center_part", "side_part", "no_part")
+_HAIR_BANGS_TOKENS: tuple[str, ...] = (
+    "no_bangs",
+    "blunt_bangs",
+    "side_swept_bangs",
+    "curtain_bangs",
+    "wispy_bangs",
+)
+_HAIR_ADORNMENT_TOKENS: tuple[str, ...] = ("bow", "ribbon", "flower", "clip", "pin")
+_SHOE_TOE_SHAPE_TOKENS: tuple[str, ...] = (
+    "round_toe",
+    "almond_toe",
+    "pointed_toe",
+    "square_toe",
+)
+_SOCK_OPACITY_TOKENS: tuple[str, ...] = ("sheer", "semi_sheer", "opaque")
+_SOCK_TRIM_TOKENS: tuple[str, ...] = ("lace_trim", "ruffle_trim", "ribbed_trim")
+_ACCESSORY_PLACEMENT_TOKENS: tuple[str, ...] = (
+    "head",
+    "neck",
+    "chest",
+    "waist",
+    "back",
+    "arm",
+    "hand",
+    "leg",
+)
+_ACCESSORY_ATTACHMENT_TOKENS: tuple[str, ...] = (
+    "clip_on",
+    "tie_on",
+    "wrap",
+    "dangle",
+    "pin_on",
+)
+_ACCESSORY_SHAPE_TOKENS: tuple[str, ...] = (
+    "heart",
+    "star",
+    "flower",
+    "cross",
+    "wing",
+    "moon",
+)
+_PAIRING_TOKENS: tuple[str, ...] = ("single", "pair")
+
+# Closed-list fields only — model must pick from these tokens exclusively.
+# Contains only fields present in FILTERED_CANONICAL_ATTRIBUTE_FIELDS
+# plus genuinely closed enumerations (colors).
+# Must not overlap with EXAMPLE_ATTRIBUTE_TOKENS.
+CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
+    # garment length fields (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
+    "outerwear_length": _UPPER_LENGTH_TOKENS,
+    "top_length": _UPPER_LENGTH_TOKENS,
+    "bottom_length": _LOWER_LENGTH_TOKENS,
+    "hair_length": _HAIR_LENGTH_TOKENS,
+    # sleeve length (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
+    "sleeve_length": _SLEEVE_LENGTH_TOKENS,
+    # shoe/boot measurement fields (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
+    "shaft_height": _SHAFT_HEIGHT_TOKENS,
+    "heel_height": _HEEL_HEIGHT_TOKENS,
+    "sole_height": _SOLE_HEIGHT_TOKENS,
+    # legwear measurement field (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
+    "sock_height": _SOCK_HEIGHT_TOKENS,
+    "opacity": _SOCK_OPACITY_TOKENS,
+    # closed enumerations
+    "waistline": _WAISTLINE_TOKENS,
+    "waist_height": _WAIST_HEIGHT_TOKENS,
+    # color enumerations (genuinely closed)
+    "primary_color": _COLOR_ENUM_TOKENS,
+    "secondary_color": _COLOR_ENUM_TOKENS,
+    "pairing": _PAIRING_TOKENS,
+}
+
 
 SLOT_EXAMPLE_ATTRIBUTE_TOKENS: dict[str, dict[str, tuple[str, ...]]] = {
     "outerwear": {
-        "neckline": _UPPER_BODY_NECKLINE_TOKENS,
         "fit": _GARMENT_FIT_TOKENS,
-        "shoulder": _UPPER_BODY_SHOULDER_TOKENS,
-        "collar": _UPPER_BODY_COLLAR_TOKENS,
-        "closure": _OUTERWEAR_CLOSURE_TOKENS,
-        "sleeve_shape": _UPPER_BODY_SLEEVE_SHAPE_TOKENS,
+        "neckline": _NECKLINE_TOKENS,
+        "shoulder_style": _SHOULDER_STYLE_TOKENS,
+        "sleeve_style": _SLEEVE_STYLE_TOKENS,
+        "closure_style": _UPPER_CLOSURE_STYLE_TOKENS,
+        "hem": _HEM_TOKENS,
     },
     "tops": {
         "fit": _GARMENT_FIT_TOKENS,
-        "neckline": _UPPER_BODY_NECKLINE_TOKENS,
-        "shoulder": _UPPER_BODY_SHOULDER_TOKENS,
-        "collar": _UPPER_BODY_COLLAR_TOKENS,
-        "closure": _TOP_CLOSURE_TOKENS,
-        "sleeve_shape": _UPPER_BODY_SLEEVE_SHAPE_TOKENS,
+        "neckline": _NECKLINE_TOKENS,
+        "shoulder_style": _SHOULDER_STYLE_TOKENS,
+        "sleeve_style": _SLEEVE_STYLE_TOKENS,
+        "closure_style": _UPPER_CLOSURE_STYLE_TOKENS,
+        "hem": _HEM_TOKENS,
     },
     "bottoms": {
-        "fit": _GARMENT_FIT_TOKENS,
-        "closure": _BOTTOM_CLOSURE_TOKENS,
+        "skirt_silhouette": _SKIRT_SILHOUETTE_TOKENS,
+        "pant_shape": _pant_shape_TOKENS,
+        "closure_style": _LOWER_CLOSURE_STYLE_TOKENS,
+        "hem": _HEM_TOKENS,
     },
     "dresses": {
-        "dress_silhouette": (
-            # straight/minimal shaping
-            "shift",
-            "fitted",
-            # flared — ordered by where the flare originates
-            "a_line",
-            "fit_and_flare",
-            "trumpet",
-            "mermaid",
-            # waist-defined
-            "empire",
-            "wrap",
-            # volume-based
-            "tiered",
-            "balloon",
-            "trapeze",
-        ),
-        "neckline": _UPPER_BODY_NECKLINE_TOKENS,
-        "shoulder": _UPPER_BODY_SHOULDER_TOKENS,
-        "collar": _UPPER_BODY_COLLAR_TOKENS,
-        "closure": _DRESS_CLOSURE_TOKENS,
-        "sleeve_shape": _UPPER_BODY_SLEEVE_SHAPE_TOKENS,
+        "dress_silhouette": _DRESS_SILHOUETTE_TOKENS,
+        "fit": _GARMENT_FIT_TOKENS,
+        "waistline": _WAISTLINE_TOKENS,
+        "neckline": _NECKLINE_TOKENS,
+        "shoulder_style": _SHOULDER_STYLE_TOKENS,
+        "sleeve_style": _SLEEVE_STYLE_TOKENS,
+        "closure_style": _UPPER_CLOSURE_STYLE_TOKENS,
+        "hem": _HEM_TOKENS,
     },
     "hair": {
-        "texture": ("straight", "wavy", "curly"),
-        "parting": ("center_part", "side_part", "no_part"),
-        "bangs": ("blunt_bangs", "side_swept_bangs", "curtain_bangs"),
-        "hairstyle": (
-            "high_ponytail",
-            "side_ponytail",
-            "twin_braids",
-            "space_buns",
-            "half_up",
-        ),
-        "adornment": ("bow", "ribbon", "flower", "clip", "pin"),
+        "texture": _HAIR_TEXTURE_TOKENS,
+        "parting": _HAIR_PARTING_TOKENS,
+        "bangs": _HAIR_BANGS_TOKENS,
+        "adornment": _HAIR_ADORNMENT_TOKENS,
     },
     "shoes": {
-        "toe_shape": ("round_toe", "almond_toe", "pointed_toe", "square_toe"),
-        "platform": ("none", "low_platform", "high_platform"),
-        "closure": _SHOE_CLOSURE_TOKENS,
+        "heel_type": _HEEL_TYPE_TOKENS,
+        "toe_shape": _SHOE_TOE_SHAPE_TOKENS,
+        "closure_style": _LOWER_CLOSURE_STYLE_TOKENS,
     },
     "socks": {
-        "opacity": ("sheer", "semi_sheer", "opaque"),
-        "trim": ("lace_trim", "ruffle_trim", "ribbed_trim"),
+        "opacity": _SOCK_OPACITY_TOKENS,
+        "trim": _SOCK_TRIM_TOKENS,
     },
     "accessory": {
-        "placement": (
-            "head",
-            "neck",
-            "chest",
-            "waist",
-            "back",
-            "arm",
-            "hand",
-            "leg",
-        ),
-        "attachment": ("clip_on", "tie_on", "wrap", "dangle", "pin_on"),
-        "shape": ("heart", "star", "flower", "cross", "wing", "moon"),
+        "placement": _ACCESSORY_PLACEMENT_TOKENS,
+        "attachment": _ACCESSORY_ATTACHMENT_TOKENS,
+        "shape": _ACCESSORY_SHAPE_TOKENS,
+        "pairing": _PAIRING_TOKENS,
     },
 }
+
+_EXAMPLE_VOCAB_FIELDS: frozenset[str] = frozenset(
+    set(EXAMPLE_ATTRIBUTE_TOKENS).union(
+        field_name
+        for slot_fields in SLOT_EXAMPLE_ATTRIBUTE_TOKENS.values()
+        for field_name in slot_fields
+    )
+)
 
 
 def _slot_example_vocab(slot: str) -> dict[str, tuple[str, ...]]:
@@ -729,10 +881,6 @@ def _example_tokens_for(slot: str, field_name: str) -> tuple[str, ...] | None:
         field_name,
         CANONICAL_ATTRIBUTE_TOKENS.get(field_name),
     )
-
-
-def _slot_guidance_for(slot: str) -> dict[str, str]:
-    return SLOT_GUIDANCE.get(slot, SLOT_GUIDANCE["accessory"])
 
 
 def _field_names_for(slot: str) -> tuple[str, ...]:
@@ -777,12 +925,12 @@ def _canonical_block(slot: str, field_names: tuple[str, ...]) -> str:
     sections: list[str] = []
     if filtered_lines:
         sections.append(
-            "Filtered token vocabulary (treat as closed lists):\n"
+            "CLOSED LISTS — only these values are valid for these fields:\n"
             + "\n".join(filtered_lines)
         )
     if example_lines:
         sections.append(
-            "Example vocabulary (illustrative, not exhaustive):\n"
+            "OPEN VOCABULARY — illustrative examples, other tokens are allowed:\n"
             + "\n".join(example_lines)
         )
     if not sections:
@@ -797,15 +945,10 @@ def build_extraction_user_message(
     field_guidance: str | None = None,
     field_names: tuple[str, ...] | None = None,
 ) -> str:
-    guidance = _slot_guidance_for(slot)
     schema = _schema_template_for(slot)
     resolved_field_names = field_names or _field_names_for(slot)
     canonical = _canonical_block(slot, resolved_field_names)
-    sections: list[str] = [
-        f"Slot: {slot}",
-        f"Category guidance: {guidance['category']}",
-        f"Subcategory guidance: {guidance['subcategory']}",
-    ]
+    sections: list[str] = []
     if canonical:
         sections.append(canonical)
     slot_field_guidance = _slot_field_guidance(slot)
@@ -818,9 +961,8 @@ def build_extraction_user_message(
     if visual_tags and visual_tags.strip():
         sections.append(f"Visual context from tagger: {visual_tags}")
     sections.append(
-        "Extract the structured JSON for the item in the provided image(s).\n"
-        "Image order: overview first, icon second when both are present.\n"
-        "If the images conflict, prefer the overview image.\n"
+        "Two images are provided: the overview image and the icon.\n"
+        "The overview image takes priority over the icon.\n"
         f"Output only the following JSON, nothing else:\n{schema}"
     )
     return "\n\n".join(sections)
@@ -849,34 +991,29 @@ def _slot_field_guidance(slot: str) -> str:
     )
 
 
-SUBCATEGORY_HIERARCHY: dict[str, str] = {
-    # "platform_boots": "boots",
-}
+def _validate_slot_config() -> None:
+    slot_meta_keys = set(_SLOT_META)
+    slot_spec_keys = set(_SLOT_SPECS)
+    if slot_meta_keys != slot_spec_keys:
+        missing_specs = sorted(slot_meta_keys - slot_spec_keys)
+        missing_meta = sorted(slot_spec_keys - slot_meta_keys)
+        raise RuntimeError(
+            "slot config mismatch: "
+            f"missing specs={missing_specs}, missing meta={missing_meta}"
+        )
 
-TOKEN_ALIASES: dict[str, str] = {
-    # "tee": "shirt",
-}
 
-FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
-    {
-        "top_length",
-        "bottom_length",
-        "dress_length",
-        "hair_length",
-        "sleeve_length",
-        "shaft_height",
-        "heel_height",
-        "sock_height",
-    }
-)
+def _format_token_list(tokens: tuple[str, ...]) -> str:
+    if not tokens:
+        return ""
+    if len(tokens) == 1:
+        return tokens[0]
+    if len(tokens) == 2:
+        return f"{tokens[0]} or {tokens[1]}"
+    return f"{', '.join(tokens[:-1])}, or {tokens[-1]}"
 
-_EXAMPLE_VOCAB_FIELDS: frozenset[str] = frozenset(
-    set(EXAMPLE_ATTRIBUTE_TOKENS).union(
-        field_name
-        for slot_fields in SLOT_EXAMPLE_ATTRIBUTE_TOKENS.values()
-        for field_name in slot_fields
-    )
-)
+
+_validate_slot_config()
 
 
 __all__ = [
@@ -886,7 +1023,6 @@ __all__ = [
     "EXAMPLE_ATTRIBUTE_TOKENS",
     "FILTERED_CANONICAL_ATTRIBUTE_FIELDS",
     "SLOT_EXAMPLE_ATTRIBUTE_TOKENS",
-    "SLOT_GUIDANCE",
     "STRUCTURED_EXTRACTION_SYSTEM_PROMPT",
     "SUBCATEGORY_HIERARCHY",
     "TOKEN_ALIASES",
