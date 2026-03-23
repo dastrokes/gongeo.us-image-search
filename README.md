@@ -6,7 +6,7 @@ Offline structured extraction and Upstash-backed semantic item search for Infini
 
 Core code lives under `image_search/`:
 
-- `image_search/constants/` for settings and structured shape definitions
+- `image_search/constants/` for settings and structured field definitions
 - `image_search/models/` for manifest, structured output, and search schemas
 - `image_search/pipeline/` for manifest ingestion, strict JSON extraction, and search-document generation
 - `image_search/search/` for Upstash sync and evaluation
@@ -83,7 +83,7 @@ Use it when search-document formatting changes and you want to refresh derived o
 ## Notes
 
 - The canonical output contract is one normalized JSON object per item, keyed by `item_id`.
-- The extractor uses shape-specific prompts and shape-specific response templates with only relevant fields.
+- The extractor uses item-type-specific prompts and response templates with only relevant fields.
 - Model-authored `primary_color` and `secondary_color` are part of the canonical structured payload.
 - Search documents are derived directly from normalized structured JSON, not caption terms or taxonomy assignments.
 - Upstash filtering currently supports item type and color metadata only.

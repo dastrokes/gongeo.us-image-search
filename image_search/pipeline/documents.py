@@ -47,7 +47,6 @@ def build_search_text(record: StructuredItemRecord) -> str:
     lines = [
         f"item id: {record.item_id}",
         f"slot: {record.item_type}",
-        f"shape: {record.shape}",
     ]
     category = str(record.data.get("category") or "").strip()
     if category:
@@ -90,7 +89,6 @@ def build_document_record(record: StructuredItemRecord) -> SearchDocumentRecord:
         "item_id": record.item_id,
         "item_type": record.item_type,
         "slot": record.item_type,
-        "shape": record.shape,
         "colors": colors,
     }
     metadata.update(record.data)

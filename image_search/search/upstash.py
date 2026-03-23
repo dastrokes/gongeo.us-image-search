@@ -19,7 +19,7 @@ from image_search.constants.settings import (
 )
 from image_search.constants.structured import (
     is_supported_item_type,
-    shape_definition_for_item_type,
+    schema_definition_for_item_type,
 )
 from image_search.models.schemas import QueryRequest, QueryResult, SearchDocumentRecord
 
@@ -248,10 +248,10 @@ def query_upstash(request: QueryRequest, config: UpstashConfig) -> list[QueryRes
         item_type = str(metadata.get("item_type", "unknown"))
         if not is_supported_item_type(item_type):
             continue
-        shape_definition = shape_definition_for_item_type(item_type)
+        schema_definition = schema_definition_for_item_type(item_type)
         structured_data = {
             field_definition.name: metadata.get(field_definition.name)
-            for field_definition in shape_definition.fields
+            for field_definition in schema_definition.fields
             if field_definition.name in metadata
         }
         if not structured_data and isinstance(metadata.get("structured_data"), dict):
@@ -261,7 +261,6 @@ def query_upstash(request: QueryRequest, config: UpstashConfig) -> list[QueryRes
                 item_id=int(metadata.get("item_id")),
                 score=float(getattr(match, "score", 0.0)),
                 item_type=item_type,
-                shape=str(metadata.get("shape", "")),
                 colors=list(metadata.get("colors", [])),
                 primary_color=metadata.get("primary_color"),
                 secondary_color=metadata.get("secondary_color"),

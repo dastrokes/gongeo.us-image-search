@@ -11,7 +11,7 @@ class StructuredFieldDefinition:
 
 
 @dataclass(frozen=True, slots=True)
-class StructuredShapeDefinition:
+class StructuredSchemaDefinition:
     name: str
     item_types: tuple[str, ...]
     fields: tuple[StructuredFieldDefinition, ...]
@@ -68,6 +68,7 @@ _SHARED_COLOR_FIELDS: tuple[StructuredFieldDefinition, ...] = (
 _SHARED_VISUAL_FIELDS: tuple[StructuredFieldDefinition, ...] = (
     _field("pattern", "array"),
     _field("material", "array"),
+    _field("structure", "array"),
     _field("ornament", "array"),
 )
 
@@ -79,12 +80,14 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "secondary_color": _SHARED_COLOR_FIELDS[1],
     "pattern": _SHARED_VISUAL_FIELDS[0],
     "material": _SHARED_VISUAL_FIELDS[1],
-    "ornament": _SHARED_VISUAL_FIELDS[2],
+    "structure": _SHARED_VISUAL_FIELDS[2],
+    "ornament": _SHARED_VISUAL_FIELDS[3],
     # length / height fields
     "outerwear_length": _field("outerwear_length", "scalar"),
     "top_length": _field("top_length", "scalar"),
     "bottom_length": _field("bottom_length", "scalar"),
     "hair_length": _field("hair_length", "scalar"),
+    "haircut": _field("haircut", "scalar"),
     # upper-body structure
     "fit": _field("fit", "scalar"),
     "neckline": _field("neckline", "scalar"),
@@ -92,6 +95,7 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "sleeve_length": _field("sleeve_length", "scalar"),
     "sleeve_style": _field("sleeve_style", "scalar"),
     "closure_style": _field("closure_style", "scalar"),
+    "front_style": _field("front_style", "scalar"),
     "hem": _field("hem", "scalar"),
     # bottoms-specific
     "skirt_silhouette": _field("skirt_silhouette", "scalar"),
@@ -126,6 +130,7 @@ _SHARED_COLOR_FIELD_NAMES: tuple[str, ...] = ("primary_color", "secondary_color"
 _SHARED_VISUAL_FIELD_NAMES: tuple[str, ...] = (
     "pattern",
     "material",
+    "structure",
     "ornament",
 )
 # Shared upper-body structure fields (outerwear, tops, dresses)
@@ -136,6 +141,7 @@ _UPPER_BODY_FIELD_NAMES: tuple[str, ...] = (
     "sleeve_length",
     "sleeve_style",
     "closure_style",
+    "front_style",
     "hem",
 )
 
@@ -217,28 +223,28 @@ def _fields(*field_names: str) -> tuple[StructuredFieldDefinition, ...]:
     return tuple(_FIELD_LIBRARY[name] for name in field_names)
 
 
-STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
-    "outerwear": StructuredShapeDefinition(
+STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
+    "outerwear": StructuredSchemaDefinition(
         name="garment",
         item_types=("outerwear",),
         fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["outerwear"]),
     ),
-    "tops": StructuredShapeDefinition(
+    "tops": StructuredSchemaDefinition(
         name="garment",
         item_types=("tops",),
         fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["tops"]),
     ),
-    "bottoms": StructuredShapeDefinition(
+    "bottoms": StructuredSchemaDefinition(
         name="garment",
         item_types=("bottoms",),
         fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["bottoms"]),
     ),
-    "dresses": StructuredShapeDefinition(
+    "dresses": StructuredSchemaDefinition(
         name="garment",
         item_types=("dresses",),
         fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["dresses"]),
     ),
-    "hair": StructuredShapeDefinition(
+    "hair": StructuredSchemaDefinition(
         name="hair",
         item_types=("hair",),
         fields=_fields(
@@ -246,13 +252,14 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             "subcategory",
             *_SHARED_COLOR_FIELD_NAMES,
             "hair_length",
+            "haircut",
             "texture",
             "parting",
             "bangs",
             "adornment",
         ),
     ),
-    "shoes": StructuredShapeDefinition(
+    "shoes": StructuredSchemaDefinition(
         name="shoes",
         item_types=("shoes",),
         fields=_fields(
@@ -263,7 +270,7 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             *_SHARED_VISUAL_FIELD_NAMES,
         ),
     ),
-    "socks": StructuredShapeDefinition(
+    "socks": StructuredSchemaDefinition(
         name="socks",
         item_types=("socks",),
         fields=_fields(
@@ -274,7 +281,7 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
             *_SHARED_VISUAL_FIELD_NAMES,
         ),
     ),
-    "accessory": StructuredShapeDefinition(
+    "accessory": StructuredSchemaDefinition(
         name="accessory",
         item_types=ACCESSORY_ITEM_TYPES,
         fields=_fields(
@@ -290,15 +297,15 @@ STRUCTURED_SHAPES: dict[str, StructuredShapeDefinition] = {
     ),
 }
 
-ITEM_TYPE_TO_SHAPE_KEY: dict[str, str] = {
-    item_type: shape_key
-    for shape_key, shape in STRUCTURED_SHAPES.items()
-    for item_type in shape.item_types
+ITEM_TYPE_TO_SCHEMA_KEY: dict[str, str] = {
+    item_type: schema_key
+    for schema_key, schema in STRUCTURED_SCHEMAS.items()
+    for item_type in schema.item_types
 }
 
 
-def shape_definition_for_item_type(item_type: str) -> StructuredShapeDefinition:
-    return STRUCTURED_SHAPES[ITEM_TYPE_TO_SHAPE_KEY.get(item_type, "accessory")]
+def schema_definition_for_item_type(item_type: str) -> StructuredSchemaDefinition:
+    return STRUCTURED_SCHEMAS[ITEM_TYPE_TO_SCHEMA_KEY.get(item_type, "accessory")]
 
 
 def is_supported_item_type(item_type: str) -> bool:

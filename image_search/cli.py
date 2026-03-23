@@ -155,7 +155,6 @@ def _structured_record_from_payload(payload: dict[str, object]) -> StructuredIte
     return StructuredItemRecord(
         item_id=int(payload["item_id"]),
         item_type=item_type,
-        shape=str(payload["shape"]),
         source_version=str(payload.get("source_version", "")),
         data=VisionStructuredExtractor.normalize_payload(item_type, data),
         parse_error=(
@@ -170,7 +169,6 @@ def _structured_debug_from_payload(payload: dict[str, object]) -> StructuredDebu
     return StructuredDebugRecord(
         item_id=int(payload["item_id"]),
         item_type=str(payload["item_type"]),
-        shape=str(payload["shape"]),
         image_paths=dict(payload.get("image_paths", {}) or {}),
         prompt=str(payload.get("prompt", "")),
         raw_response=str(payload.get("raw_response", "")),
@@ -207,7 +205,6 @@ def _build_filter_report_rows(
             {
                 "item_id": debug_record.item_id,
                 "item_type": debug_record.item_type,
-                "shape": debug_record.shape,
                 "non_canonical": list(filter_report.get("non_canonical", []) or []),
                 "parent_child_mismatch": filter_report.get("parent_child_mismatch"),
                 "unknown_fields": list(filter_report.get("unknown_fields", []) or []),
@@ -251,7 +248,6 @@ def _run_single_item_debug(
             {
                 "item_id": record.item_id,
                 "item_type": record.type,
-                "shape": structured_record.shape,
                 "image_paths": debug_record.image_paths,
                 "structured_debug": debug_record.to_dict(),
             },
@@ -571,7 +567,6 @@ def run_query_upstash(args: argparse.Namespace) -> int:
                     "item_id": result.item_id,
                     "score": result.score,
                     "item_type": result.item_type,
-                    "shape": result.shape,
                     "colors": result.colors,
                     "primary_color": result.primary_color,
                     "secondary_color": result.secondary_color,

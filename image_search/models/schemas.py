@@ -22,7 +22,6 @@ class ManifestRecord:
 class StructuredItemRecord:
     item_id: int
     item_type: str
-    shape: str
     source_version: str
     data: dict[str, Any] = field(default_factory=dict)
     parse_error: str | None = None
@@ -35,7 +34,6 @@ class StructuredItemRecord:
 class StructuredDebugRecord:
     item_id: int
     item_type: str
-    shape: str
     image_paths: dict[str, str | None] = field(default_factory=dict)
     prompt: str = ""
     raw_response: str = ""
@@ -89,7 +87,6 @@ class QueryResult:
     item_id: int
     score: float
     item_type: str = ""
-    shape: str = ""
     colors: list[str] = field(default_factory=list)
     primary_color: str | None = None
     secondary_color: str | None = None

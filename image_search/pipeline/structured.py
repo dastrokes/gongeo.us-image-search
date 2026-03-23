@@ -16,7 +16,6 @@ from image_search.constants.settings import (
 from image_search.constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
-    FILTERED_CANONICAL_ATTRIBUTE_FIELDS,
     SUBCATEGORY_HIERARCHY,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
     build_extraction_user_message,
@@ -24,8 +23,8 @@ from image_search.constants.prompts import (
 )
 from image_search.constants.structured import (
     StructuredFieldDefinition,
-    StructuredShapeDefinition,
-    shape_definition_for_item_type,
+    StructuredSchemaDefinition,
+    schema_definition_for_item_type,
 )
 from image_search.models.schemas import (
     ManifestRecord,
@@ -47,6 +46,7 @@ class StructuredExtractorConfig:
     device: str = "auto"
     quantization: str = DEFAULT_MODEL_QUANTIZATION
     inference_batch_size: int = 2
+    max_new_tokens: int = 256
 
 
 class VisionStructuredExtractor:
@@ -293,10 +293,10 @@ class VisionStructuredExtractor:
 
     @staticmethod
     def _output_template(
-        shape_definition: StructuredShapeDefinition,
+        schema_definition: StructuredSchemaDefinition,
     ) -> dict[str, object]:
         template: dict[str, object] = {}
-        for field_definition in shape_definition.fields:
+        for field_definition in schema_definition.fields:
             template[field_definition.name] = (
                 [] if field_definition.kind == "array" else None
             )
@@ -308,7 +308,9 @@ class VisionStructuredExtractor:
             item_type,
             field_names=tuple(
                 field_definition.name
-                for field_definition in shape_definition_for_item_type(item_type).fields
+                for field_definition in schema_definition_for_item_type(
+                    item_type
+                ).fields
             ),
         )
         return f"{STRUCTURED_EXTRACTION_SYSTEM_PROMPT}\n{user_message}"
@@ -318,12 +320,14 @@ class VisionStructuredExtractor:
         image_specs: list[tuple[str, str | Path]],
         prompt: str,
         *,
-        max_new_tokens: int = 256,
+        max_new_tokens: int | None = None,
     ) -> str:
         import torch
 
         if not image_specs:
             return ""
+        if max_new_tokens is None:
+            max_new_tokens = self.config.max_new_tokens
 
         messages = [
             {
@@ -462,8 +466,8 @@ class VisionStructuredExtractor:
         item_type: str,
         payload: dict[str, object] | None,
     ) -> dict[str, object]:
-        shape_definition = shape_definition_for_item_type(item_type)
-        normalized = cls._output_template(shape_definition)
+        schema_definition = schema_definition_for_item_type(item_type)
+        normalized = cls._output_template(schema_definition)
         if not isinstance(payload, dict):
             return normalized
 
@@ -473,7 +477,7 @@ class VisionStructuredExtractor:
 
         field_definitions = {
             field_definition.name: field_definition
-            for field_definition in shape_definition.fields
+            for field_definition in schema_definition.fields
         }
         for field_name, raw_value in working_payload.items():
             field_definition = field_definitions.get(field_name)
@@ -544,10 +548,10 @@ class VisionStructuredExtractor:
         if not isinstance(raw_payload, dict):
             raw_payload = {}
 
-        shape_definition = shape_definition_for_item_type(item_type)
+        schema_definition = schema_definition_for_item_type(item_type)
         field_definitions = {
             field_definition.name: field_definition
-            for field_definition in shape_definition.fields
+            for field_definition in schema_definition.fields
         }
 
         non_canonical: list[dict[str, str]] = []
@@ -558,7 +562,7 @@ class VisionStructuredExtractor:
             normalized_values = cls._normalized_raw_values(raw_value, field_definition)
             if field_name == "category":
                 canonical_tokens = set(CANONICAL_CATEGORY_TOKENS.get(item_type, ()))
-            elif field_name in FILTERED_CANONICAL_ATTRIBUTE_FIELDS:
+            elif field_name in CANONICAL_ATTRIBUTE_TOKENS:
                 canonical_tokens = set(CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ()))
             else:
                 canonical_tokens = set()
@@ -600,7 +604,6 @@ class VisionStructuredExtractor:
         self.ensure_loaded()
 
         image_specs = self._record_image_paths(record)
-        shape_definition = shape_definition_for_item_type(record.type)
         prompt = self.build_prompt(record.type)
         raw_response = self._decode_prompted_joint_qwen(image_specs, prompt)
         raw_payload, parse_error = self._parse_json_object(raw_response)
@@ -621,7 +624,6 @@ class VisionStructuredExtractor:
         structured_record = StructuredItemRecord(
             item_id=record.item_id,
             item_type=record.type,
-            shape=shape_definition.name,
             source_version=record.source_version,
             data=normalized_payload,
             parse_error=parse_error,
@@ -629,7 +631,6 @@ class VisionStructuredExtractor:
         debug_record = StructuredDebugRecord(
             item_id=record.item_id,
             item_type=record.type,
-            shape=shape_definition.name,
             image_paths={
                 "overview": record.overview_path or None,
                 "icon": record.icon_path or None,
