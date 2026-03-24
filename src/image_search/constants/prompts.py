@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from image_search.constants.structured import (
     ACCESSORY_ITEM_TYPES,
     schema_definition_for_item_type,
@@ -83,7 +84,7 @@ _SLOT_CATEGORY_PREAMBLES: dict[str, str] = {
 
 _GARMENT_SLOTS: frozenset[str] = frozenset({"outerwear", "tops", "bottoms", "dresses"})
 
-_SLOT_SPECS: dict[str, dict[str, tuple[str, ...] | str]] = {
+_SLOT_SPECS: dict[str, dict[str, tuple[str, ...]]] = {
     "outerwear": {
         "category_tokens": (
             # True structural outerwear silhouettes only
@@ -413,7 +414,6 @@ FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
         "sole_height",
         "sock_height",
         "waist_height",
-        "pairing",
     }
 )
 
@@ -673,7 +673,6 @@ _DRESS_SILHOUETTE_TOKENS: tuple[str, ...] = (
     "sheath",
     "a_line",
     "fit_and_flare",
-    "pleated",
     "trumpet",
     "mermaid",
     "trapeze",
@@ -686,7 +685,6 @@ _SKIRT_SILHOUETTE_TOKENS: tuple[str, ...] = (
     "circle",
     "pencil",
     "layered",
-    "pleated",
     "tiered",
     "bubble",
     "trumpet",
@@ -759,7 +757,6 @@ _HAIRCUT_TOKENS: tuple[str, ...] = (
     "layered_cut",
     "blunt_cut",
 )
-_HAIR_PARTING_TOKENS: tuple[str, ...] = ("center_part", "side_part", "no_part")
 _HAIR_BANGS_TOKENS: tuple[str, ...] = (
     "no_bangs",
     "blunt_bangs",
@@ -781,32 +778,6 @@ _SOCK_TRIM_TOKENS: tuple[str, ...] = (
     "picot_edge",
     "elastic_band",
 )
-_ACCESSORY_PLACEMENT_TOKENS: tuple[str, ...] = (
-    "head",
-    "neck",
-    "chest",
-    "waist",
-    "back",
-    "arm",
-    "hand",
-    "leg",
-)
-_ACCESSORY_ATTACHMENT_TOKENS: tuple[str, ...] = (
-    "clip_on",
-    "tie_on",
-    "wrap",
-    "dangle",
-    "pin_on",
-)
-_ACCESSORY_SHAPE_TOKENS: tuple[str, ...] = (
-    "heart",
-    "star",
-    "flower",
-    "cross",
-    "wing",
-    "moon",
-)
-_PAIRING_TOKENS: tuple[str, ...] = ("single", "pair")
 
 EXAMPLE_ATTRIBUTE_TOKENS.update(
     {
@@ -818,7 +789,6 @@ EXAMPLE_ATTRIBUTE_TOKENS.update(
         "texture": _HAIR_TEXTURE_TOKENS,
         "adornment": _HAIR_ADORNMENT_TOKENS,
         "trim": _SOCK_TRIM_TOKENS,
-        "shape": _ACCESSORY_SHAPE_TOKENS,
     }
 )
 
@@ -848,13 +818,9 @@ CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
     "skirt_silhouette": _SKIRT_SILHOUETTE_TOKENS,
     "pant_shape": _PANT_SHAPE_TOKENS,
     "dress_silhouette": _DRESS_SILHOUETTE_TOKENS,
-    "parting": _HAIR_PARTING_TOKENS,
     "bangs": _HAIR_BANGS_TOKENS,
     "heel_type": _HEEL_TYPE_TOKENS,
     "toe_shape": _SHOE_TOE_SHAPE_TOKENS,
-    "placement": _ACCESSORY_PLACEMENT_TOKENS,
-    "attachment": _ACCESSORY_ATTACHMENT_TOKENS,
-    "pairing": _PAIRING_TOKENS,
     # color enumerations
     "primary_color": _COLOR_ENUM_TOKENS,
     "secondary_color": _COLOR_ENUM_TOKENS,
@@ -981,7 +947,14 @@ def _format_token_list(tokens: tuple[str, ...]) -> str:
         return tokens[0]
     if len(tokens) == 2:
         return f"{tokens[0]} or {tokens[1]}"
-    return f"{', '.join(tokens[:-1])}, or {tokens[-1]}"
+
+    # Avoid slicing to satisfy broken type checkers:
+    parts = []
+    for i in range(len(tokens) - 1):
+        parts.append(tokens[i])
+    prefix = ", ".join(parts)
+    last = tokens[-1]
+    return f"{prefix}, or {last}"
 
 
 _validate_slot_config()

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gongeo.us-image-search"
+version = "0.1.0"
+description = "Infinity Nikki structured image search tooling"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pyright]
+include = ["src"]
+exclude = [
+    "**/__pycache__",
+    "**/.venv",
+    "**/.pytest_cache"
+]
+executionEnvironments = [
+  { root = "." }
+]

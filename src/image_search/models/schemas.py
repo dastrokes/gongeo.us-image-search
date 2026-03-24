@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, cast
 
 
-@dataclass(slots=True)
+@dataclass
 class ManifestRecord:
     item_id: int
     type: str
@@ -15,10 +15,10 @@ class ManifestRecord:
     source_version: str
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return asdict(cast(Any, self))
 
 
-@dataclass(slots=True)
+@dataclass
 class StructuredItemRecord:
     item_id: int
     item_type: str
@@ -27,10 +27,10 @@ class StructuredItemRecord:
     parse_error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return asdict(cast(Any, self))
 
 
-@dataclass(slots=True)
+@dataclass
 class StructuredDebugRecord:
     item_id: int
     item_type: str
@@ -43,20 +43,20 @@ class StructuredDebugRecord:
     parse_error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return asdict(cast(Any, self))
 
 
-@dataclass(slots=True)
+@dataclass
 class SearchDocumentRecord:
     id: int
     data: str
     metadata: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return asdict(cast(Any, self))
 
 
-@dataclass(slots=True)
+@dataclass
 class BuildSummary:
     extraction_model_id: str
     upstash_embedding_model: str
@@ -71,10 +71,10 @@ class BuildSummary:
     filter_report_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return asdict(cast(Any, self))
 
 
-@dataclass(slots=True)
+@dataclass
 class QueryRequest:
     q: str
     limit: int = 20
@@ -82,7 +82,7 @@ class QueryRequest:
     colors: list[str] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class QueryResult:
     item_id: int
     score: float
@@ -93,18 +93,18 @@ class QueryResult:
     structured_data: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class EvaluationQuery:
     query: str
     expected_item_ids: list[int]
     filters: dict[str, list[Any]] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class EvaluationMetrics:
     recall_at_10: float
     mrr_at_10: float
     ndcg_at_10: float
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return asdict(cast(Any, self))

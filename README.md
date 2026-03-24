@@ -11,7 +11,7 @@ Core code lives under `image_search/`:
 - `image_search/pipeline/` for manifest ingestion, strict JSON extraction, and search-document generation
 - `image_search/search/` for Upstash sync and evaluation
 
-Root `cli.py` and `generate_manifest.py` stay as thin compatibility entrypoints.
+Root `cli.py` and `manifest.py` stay as thin compatibility entrypoints.
 
 ## What It Builds
 

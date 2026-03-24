@@ -106,7 +106,6 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "waistline": _field("waistline", "scalar"),
     # hair
     "texture": _field("texture", "scalar"),
-    "parting": _field("parting", "scalar"),
     "bangs": _field("bangs", "scalar"),
     "adornment": _field("adornment", "array"),
     # shoes
@@ -119,11 +118,6 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "sock_height": _field("sock_height", "scalar"),
     "opacity": _field("opacity", "scalar"),
     "trim": _field("trim", "scalar"),
-    # accessories
-    "placement": _field("placement", "scalar"),
-    "attachment": _field("attachment", "scalar"),
-    "shape": _field("shape", "array"),
-    "pairing": _field("pairing", "scalar"),
 }
 
 _SHARED_COLOR_FIELD_NAMES: tuple[str, ...] = ("primary_color", "secondary_color")
@@ -254,7 +248,6 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
             "hair_length",
             "haircut",
             "texture",
-            "parting",
             "bangs",
             "adornment",
         ),
@@ -288,10 +281,6 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
             "category",
             "subcategory",
             *_SHARED_COLOR_FIELD_NAMES,
-            "placement",
-            "attachment",
-            "shape",
-            "pairing",
             *_SHARED_VISUAL_FIELD_NAMES,
         ),
     ),
