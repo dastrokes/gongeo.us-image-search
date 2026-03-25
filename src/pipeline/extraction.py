@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -683,6 +684,7 @@ class GeminiExtractorConfig:
     api_key: str | None = None
     thinking_budget: int = 0
     temperature: float = 0.0
+    rpm_limit: int = 15
 
 
 class GeminiStructuredExtractor:
@@ -697,6 +699,8 @@ class GeminiStructuredExtractor:
         self.config = config
         self.model_id = config.model_id
         self._client: Any = None
+        self._min_interval: float = 60.0 / max(1, config.rpm_limit)
+        self._last_request_time: float = 0.0
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -722,8 +726,10 @@ class GeminiStructuredExtractor:
         self,
         image_specs: list[tuple[str, str | Path]],
         prompt: str,
+        max_retries: int = 5,
     ) -> str:
         from google.genai import types
+        from google.genai.errors import ClientError
 
         client = self._get_client()
 
@@ -746,12 +752,47 @@ class GeminiStructuredExtractor:
         if self.config.thinking_budget >= 0:
             cfg["thinking_config"] = {"thinking_budget": self.config.thinking_budget}
 
-        response = client.models.generate_content(
-            model=self.config.model_id,
-            contents=parts,
-            config=cfg,
-        )
-        return response.text or ""
+        for attempt in range(max_retries + 1):
+            # Enforce RPM limit
+            now = time.monotonic()
+            elapsed = now - self._last_request_time
+            if elapsed < self._min_interval:
+                time.sleep(self._min_interval - elapsed)
+            self._last_request_time = time.monotonic()
+
+            try:
+                response = client.models.generate_content(
+                    model=self.config.model_id,
+                    contents=parts,
+                    config=cfg,
+                )
+                return response.text or ""
+
+            except ClientError as exc:
+                if exc.code != 429 or attempt >= max_retries:
+                    raise
+                
+                # Default backoff
+                retry_delay = 10.0 * (2 ** attempt)
+
+                try:
+                    # Attempt to extract delay from API payload details
+                    # Example payload: [... {'@type': '...RetryInfo', 'retryDelay': '20s'}]
+                    if hasattr(exc, "response_json") and exc.response_json:
+                        details = exc.response_json.get("error", {}).get("details", [])
+                        for detail in details:
+                            if "retryDelay" in detail:
+                                delay_str = detail["retryDelay"].rstrip("s")
+                                if delay_str.replace(".", "", 1).isdigit():
+                                    retry_delay = float(delay_str) + 1.0  # +1s buffer
+                                    break
+                except Exception:
+                    pass
+                
+                print(f"  [Rate limited (429)] Retrying in {retry_delay:.2f}s (attempt {attempt + 1}/{max_retries})...")
+                time.sleep(retry_delay)
+
+        return ""
 
     # ------------------------------------------------------------------
     # Public interface — mirrors VisionStructuredExtractor
