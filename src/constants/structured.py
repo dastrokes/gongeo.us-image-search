@@ -31,6 +31,42 @@ def _field(
 
 
 _COLOR_ALIASES: tuple[tuple[str, str], ...] = (("grey", "gray"),)
+_CATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
+    ("apron_dress", "pinafore_dress"),
+    ("boot", "boots"),
+    ("flat", "flats"),
+    ("fur_stole", "stole"),
+    ("glove", "gloves"),
+    ("heel", "heels"),
+    ("loafer", "loafers"),
+    ("mary_jane", "mary_janes"),
+    ("overall_dress", "pinafore_dress"),
+    ("playsuit", "romper"),
+    ("sandal", "sandals"),
+    ("shawl_wrap", "shawl"),
+    ("sneaker", "sneakers"),
+    ("sock", "socks"),
+    ("stocking", "stockings"),
+    ("stole", "shawl"),
+    ("tee", "t_shirt"),
+    ("tshirt", "t_shirt"),
+    ("twin_tail", "twin_tails"),
+)
+_SUBCATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
+    ("apron_dress", "pinafore_dress"),
+    ("chandelier_earring", "chandelier_earrings"),
+    ("drop_earring", "drop_earrings"),
+    ("fingerless_glove", "fingerless_gloves"),
+    ("fur_stole", "stole"),
+    ("half_up_braids", "half_up_braid"),
+    ("hoop_earring", "hoop_earrings"),
+    ("lace_glove", "lace_gloves"),
+    ("opera_glove", "opera_gloves"),
+    ("overall_dress", "pinafore_dress"),
+    ("playsuit", "romper"),
+    ("shawl", "stole"),
+    ("stud_earring", "stud_earrings"),
+)
 
 GARMENT_ITEM_TYPES: tuple[str, ...] = ("outerwear", "tops", "dresses", "bottoms")
 
@@ -74,8 +110,8 @@ _SHARED_VISUAL_FIELDS: tuple[StructuredFieldDefinition, ...] = (
 
 
 _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
-    "category": _field("category", "scalar"),
-    "subcategory": _field("subcategory", "scalar"),
+    "category": _field("category", "scalar", aliases=_CATEGORY_ALIASES),
+    "subcategory": _field("subcategory", "scalar", aliases=_SUBCATEGORY_ALIASES),
     "primary_color": _SHARED_COLOR_FIELDS[0],
     "secondary_color": _SHARED_COLOR_FIELDS[1],
     "pattern": _SHARED_VISUAL_FIELDS[0],
@@ -119,6 +155,9 @@ _SHARED_VISUAL_FIELD_NAMES: tuple[str, ...] = (
     "structure",
     "ornament",
 )
+# Kept as separate stored fields for compatibility, but treated as a parent/child
+# taxonomy pair by the prompt and extractor layers.
+_TAXONOMY_FIELD_NAMES: tuple[str, ...] = ("category", "subcategory")
 # Shared upper-body structure fields (outerwear, tops, dresses)
 _UPPER_BODY_FIELD_NAMES: tuple[str, ...] = (
     "top_length",
@@ -157,29 +196,25 @@ SOCK_FIELDS: tuple[str, ...] = ("sock_height",)
 
 _FIELD_NAMES_BY_ITEM_TYPE: dict[str, tuple[str, ...]] = {
     "outerwear": (
-        "category",
-        "subcategory",
+        *_TAXONOMY_FIELD_NAMES,
         *_SHARED_COLOR_FIELD_NAMES,
         *OUTERWEAR_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "tops": (
-        "category",
-        "subcategory",
+        *_TAXONOMY_FIELD_NAMES,
         *_SHARED_COLOR_FIELD_NAMES,
         *TOP_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "bottoms": (
-        "category",
-        "subcategory",
+        *_TAXONOMY_FIELD_NAMES,
         *_SHARED_COLOR_FIELD_NAMES,
         *BOTTOM_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "dresses": (
-        "category",
-        "subcategory",
+        *_TAXONOMY_FIELD_NAMES,
         *_SHARED_COLOR_FIELD_NAMES,
         *DRESS_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
@@ -216,8 +251,7 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         name="hair",
         item_types=("hair",),
         fields=_fields(
-            "category",
-            "subcategory",
+            *_TAXONOMY_FIELD_NAMES,
             *_SHARED_COLOR_FIELD_NAMES,
             "hair_length",
             "haircut",
@@ -229,8 +263,7 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         name="shoes",
         item_types=("shoes",),
         fields=_fields(
-            "category",
-            "subcategory",
+            *_TAXONOMY_FIELD_NAMES,
             *_SHARED_COLOR_FIELD_NAMES,
             *SHOE_FIELDS,
             *_SHARED_VISUAL_FIELD_NAMES,
@@ -240,8 +273,7 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         name="socks",
         item_types=("socks",),
         fields=_fields(
-            "category",
-            "subcategory",
+            *_TAXONOMY_FIELD_NAMES,
             *_SHARED_COLOR_FIELD_NAMES,
             *SOCK_FIELDS,
             *_SHARED_VISUAL_FIELD_NAMES,
@@ -251,8 +283,7 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         name="accessory",
         item_types=ACCESSORY_ITEM_TYPES,
         fields=_fields(
-            "category",
-            "subcategory",
+            *_TAXONOMY_FIELD_NAMES,
             *_SHARED_COLOR_FIELD_NAMES,
             *_SHARED_VISUAL_FIELD_NAMES,
         ),

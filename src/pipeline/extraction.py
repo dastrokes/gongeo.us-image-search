@@ -18,9 +18,11 @@ from constants.settings import (
 from constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
+    CANONICAL_SUBCATEGORY_TOKENS,
     SUBCATEGORY_HIERARCHY,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
     build_extraction_user_message,
+    get_subcategory_ancestors,
     normalise_token,
 )
 from constants.structured import (
@@ -463,6 +465,36 @@ class VisionStructuredExtractor:
         return working_payload
 
     @classmethod
+    def _normalize_taxonomy_fields(
+        cls,
+        item_type: str,
+        normalized: dict[str, object],
+    ) -> dict[str, object]:
+        category = str(normalized.get("category") or "").strip()
+        subcategory = str(normalized.get("subcategory") or "").strip()
+        canonical_categories = set(CANONICAL_CATEGORY_TOKENS.get(item_type, ()))
+
+        if not category and subcategory in SUBCATEGORY_HIERARCHY:
+            normalized["category"] = SUBCATEGORY_HIERARCHY[subcategory]
+            return normalized
+
+        promoted_subcategory: str | None = None
+        if category and category not in canonical_categories:
+            promoted_parent = SUBCATEGORY_HIERARCHY.get(category)
+            if promoted_parent is not None:
+                promoted_subcategory = category
+                normalized["category"] = promoted_parent
+                category = promoted_parent
+
+        if promoted_subcategory and (not subcategory or subcategory == category):
+            normalized["subcategory"] = promoted_subcategory
+            subcategory = promoted_subcategory
+
+        if subcategory and subcategory == category:
+            normalized["subcategory"] = None
+        return normalized
+
+    @classmethod
     def normalize_payload(
         cls,
         item_type: str,
@@ -493,7 +525,7 @@ class VisionStructuredExtractor:
                 normalized[field_name] = cls._normalize_scalar(
                     raw_value, field_definition
                 )
-        return normalized
+        return cls._normalize_taxonomy_fields(item_type, normalized)
 
     @classmethod
     def _normalized_raw_values(
@@ -526,11 +558,7 @@ class VisionStructuredExtractor:
         parent = SUBCATEGORY_HIERARCHY.get(subcategory)
         if parent is None:
             return None
-        ancestors: list[str] = []
-        current = subcategory
-        while current in SUBCATEGORY_HIERARCHY:
-            current = SUBCATEGORY_HIERARCHY[current]
-            ancestors.append(current)
+        ancestors = get_subcategory_ancestors(subcategory)
         if category in ancestors:
             return None
         return {
@@ -538,6 +566,32 @@ class VisionStructuredExtractor:
             "category": category,
             "subcategory": subcategory,
             "expected_parent": parent,
+        }
+
+    @staticmethod
+    def _subcategory_not_in_list(
+        item_type: str,
+        normalized_payload: dict[str, object],
+    ) -> dict[str, object] | None:
+        category = str(normalized_payload.get("category") or "").strip()
+        subcategory = str(normalized_payload.get("subcategory") or "").strip()
+        if not subcategory:
+            return None
+
+        canonical_subcategories = set(CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ()))
+        if subcategory in canonical_subcategories:
+            return None
+
+        known_examples_for_category = sorted(
+            example
+            for example in CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ())
+            if SUBCATEGORY_HIERARCHY.get(example) == category
+        )
+        return {
+            "item_type": item_type,
+            "category": category or None,
+            "subcategory": subcategory,
+            "known_examples_for_category": known_examples_for_category,
         }
 
     @classmethod
@@ -590,6 +644,9 @@ class VisionStructuredExtractor:
             )
         )
         category_mismatch = cls._category_mismatch(item_type, normalized_payload)
+        subcategory_not_in_list = cls._subcategory_not_in_list(
+            item_type, normalized_payload
+        )
         return {
             "non_canonical": non_canonical,
             "non_canonical_count": len(non_canonical),
@@ -597,6 +654,8 @@ class VisionStructuredExtractor:
             "unknown_field_count": len(unknown_fields),
             "parent_child_mismatch": category_mismatch,
             "parent_child_mismatch_count": 1 if category_mismatch else 0,
+            "subcategory_not_in_list": subcategory_not_in_list,
+            "subcategory_not_in_list_count": 1 if subcategory_not_in_list else 0,
         }
 
     def extract_record(
@@ -771,9 +830,9 @@ class GeminiStructuredExtractor:
             except ClientError as exc:
                 if exc.code != 429 or attempt >= max_retries:
                     raise
-                
+
                 # Default backoff
-                retry_delay = 10.0 * (2 ** attempt)
+                retry_delay = 10.0 * (2**attempt)
 
                 try:
                     # Attempt to extract delay from API payload details
@@ -788,8 +847,10 @@ class GeminiStructuredExtractor:
                                     break
                 except Exception:
                     pass
-                
-                print(f"  [Rate limited (429)] Retrying in {retry_delay:.2f}s (attempt {attempt + 1}/{max_retries})...")
+
+                print(
+                    f"  [Rate limited (429)] Retrying in {retry_delay:.2f}s (attempt {attempt + 1}/{max_retries})..."
+                )
                 time.sleep(retry_delay)
 
         return ""

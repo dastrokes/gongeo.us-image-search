@@ -200,6 +200,7 @@ def _build_filter_report_rows(
             (
                 filter_report.get("non_canonical"),
                 filter_report.get("parent_child_mismatch"),
+                filter_report.get("subcategory_not_in_list"),
                 filter_report.get("unknown_fields"),
             )
         ):
@@ -210,6 +211,7 @@ def _build_filter_report_rows(
                 "item_type": debug_record.item_type,
                 "non_canonical": list(filter_report.get("non_canonical", []) or []),
                 "parent_child_mismatch": filter_report.get("parent_child_mismatch"),
+                "subcategory_not_in_list": filter_report.get("subcategory_not_in_list"),
                 "unknown_fields": list(filter_report.get("unknown_fields", []) or []),
             }
         )
