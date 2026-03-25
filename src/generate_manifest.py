@@ -4,8 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-from image_search.constants.settings import PROJECT_ROOT
-from image_search.pipeline.manifest import build_manifest
+from constants.settings import PROJECT_ROOT
+from pipeline.manifest import build_manifest
 
 
 def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:

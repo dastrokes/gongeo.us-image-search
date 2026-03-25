@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from image_search.models.schemas import SearchDocumentRecord, StructuredItemRecord
+from models.schemas import SearchDocumentRecord, StructuredItemRecord
 
 
 def _dedupe(values: list[str]) -> list[str]:
@@ -65,18 +65,20 @@ def build_search_text(record: StructuredItemRecord) -> str:
         lines.append(f"ornament: {', '.join(ornament)}")
 
     attribute_values = _dedupe(
-        value
-        for field_name, field_value in record.data.items()
-        if field_name
-        not in {
-            "category",
-            "subcategory",
-            "placement",
-            "primary_color",
-            "secondary_color",
-            "ornament",
-        }
-        for value in _flatten_values(field_value)
+        list(
+            value
+            for field_name, field_value in record.data.items()
+            if field_name
+            not in {
+                "category",
+                "subcategory",
+                "placement",
+                "primary_color",
+                "secondary_color",
+                "ornament",
+            }
+            for value in _flatten_values(field_value)
+        )
     )
     if attribute_values:
         lines.append(f"attributes: {', '.join(attribute_values)}")

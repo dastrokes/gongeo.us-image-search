@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 import importlib
 
-manifest = importlib.import_module("image_search.manifest")
+manifest = importlib.import_module("generate_manifest")
 main = manifest.main
 
 if __name__ == "__main__":

@@ -9,11 +9,12 @@ from typing import Any
 
 from PIL import Image
 
-from image_search.constants.settings import (
+from constants.settings import (
     DEFAULT_EXTRACTION_MODEL_ID,
+    DEFAULT_GEMINI_MODEL,
     DEFAULT_MODEL_QUANTIZATION,
 )
-from image_search.constants.prompts import (
+from constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
     SUBCATEGORY_HIERARCHY,
@@ -21,12 +22,12 @@ from image_search.constants.prompts import (
     build_extraction_user_message,
     normalise_token,
 )
-from image_search.constants.structured import (
+from constants.structured import (
     StructuredFieldDefinition,
     StructuredSchemaDefinition,
     schema_definition_for_item_type,
 )
-from image_search.models.schemas import (
+from models.schemas import (
     ManifestRecord,
     StructuredDebugRecord,
     StructuredItemRecord,
@@ -656,3 +657,160 @@ class VisionStructuredExtractor:
             batch = records[start : start + batch_size]
             results.extend(self.extract_record(record) for record in batch)
         return results
+
+
+# ---------------------------------------------------------------------------
+# Google AI Studio (Gemini) backend
+# ---------------------------------------------------------------------------
+
+_MIME_TYPES: dict[str, str] = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+
+
+def _get_mime_type(image_path: str | Path) -> str:
+    suffix = Path(image_path).suffix.lower()
+    return _MIME_TYPES.get(suffix, "image/jpeg")
+
+
+@dataclass(slots=True)
+class GeminiExtractorConfig:
+    model_id: str = DEFAULT_GEMINI_MODEL
+    api_key: str | None = None
+    thinking_budget: int = 0
+    temperature: float = 0.0
+
+
+class GeminiStructuredExtractor:
+    """Vision extractor backed by Google AI Studio (Gemini) instead of a local model.
+
+    Requires ``google-genai`` (``pip install google-genai``) and an API key
+    available either via the *api_key* config field or the ``GOOGLE_API_KEY``
+    environment variable.
+    """
+
+    def __init__(self, config: GeminiExtractorConfig) -> None:
+        self.config = config
+        self.model_id = config.model_id
+        self._client: Any = None
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get_client(self) -> Any:
+        if self._client is not None:
+            return self._client
+        import os
+
+        from google import genai
+
+        api_key = self.config.api_key or os.environ.get("GOOGLE_API_KEY", "")
+        if not api_key:
+            raise RuntimeError(
+                "GOOGLE_API_KEY is not set. "
+                "Either pass --gemini-api-key or export GOOGLE_API_KEY."
+            )
+        self._client = genai.Client(api_key=api_key)
+        return self._client
+
+    def _call_api(
+        self,
+        image_specs: list[tuple[str, str | Path]],
+        prompt: str,
+    ) -> str:
+        from google.genai import types
+
+        client = self._get_client()
+
+        # Build content parts: one image part per image, then the text prompt.
+        parts: list[Any] = []
+        for _label, image_path in image_specs:
+            image_bytes = Path(image_path).read_bytes()
+            parts.append(
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type=_get_mime_type(image_path),
+                )
+            )
+        parts.append(prompt)
+
+        cfg: dict[str, Any] = {
+            "temperature": self.config.temperature,
+            "response_mime_type": "application/json",
+        }
+        if self.config.thinking_budget >= 0:
+            cfg["thinking_config"] = {"thinking_budget": self.config.thinking_budget}
+
+        response = client.models.generate_content(
+            model=self.config.model_id,
+            contents=parts,
+            config=cfg,
+        )
+        return response.text or ""
+
+    # ------------------------------------------------------------------
+    # Public interface — mirrors VisionStructuredExtractor
+    # ------------------------------------------------------------------
+
+    @property
+    def model(self) -> None:
+        """Kept for compatibility with callers that check ``extractor.model``."""
+        return None
+
+    def ensure_loaded(self) -> None:
+        """No-op: Gemini client is initialised lazily on first call."""
+
+    def extract_record(
+        self,
+        record: ManifestRecord,
+    ) -> tuple[StructuredItemRecord, StructuredDebugRecord]:
+        image_specs = VisionStructuredExtractor._record_image_paths(record)
+        prompt = VisionStructuredExtractor.build_prompt(record.type)
+        raw_response = self._call_api(image_specs, prompt)
+        raw_payload, parse_error = VisionStructuredExtractor._parse_json_object(
+            raw_response
+        )
+        normalized_payload = VisionStructuredExtractor.normalize_payload(
+            record.type, raw_payload
+        )
+        filter_report = VisionStructuredExtractor.build_filter_report(
+            record.type,
+            raw_payload,
+            normalized_payload,
+        )
+
+        structured_record = StructuredItemRecord(
+            item_id=record.item_id,
+            item_type=record.type,
+            source_version=record.source_version,
+            data=normalized_payload,
+            parse_error=parse_error,
+        )
+        debug_record = StructuredDebugRecord(
+            item_id=record.item_id,
+            item_type=record.type,
+            image_paths={
+                "overview": record.overview_path or None,
+                "icon": record.icon_path or None,
+            },
+            prompt=prompt,
+            raw_response=raw_response,
+            raw_payload=raw_payload,
+            normalized_data=normalized_payload,
+            filter_report=filter_report,
+            parse_error=parse_error,
+        )
+        return structured_record, debug_record
+
+    def extract_records_batch(
+        self,
+        records: list[ManifestRecord],
+    ) -> list[tuple[StructuredItemRecord, StructuredDebugRecord]]:
+        if not records:
+            return []
+        return [self.extract_record(record) for record in records]

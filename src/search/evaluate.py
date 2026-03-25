@@ -6,8 +6,8 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from image_search.models.schemas import EvaluationMetrics, EvaluationQuery, QueryRequest
-from image_search.search.upstash import UpstashConfig, query_upstash
+from models.schemas import EvaluationMetrics, EvaluationQuery, QueryRequest
+from search.upstash import UpstashConfig, query_upstash
 
 
 def load_evaluation_queries(path: str | Path) -> list[EvaluationQuery]:

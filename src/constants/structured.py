@@ -83,20 +83,15 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "structure": _SHARED_VISUAL_FIELDS[2],
     "ornament": _SHARED_VISUAL_FIELDS[3],
     # length / height fields
-    "outerwear_length": _field("outerwear_length", "scalar"),
     "top_length": _field("top_length", "scalar"),
     "bottom_length": _field("bottom_length", "scalar"),
     "hair_length": _field("hair_length", "scalar"),
-    "haircut": _field("haircut", "scalar"),
     # upper-body structure
     "fit": _field("fit", "scalar"),
     "neckline": _field("neckline", "scalar"),
     "shoulder_style": _field("shoulder_style", "scalar"),
     "sleeve_length": _field("sleeve_length", "scalar"),
     "sleeve_style": _field("sleeve_style", "scalar"),
-    "closure_style": _field("closure_style", "scalar"),
-    "front_style": _field("front_style", "scalar"),
-    "hem": _field("hem", "scalar"),
     # bottoms-specific
     "skirt_silhouette": _field("skirt_silhouette", "scalar"),
     "pant_shape": _field("pant_shape", "scalar"),
@@ -105,19 +100,16 @@ _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
     "dress_silhouette": _field("dress_silhouette", "scalar"),
     "waistline": _field("waistline", "scalar"),
     # hair
+    "haircut": _field("haircut", "scalar"),
     "texture": _field("texture", "scalar"),
     "bangs": _field("bangs", "scalar"),
-    "adornment": _field("adornment", "array"),
     # shoes
     "heel_type": _field("heel_type", "scalar"),
     "heel_height": _field("heel_height", "scalar"),
     "sole_height": _field("sole_height", "scalar"),
     "shaft_height": _field("shaft_height", "scalar"),
-    "toe_shape": _field("toe_shape", "scalar"),
     # socks
     "sock_height": _field("sock_height", "scalar"),
-    "opacity": _field("opacity", "scalar"),
-    "trim": _field("trim", "scalar"),
 }
 
 _SHARED_COLOR_FIELD_NAMES: tuple[str, ...] = ("primary_color", "secondary_color")
@@ -129,31 +121,21 @@ _SHARED_VISUAL_FIELD_NAMES: tuple[str, ...] = (
 )
 # Shared upper-body structure fields (outerwear, tops, dresses)
 _UPPER_BODY_FIELD_NAMES: tuple[str, ...] = (
+    "top_length",
     "fit",
     "neckline",
     "shoulder_style",
     "sleeve_length",
     "sleeve_style",
-    "closure_style",
-    "front_style",
-    "hem",
 )
 
-OUTERWEAR_FIELDS: tuple[str, ...] = (
-    "outerwear_length",
-    *_UPPER_BODY_FIELD_NAMES,
-)
-TOP_FIELDS: tuple[str, ...] = (
-    "top_length",
-    *_UPPER_BODY_FIELD_NAMES,
-)
+OUTERWEAR_FIELDS: tuple[str, ...] = (*_UPPER_BODY_FIELD_NAMES,)
+TOP_FIELDS: tuple[str, ...] = (*_UPPER_BODY_FIELD_NAMES,)
 BOTTOM_FIELDS: tuple[str, ...] = (
     "bottom_length",
     "skirt_silhouette",
     "pant_shape",
     "waist_height",
-    "closure_style",
-    "hem",
 )
 DRESS_FIELDS: tuple[str, ...] = (
     "bottom_length",
@@ -164,22 +146,14 @@ DRESS_FIELDS: tuple[str, ...] = (
     "shoulder_style",
     "sleeve_length",
     "sleeve_style",
-    "closure_style",
-    "hem",
 )
 SHOE_FIELDS: tuple[str, ...] = (
     "heel_type",
     "heel_height",
     "sole_height",
     "shaft_height",
-    "toe_shape",
-    "closure_style",
 )
-SOCK_FIELDS: tuple[str, ...] = (
-    "sock_height",
-    "opacity",
-    "trim",
-)
+SOCK_FIELDS: tuple[str, ...] = ("sock_height",)
 
 _FIELD_NAMES_BY_ITEM_TYPE: dict[str, tuple[str, ...]] = {
     "outerwear": (
@@ -249,7 +223,6 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
             "haircut",
             "texture",
             "bangs",
-            "adornment",
         ),
     ),
     "shoes": StructuredSchemaDefinition(

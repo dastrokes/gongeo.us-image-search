@@ -11,17 +11,17 @@ from urllib.parse import urlparse
 import requests
 from upstash_vector import Index
 
-from image_search.constants.settings import (
+from constants.settings import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_INDEX_TYPE,
     DEFAULT_MANAGEMENT_URL,
     DEFAULT_SPARSE_EMBEDDING_MODEL,
 )
-from image_search.constants.structured import (
+from constants.structured import (
     is_supported_item_type,
     schema_definition_for_item_type,
 )
-from image_search.models.schemas import QueryRequest, QueryResult, SearchDocumentRecord
+from models.schemas import QueryRequest, QueryResult, SearchDocumentRecord
 
 EMBEDDING_MODEL_API_NAMES = {
     "BAAI/bge-small-en-v1.5": "BGE_SMALL_EN_V1_5",

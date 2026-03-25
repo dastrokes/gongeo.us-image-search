@@ -4,23 +4,23 @@ Offline structured extraction and Upstash-backed semantic item search for Infini
 
 ## Layout
 
-Core code lives under `image_search/`:
+Source lives under `src/` (added to `sys.path` by the root wrappers):
 
-- `image_search/constants/` for settings and structured field definitions
-- `image_search/models/` for manifest, structured output, and search schemas
-- `image_search/pipeline/` for manifest ingestion, strict JSON extraction, and search-document generation
-- `image_search/search/` for Upstash sync and evaluation
+- `src/constants/` — settings, structured field definitions, and extraction prompts
+- `src/models/` — dataclass schemas for manifests, structured records, and search documents
+- `src/pipeline/` — manifest ingestion, vision extraction, and search-document generation
+- `src/search/` — Upstash sync and search evaluation
 
-Root `cli.py` and `manifest.py` stay as thin compatibility entrypoints.
+Root `cli.py` and `manifest.py` are thin compatibility entry-points that prepend `src/` to `sys.path` before delegating.
 
 ## What It Builds
 
 `index` reads:
 
-- `reports/database-sync-report.json`
-- tracker item names from `gongeo.us-nikki-tracker/app/locales/en/item.json`
-- tracker images from `gongeo.us-nikki-tracker/public/images/items`
-- config-decoder data from `gongeo.us-config-decoder/cfg/config_output`
+- `reports/database-sync-report.json` — synced item list and source version
+- `gongeo.us-config-decoder/cfg/config_output/item/TbItem.json` — item minor-type mapping
+- `gongeo.us-config-decoder/cfg/config_output/clothes/TbClothesMinorTypeInfo.json` — minor-type labels
+- `gongeo.us-nikki-tracker/public/images/items/` — overview and icon images
 
 It produces:
 
@@ -28,6 +28,7 @@ It produces:
 - `index/item-structured-data.jsonl`
 - `index/item-structured-debug.jsonl`
 - `index/item-search-documents.jsonl`
+- `index/item-filter-report.jsonl`
 - `index/build-summary.json`
 
 ## Install
@@ -36,14 +37,14 @@ It produces:
 pip install -r requirements.txt
 ```
 
-Default extraction uses `Qwen/Qwen3-VL-8B-Instruct`.
+Default extraction uses `Qwen/Qwen3-VL-4B-Instruct` with 4-bit quantization (requires CUDA).
 
 ## Environment
 
 Set these in `.env` or your shell:
 
-- `TRACKER_ROOT`
-- `CONFIG_DECODER_OUTPUT`
+- `TRACKER_ROOT` — path to `gongeo.us-nikki-tracker` repo
+- `CONFIG_DECODER_OUTPUT` — path to `gongeo.us-config-decoder/cfg/config_output`
 - `UPSTASH_VECTOR_REST_URL`
 - `UPSTASH_VECTOR_REST_TOKEN`
 
@@ -55,35 +56,37 @@ Optional for index creation:
 
 ## Commands
 
-Development should stay capped at `--limit 10` unless intentionally widened.
+Keep dev runs capped at `--limit 10` unless intentionally wider.
 
 ```bash
+# Extract structured data and build search documents
 python cli.py index --limit 10
-python cli.py index --item-id 123456
+python cli.py index --item-id 1020123456   # single-item debug
+
+# Rebuild search documents from cached extraction (no re-extraction)
 python cli.py refresh
+
+# Upload search documents to Upstash Vector
 python cli.py sync
-python cli.py query --q "blue floral headwear" --item-type headwear
+
+# Query Upstash interactively
+python cli.py query --q "floral lace dress" --limit 20
+
+# Evaluate search quality against a query set
 python cli.py evaluate --queries path/to/queries.jsonl
+
+# Regenerate the base-item manifest only
+python manifest.py
 ```
 
-`index --item-id <ID>` runs a fast single-item debug path and prints one JSON bundle with the strict prompt, raw response, parsed payload, and normalized structured output.
+`index --item-id <ID>` prints one JSON bundle: prompt, raw model response, parsed payload, and normalized structured output.
 
-`refresh` rebuilds:
-
-- `index/item-search-documents.jsonl`
-- `index/build-summary.json`
-
-from:
-
-- `manifest/item-manifest.jsonl`
-- `index/item-structured-data.jsonl`
-
-Use it when search-document formatting changes and you want to refresh derived outputs without rerunning extraction.
+`refresh` rebuilds `index/item-search-documents.jsonl` and `index/build-summary.json` from the cached manifest and structured data — use when document formatting changes but re-extraction is not needed.
 
 ## Notes
 
-- The canonical output contract is one normalized JSON object per item, keyed by `item_id`.
-- The extractor uses item-type-specific prompts and response templates with only relevant fields.
-- Model-authored `primary_color` and `secondary_color` are part of the canonical structured payload.
-- Search documents are derived directly from normalized structured JSON, not caption terms or taxonomy assignments.
-- Upstash filtering currently supports item type and color metadata only.
+- Imports use bare module names (`from constants.settings import ...`) because `src/` is prepended to `sys.path`.
+- The canonical output is one normalized JSON object per item keyed by `item_id`.
+- Extraction uses item-type-specific prompts; only fields relevant to the slot are included.
+- Search documents are derived from normalized structured JSON, not captions or taxonomy assignments.
+- Upstash filtering supports item type and color metadata.

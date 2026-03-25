@@ -6,14 +6,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from image_search.constants.items import (
+from constants.items import (
     BASE_ITEM_PREFIX_RANGES,
     IMAGE_EXTENSIONS,
     TYPE_KEY_MAP,
 )
-from image_search.constants.settings import PROJECT_ROOT
-from image_search.constants.structured import is_supported_item_type
-from image_search.models.schemas import ManifestRecord
+from constants.settings import PROJECT_ROOT
+from constants.structured import is_supported_item_type
+from models.schemas import ManifestRecord
 
 DEFAULT_TRACKER_ROOT = PROJECT_ROOT.parent / "gongeo.us-nikki-tracker"
 DEFAULT_CONFIG_ROOT = (
@@ -128,11 +128,14 @@ def build_manifest(
     )
 
     manifest: list[ManifestRecord] = []
-    stats = {
+    int_stats: dict[str, int] = {
         "skipped_count": 0,
         "non_base_skipped_count": 0,
         "missing_icon_count": 0,
         "missing_overview_count": 0,
+    }
+    stats: dict[str, int | str] = {
+        **int_stats,
         "source_version": str(resolved_source_version),
     }
 
@@ -143,13 +146,13 @@ def build_manifest(
             continue
 
         if not _is_base_item(current_item_id):
-            stats["non_base_skipped_count"] += 1
+            int_stats["non_base_skipped_count"] += 1
             continue
 
         item_payload = item_config.get(str(current_item_id))
         item_type = _resolve_item_type(item_payload, minor_type_info)
         if not is_supported_item_type(item_type):
-            stats["skipped_count"] += 1
+            int_stats["skipped_count"] += 1
             continue
 
         icon_path = _find_image_path(paths.item_icon_root, current_item_id)
@@ -158,12 +161,12 @@ def build_manifest(
         has_overview = overview_path is not None
 
         if not has_icon:
-            stats["missing_icon_count"] += 1
+            int_stats["missing_icon_count"] += 1
         if not has_overview:
-            stats["missing_overview_count"] += 1
+            int_stats["missing_overview_count"] += 1
 
         if not (has_icon or has_overview):
-            stats["skipped_count"] += 1
+            int_stats["skipped_count"] += 1
             continue
 
         manifest.append(
@@ -181,4 +184,5 @@ def build_manifest(
         if limit is not None and len(manifest) >= limit:
             break
 
+    stats.update(int_stats)
     return manifest, stats

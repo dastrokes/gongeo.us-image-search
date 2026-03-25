@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 import importlib
 
-cli = importlib.import_module("image_search.cli")
+cli = importlib.import_module("cli")
 main = cli.main
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Shared prompts, defaults, and vocabulary."""
 
-from image_search.constants.prompts import (
+from constants.prompts import (
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
     build_extraction_user_message,
 )

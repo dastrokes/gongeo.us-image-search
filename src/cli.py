@@ -7,9 +7,11 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from image_search.constants.settings import (
+from constants.settings import (
     DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EXTRACTION_BACKEND,
     DEFAULT_EXTRACTION_MODEL_ID,
+    DEFAULT_GEMINI_MODEL,
     DEFAULT_INDEX_DIMENSION_COUNT,
     DEFAULT_INDEX_METRIC,
     DEFAULT_INDEX_NAME,
@@ -19,7 +21,7 @@ from image_search.constants.settings import (
     DEFAULT_SPARSE_EMBEDDING_MODEL,
     PROJECT_ROOT,
 )
-from image_search.models.schemas import (
+from models.schemas import (
     BuildSummary,
     ManifestRecord,
     StructuredDebugRecord,
@@ -149,7 +151,7 @@ def _load_record_cache(path: Path) -> dict[int, dict]:
 
 
 def _structured_record_from_payload(payload: dict[str, object]) -> StructuredItemRecord:
-    from image_search.pipeline.structured import VisionStructuredExtractor
+    from pipeline.extraction import VisionStructuredExtractor
 
     item_type = str(payload["item_type"])
     data = dict(payload.get("data", {}) or {})
@@ -259,10 +261,12 @@ def _run_single_item_debug(
 
 
 def run_build_index(args: argparse.Namespace) -> int:
-    from image_search.constants.structured import is_supported_item_type
-    from image_search.pipeline.documents import build_document_record
-    from image_search.pipeline.manifest import build_manifest
-    from image_search.pipeline.structured import (
+    from constants.structured import is_supported_item_type
+    from pipeline.documents import build_document_record
+    from pipeline.manifest import build_manifest
+    from pipeline.extraction import (
+        GeminiExtractorConfig,
+        GeminiStructuredExtractor,
         StructuredExtractorConfig,
         VisionStructuredExtractor,
     )
@@ -321,14 +325,28 @@ def run_build_index(args: argparse.Namespace) -> int:
         )
         return 1
 
-    extractor = VisionStructuredExtractor(
-        StructuredExtractorConfig(
-            model_id=args.extraction_model,
-            device=args.device,
-            quantization=args.quantization,
-            inference_batch_size=args.extraction_inference_batch_size,
-        )
+    backend: str = (
+        getattr(args, "backend", DEFAULT_EXTRACTION_BACKEND)
+        or DEFAULT_EXTRACTION_BACKEND
     )
+    if backend == "gemini":
+        extractor: GeminiStructuredExtractor | VisionStructuredExtractor = (
+            GeminiStructuredExtractor(
+                GeminiExtractorConfig(
+                    model_id=args.gemini_model,
+                    api_key=getattr(args, "gemini_api_key", None) or None,
+                )
+            )
+        )
+    else:
+        extractor = VisionStructuredExtractor(
+            StructuredExtractorConfig(
+                model_id=args.extraction_model,
+                device=args.device,
+                quantization=args.quantization,
+                inference_batch_size=args.extraction_inference_batch_size,
+            )
+        )
 
     if args.item_id is not None:
         return _run_single_item_debug(
@@ -420,8 +438,8 @@ def run_build_index(args: argparse.Namespace) -> int:
 
 
 def run_refresh_derived(args: argparse.Namespace) -> int:
-    from image_search.constants.structured import is_supported_item_type
-    from image_search.pipeline.documents import build_document_record
+    from constants.structured import is_supported_item_type
+    from pipeline.documents import build_document_record
 
     manifest_path = Path(args.manifest_path)
     structured_path = Path(args.structured_path)
@@ -513,7 +531,7 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
 
 
 def run_sync_upstash(args: argparse.Namespace) -> int:
-    from image_search.search.upstash import UpstashConfig, create_index, sync_documents
+    from search.upstash import UpstashConfig, create_index, sync_documents
 
     config = UpstashConfig.from_env(
         rest_url=args.rest_url,
@@ -546,8 +564,8 @@ def run_sync_upstash(args: argparse.Namespace) -> int:
 
 
 def run_query_upstash(args: argparse.Namespace) -> int:
-    from image_search.models.schemas import QueryRequest
-    from image_search.search.upstash import UpstashConfig, query_upstash
+    from models.schemas import QueryRequest
+    from search.upstash import UpstashConfig, query_upstash
 
     config = UpstashConfig.from_env(
         rest_url=args.rest_url,
@@ -582,8 +600,8 @@ def run_query_upstash(args: argparse.Namespace) -> int:
 
 
 def run_evaluate(args: argparse.Namespace) -> int:
-    from image_search.search.evaluate import evaluate_queries
-    from image_search.search.upstash import UpstashConfig
+    from search.evaluate import evaluate_queries
+    from search.upstash import UpstashConfig
 
     config = UpstashConfig.from_env(
         rest_url=args.rest_url,
@@ -634,6 +652,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--regen-manifest",
         action="store_true",
         help="Regenerate manifest even if one already exists",
+    )
+    # Extraction backend selection
+    build_parser.add_argument(
+        "--backend",
+        choices=("local", "gemini"),
+        default=DEFAULT_EXTRACTION_BACKEND,
+        help=f"Extraction backend: 'local' (Qwen) or 'gemini' (Google AI Studio, default: {DEFAULT_EXTRACTION_BACKEND})",
+    )
+    build_parser.add_argument(
+        "--gemini-model",
+        default=DEFAULT_GEMINI_MODEL,
+        help="Gemini model ID to use when --backend=gemini",
+    )
+    build_parser.add_argument(
+        "--gemini-api-key",
+        default=None,
+        help="Google API key (overrides GOOGLE_API_KEY env var)",
     )
     build_parser.set_defaults(func=run_build_index)
 
