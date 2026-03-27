@@ -35,12 +35,76 @@ from models.schemas import (
     StructuredDebugRecord,
     StructuredItemRecord,
 )
+from pipeline.manifest import _find_image_path, resolve_manifest_paths
 
 _LEGACY_BOTTOMS_LENGTH_TOKEN_ALIASES: dict[str, str] = {
     "mini": "upper_thigh",
     "midi": "mid_calf",
     "maxi": "ankle_length",
     "short": "mid_thigh",
+}
+
+_CATEGORY_BOTTOM_LENGTH_TOKEN_ALIASES: dict[str, dict[str, str]] = {
+    "dress": {
+        "micro": "mini",
+        "upper_thigh": "mini",
+        "mid_thigh": "mini",
+        "ankle_length": "maxi",
+    },
+    "jumpsuit": {
+        "micro": "upper_thigh",
+        "mini": "upper_thigh",
+        "midi": "ankle_length",
+        "maxi": "ankle_length",
+        "floor_length": "ankle_length",
+    },
+    "skirt": {
+        "micro": "mini",
+        "upper_thigh": "mini",
+        "mid_thigh": "mini",
+        "ankle_length": "maxi",
+    },
+    "shorts": {
+        "micro": "upper_thigh",
+        "mini": "upper_thigh",
+        "midi": "knee_length",
+        "maxi": "knee_length",
+        "ankle_length": "knee_length",
+        "floor_length": "knee_length",
+    },
+    "skort": {
+        "micro": "upper_thigh",
+        "mini": "upper_thigh",
+        "midi": "knee_length",
+        "maxi": "knee_length",
+        "ankle_length": "knee_length",
+        "floor_length": "knee_length",
+    },
+    "pants": {
+        "micro": "knee_length",
+        "mini": "knee_length",
+        "upper_thigh": "knee_length",
+        "mid_thigh": "knee_length",
+        "midi": "ankle_length",
+        "maxi": "ankle_length",
+        "floor_length": "ankle_length",
+    },
+    "leggings": {
+        "micro": "knee_length",
+        "mini": "knee_length",
+        "upper_thigh": "knee_length",
+        "mid_thigh": "knee_length",
+        "midi": "ankle_length",
+        "maxi": "ankle_length",
+        "floor_length": "ankle_length",
+    },
+    "overalls": {
+        "micro": "upper_thigh",
+        "mini": "upper_thigh",
+        "midi": "ankle_length",
+        "maxi": "ankle_length",
+        "floor_length": "ankle_length",
+    },
 }
 
 
@@ -51,6 +115,7 @@ class StructuredExtractorConfig:
     quantization: str = DEFAULT_MODEL_QUANTIZATION
     inference_batch_size: int = 2
     max_new_tokens: int = 256
+    tracker_root: str | None = None
 
 
 class VisionStructuredExtractor:
@@ -221,12 +286,30 @@ class VisionStructuredExtractor:
             return list(executor.map(cls._load_rgb_image, image_paths))
 
     @staticmethod
-    def _record_image_paths(record: ManifestRecord) -> list[tuple[str, str]]:
+    def _image_paths_for_item(
+        item_id: int,
+        tracker_root: str | None = None,
+    ) -> dict[str, str | None]:
+        manifest_paths = resolve_manifest_paths(tracker_root=tracker_root)
+        overview_path = _find_image_path(manifest_paths.item_image_root, item_id)
+        icon_path = _find_image_path(manifest_paths.item_icon_root, item_id)
+        return {
+            "overview": str(overview_path) if overview_path is not None else None,
+            "icon": str(icon_path) if icon_path is not None else None,
+        }
+
+    @classmethod
+    def _record_image_paths(
+        cls,
+        record: ManifestRecord,
+        tracker_root: str | None = None,
+    ) -> list[tuple[str, str]]:
         paths: list[tuple[str, str]] = []
-        if record.overview_path:
-            paths.append(("overview", record.overview_path))
-        if record.icon_path:
-            paths.append(("icon", record.icon_path))
+        image_paths = cls._image_paths_for_item(record.item_id, tracker_root)
+        if image_paths["overview"]:
+            paths.append(("overview", str(image_paths["overview"])))
+        if image_paths["icon"]:
+            paths.append(("icon", str(image_paths["icon"])))
         return paths
 
     @staticmethod
@@ -476,7 +559,7 @@ class VisionStructuredExtractor:
 
         if not category and subcategory in SUBCATEGORY_HIERARCHY:
             normalized["category"] = SUBCATEGORY_HIERARCHY[subcategory]
-            return normalized
+            category = str(normalized.get("category") or "").strip()
 
         promoted_subcategory: str | None = None
         if category and category not in canonical_categories:
@@ -490,8 +573,33 @@ class VisionStructuredExtractor:
             normalized["subcategory"] = promoted_subcategory
             subcategory = promoted_subcategory
 
+        if subcategory in SUBCATEGORY_HIERARCHY:
+            ancestors = get_subcategory_ancestors(subcategory)
+            if not category or category not in ancestors:
+                normalized["category"] = SUBCATEGORY_HIERARCHY[subcategory]
+                category = str(normalized.get("category") or "").strip()
+
         if subcategory and subcategory == category:
             normalized["subcategory"] = None
+        return normalized
+
+    @staticmethod
+    def _normalize_bottom_length_for_category(
+        normalized: dict[str, object],
+    ) -> dict[str, object]:
+        category = str(normalized.get("category") or "").strip()
+        bottom_length = str(normalized.get("bottom_length") or "").strip()
+        if not category or not bottom_length:
+            return normalized
+
+        category_aliases = _CATEGORY_BOTTOM_LENGTH_TOKEN_ALIASES.get(category)
+        if not category_aliases:
+            return normalized
+
+        normalized["bottom_length"] = category_aliases.get(
+            bottom_length,
+            bottom_length,
+        )
         return normalized
 
     @classmethod
@@ -525,7 +633,8 @@ class VisionStructuredExtractor:
                 normalized[field_name] = cls._normalize_scalar(
                     raw_value, field_definition
                 )
-        return cls._normalize_taxonomy_fields(item_type, normalized)
+        normalized = cls._normalize_taxonomy_fields(item_type, normalized)
+        return cls._normalize_bottom_length_for_category(normalized)
 
     @classmethod
     def _normalized_raw_values(
@@ -664,8 +773,12 @@ class VisionStructuredExtractor:
     ) -> tuple[StructuredItemRecord, StructuredDebugRecord]:
         self.ensure_loaded()
 
-        image_specs = self._record_image_paths(record)
-        prompt = self.build_prompt(record.type)
+        image_specs = self._record_image_paths(record, self.config.tracker_root)
+        image_paths = self._image_paths_for_item(
+            record.item_id,
+            self.config.tracker_root,
+        )
+        prompt = self.build_prompt(record.item_type)
         raw_response = self._decode_prompted_joint_qwen(image_specs, prompt)
         raw_payload, parse_error = self._parse_json_object(raw_response)
         if self._response_looks_truncated(raw_response, parse_error):
@@ -675,27 +788,24 @@ class VisionStructuredExtractor:
                 max_new_tokens=512,
             )
             raw_payload, parse_error = self._parse_json_object(raw_response)
-        normalized_payload = self.normalize_payload(record.type, raw_payload)
+        normalized_payload = self.normalize_payload(record.item_type, raw_payload)
         filter_report = self.build_filter_report(
-            record.type,
+            record.item_type,
             raw_payload,
             normalized_payload,
         )
 
         structured_record = StructuredItemRecord(
             item_id=record.item_id,
-            item_type=record.type,
-            source_version=record.source_version,
+            item_type=record.item_type,
+            source_version="",
             data=normalized_payload,
             parse_error=parse_error,
         )
         debug_record = StructuredDebugRecord(
             item_id=record.item_id,
-            item_type=record.type,
-            image_paths={
-                "overview": record.overview_path or None,
-                "icon": record.icon_path or None,
-            },
+            item_type=record.item_type,
+            image_paths=image_paths,
             prompt=prompt,
             raw_response=raw_response,
             raw_payload=raw_payload,
@@ -744,6 +854,7 @@ class GeminiExtractorConfig:
     thinking_budget: int = 0
     temperature: float = 0.0
     rpm_limit: int = 15
+    tracker_root: str | None = None
 
 
 class GeminiStructuredExtractor:
@@ -871,35 +982,39 @@ class GeminiStructuredExtractor:
         self,
         record: ManifestRecord,
     ) -> tuple[StructuredItemRecord, StructuredDebugRecord]:
-        image_specs = VisionStructuredExtractor._record_image_paths(record)
-        prompt = VisionStructuredExtractor.build_prompt(record.type)
+        image_specs = VisionStructuredExtractor._record_image_paths(
+            record,
+            self.config.tracker_root,
+        )
+        image_paths = VisionStructuredExtractor._image_paths_for_item(
+            record.item_id,
+            self.config.tracker_root,
+        )
+        prompt = VisionStructuredExtractor.build_prompt(record.item_type)
         raw_response = self._call_api(image_specs, prompt)
         raw_payload, parse_error = VisionStructuredExtractor._parse_json_object(
             raw_response
         )
         normalized_payload = VisionStructuredExtractor.normalize_payload(
-            record.type, raw_payload
+            record.item_type, raw_payload
         )
         filter_report = VisionStructuredExtractor.build_filter_report(
-            record.type,
+            record.item_type,
             raw_payload,
             normalized_payload,
         )
 
         structured_record = StructuredItemRecord(
             item_id=record.item_id,
-            item_type=record.type,
-            source_version=record.source_version,
+            item_type=record.item_type,
+            source_version="",
             data=normalized_payload,
             parse_error=parse_error,
         )
         debug_record = StructuredDebugRecord(
             item_id=record.item_id,
-            item_type=record.type,
-            image_paths={
-                "overview": record.overview_path or None,
-                "icon": record.icon_path or None,
-            },
+            item_type=record.item_type,
+            image_paths=image_paths,
             prompt=prompt,
             raw_response=raw_response,
             raw_payload=raw_payload,

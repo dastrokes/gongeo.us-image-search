@@ -30,15 +30,6 @@ def _flatten_values(value: object) -> list[str]:
     return [normalized] if normalized else []
 
 
-def _item_colors(data: dict[str, object]) -> list[str]:
-    return _dedupe(
-        [
-            str(data.get("primary_color") or "").strip(),
-            str(data.get("secondary_color") or "").strip(),
-        ]
-    )
-
-
 def _item_tokens(data: dict[str, object], field_name: str) -> list[str]:
     return _dedupe(_flatten_values(data.get(field_name)))
 
@@ -57,9 +48,6 @@ def build_search_text(record: StructuredItemRecord) -> str:
     placement = str(record.data.get("placement") or "").strip()
     if placement:
         lines.append(f"placement: {placement}")
-    colors = _item_colors(record.data)
-    if colors:
-        lines.append(f"colors: {', '.join(colors)}")
     ornament = _item_tokens(record.data, "ornament")
     if ornament:
         lines.append(f"ornament: {', '.join(ornament)}")
@@ -86,14 +74,18 @@ def build_search_text(record: StructuredItemRecord) -> str:
 
 
 def build_document_record(record: StructuredItemRecord) -> SearchDocumentRecord:
-    colors = _item_colors(record.data)
     metadata = {
         "item_id": record.item_id,
         "item_type": record.item_type,
         "slot": record.item_type,
-        "colors": colors,
     }
-    metadata.update(record.data)
+    metadata.update(
+        {
+            key: value
+            for key, value in record.data.items()
+            if key not in {"primary_color", "secondary_color"}
+        }
+    )
     return SearchDocumentRecord(
         id=record.item_id,
         data=build_search_text(record),

@@ -7,12 +7,7 @@ from typing import Any, cast
 @dataclass
 class ManifestRecord:
     item_id: int
-    type: str
-    icon_path: str
-    overview_path: str
-    has_icon: bool
-    has_overview: bool
-    source_version: str
+    item_type: str
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(cast(Any, self))
@@ -68,7 +63,7 @@ class BuildSummary:
     build_started_at: str
     build_finished_at: str
     duration_seconds: float
-    filter_report_path: str | None = None
+    search_report_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(cast(Any, self))

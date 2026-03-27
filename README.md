@@ -28,7 +28,7 @@ It produces:
 - `index/item-structured-data.jsonl`
 - `index/item-structured-debug.jsonl`
 - `index/item-search-documents.jsonl`
-- `index/item-filter-report.jsonl`
+- `index/item-search-report.jsonl`
 - `index/build-summary.json`
 
 ## Install
@@ -81,7 +81,7 @@ python manifest.py
 
 `index --item-id <ID>` prints one JSON bundle: prompt, raw model response, parsed payload, and normalized structured output.
 
-`refresh` rebuilds `index/item-search-documents.jsonl` and `index/build-summary.json` from the cached manifest and structured data — use when document formatting changes but re-extraction is not needed.
+`refresh` rebuilds `index/item-search-documents.jsonl`, `index/item-search-report.jsonl`, and `index/build-summary.json` from cached structured data — use when document formatting or downstream normalization changes but re-extraction is not needed.
 
 ## Notes
 

@@ -57,16 +57,6 @@ def lexical_baseline(
     elif filters.get("type"):
         requested = {str(value) for value in filters["type"]}
         filtered = [row for row in filtered if str(row.get("item_type")) in requested]
-    if filters.get("colors"):
-        requested_colors = {str(value) for value in filters["colors"]}
-        filtered = [
-            row
-            for row in filtered
-            if requested_colors.intersection(
-                {str(value) for value in row.get("colors", [])}
-            )
-        ]
-
     query_tokens = set(_tokenize(query))
     ranked = sorted(
         (
@@ -79,10 +69,6 @@ def lexical_baseline(
                                 [
                                     str(row.get("item_type", "")),
                                     str(row.get("subcategory", "")),
-                                    " ".join(
-                                        str(value)
-                                        for value in row.get("colors", []) or []
-                                    ),
                                     str(row.get("search_text", "")),
                                 ]
                             )
@@ -159,7 +145,6 @@ def evaluate_queries(
                 str(value)
                 for value in filters.get("item_type", filters.get("type", []))
             ],
-            colors=[str(value) for value in filters.get("colors", [])],
         )
 
         semantic_started = time.perf_counter()

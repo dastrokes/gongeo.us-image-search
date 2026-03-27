@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 
@@ -87,6 +88,16 @@ ACCESSORY_ITEM_TYPES: tuple[str, ...] = (
     "abilityHandhelds",
 )
 
+CLOTHING_ITEM_TYPES: tuple[str, ...] = (
+    "hair",
+    "dresses",
+    "tops",
+    "bottoms",
+    "outerwear",
+    "socks",
+    "shoes",
+)
+
 WEARABLE_ITEM_TYPES: tuple[str, ...] = (
     "hair",
     *GARMENT_ITEM_TYPES,
@@ -94,6 +105,26 @@ WEARABLE_ITEM_TYPES: tuple[str, ...] = (
     "shoes",
     *ACCESSORY_ITEM_TYPES,
 )
+
+SPECIAL_ITEM_TYPE_FILTERS: dict[str, tuple[str, ...]] = {
+    "clothing": CLOTHING_ITEM_TYPES,
+    "accessories": tuple(
+        item_type
+        for item_type in WEARABLE_ITEM_TYPES
+        if item_type not in CLOTHING_ITEM_TYPES
+    ),
+}
+
+
+def expand_item_type_filters(item_types: Iterable[str] | None) -> set[str]:
+    expanded: set[str] = set()
+    for item_type in item_types or ():
+        expanded.update(SPECIAL_ITEM_TYPE_FILTERS.get(item_type, (item_type,)))
+    unknown = expanded.difference(WEARABLE_ITEM_TYPES)
+    if unknown:
+        joined = ", ".join(sorted(unknown))
+        raise ValueError(f"Unknown item type filter(s): {joined}")
+    return expanded
 
 
 _SHARED_COLOR_FIELDS: tuple[StructuredFieldDefinition, ...] = (
@@ -197,25 +228,21 @@ SOCK_FIELDS: tuple[str, ...] = ("sock_height",)
 _FIELD_NAMES_BY_ITEM_TYPE: dict[str, tuple[str, ...]] = {
     "outerwear": (
         *_TAXONOMY_FIELD_NAMES,
-        *_SHARED_COLOR_FIELD_NAMES,
         *OUTERWEAR_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "tops": (
         *_TAXONOMY_FIELD_NAMES,
-        *_SHARED_COLOR_FIELD_NAMES,
         *TOP_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "bottoms": (
         *_TAXONOMY_FIELD_NAMES,
-        *_SHARED_COLOR_FIELD_NAMES,
         *BOTTOM_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
     ),
     "dresses": (
         *_TAXONOMY_FIELD_NAMES,
-        *_SHARED_COLOR_FIELD_NAMES,
         *DRESS_FIELDS,
         *_SHARED_VISUAL_FIELD_NAMES,
     ),
@@ -252,7 +279,6 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         item_types=("hair",),
         fields=_fields(
             *_TAXONOMY_FIELD_NAMES,
-            *_SHARED_COLOR_FIELD_NAMES,
             "hair_length",
             "haircut",
             "texture",
@@ -264,7 +290,6 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         item_types=("shoes",),
         fields=_fields(
             *_TAXONOMY_FIELD_NAMES,
-            *_SHARED_COLOR_FIELD_NAMES,
             *SHOE_FIELDS,
             *_SHARED_VISUAL_FIELD_NAMES,
         ),
@@ -274,7 +299,6 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         item_types=("socks",),
         fields=_fields(
             *_TAXONOMY_FIELD_NAMES,
-            *_SHARED_COLOR_FIELD_NAMES,
             *SOCK_FIELDS,
             *_SHARED_VISUAL_FIELD_NAMES,
         ),
@@ -284,7 +308,6 @@ STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
         item_types=ACCESSORY_ITEM_TYPES,
         fields=_fields(
             *_TAXONOMY_FIELD_NAMES,
-            *_SHARED_COLOR_FIELD_NAMES,
             *_SHARED_VISUAL_FIELD_NAMES,
         ),
     ),

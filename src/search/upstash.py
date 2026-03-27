@@ -220,12 +220,6 @@ def build_filter_expression(request: QueryRequest) -> str | None:
         clauses.append(
             "(" + " OR ".join(f"item_type = '{value}'" for value in escaped) + ")"
         )
-    if request.colors:
-        escaped = [value.replace("'", "\\'") for value in request.colors]
-        clauses.append(
-            "(" + " OR ".join(f"colors CONTAINS '{value}'" for value in escaped) + ")"
-        )
-
     return " AND ".join(clauses) if clauses else None
 
 

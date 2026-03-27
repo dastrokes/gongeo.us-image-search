@@ -5,10 +5,10 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = PACKAGE_ROOT.parent
 
-DEFAULT_EXTRACTION_MODEL_ID = "Qwen/Qwen3-VL-8B-Instruct"
-DEFAULT_MODEL_QUANTIZATION = "4bit"
-DEFAULT_EXTRACTION_BACKEND = "gemini"
-DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+DEFAULT_EXTRACTION_MODEL_ID = "Qwen/Qwen3-VL-4B-Instruct"
+DEFAULT_MODEL_QUANTIZATION = "none"  # "none", "4bit", "8bit"
+DEFAULT_EXTRACTION_BACKEND = "local"  # "gemini" or "local"
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview" # gemini-3-flash-preview
 DEFAULT_EMBEDDING_MODEL = "BGE_M3"
 DEFAULT_SPARSE_EMBEDDING_MODEL = "BGE_M3"
 DEFAULT_INDEX_TYPE = "HYBRID"

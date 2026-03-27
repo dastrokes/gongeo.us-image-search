@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from constants.settings import PROJECT_ROOT
+from constants.structured import expand_item_type_filters
 from pipeline.manifest import build_manifest
 
 
@@ -29,9 +30,6 @@ def main() -> int:
         "--sync-report", default=None, help="Path to database-sync-report.json"
     )
     parser.add_argument(
-        "--source-version", default=None, help="Override source_version field"
-    )
-    parser.add_argument(
         "--output",
         default=str(PROJECT_ROOT / "manifest" / "item-manifest.jsonl"),
         help="Destination JSONL file",
@@ -44,9 +42,39 @@ def main() -> int:
         action="append",
         dest="types",
         metavar="TYPE",
-        help="Filter by item type (repeatable, e.g. --type hair --type shoes)",
+        help="Filter by item type (repeatable, supports special values clothing/accessories)",
+    )
+    parser.add_argument(
+        "--clothing",
+        action="store_true",
+        help="Include hair, tops, bottoms, outerwear, socks, and shoes",
+    )
+    parser.add_argument(
+        "--accessories",
+        action="store_true",
+        help="Include all supported item types not covered by --clothing",
+    )
+    parser.add_argument(
+        "--indexed-path",
+        default=str(PROJECT_ROOT / "manifest" / "item-indexed.jsonl"),
+        help="JSONL manifest of already-indexed records to skip if present",
+    )
+    parser.add_argument(
+        "--include-indexed",
+        action="store_true",
+        help="Include records even if they already appear in the indexed manifest",
     )
     args = parser.parse_args()
+
+    requested_types = list(args.types or [])
+    if args.clothing:
+        requested_types.append("clothing")
+    if args.accessories:
+        requested_types.append("accessories")
+    try:
+        type_filter = expand_item_type_filters(requested_types)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     print("Building manifest ...")
     records, stats = build_manifest(
@@ -54,12 +82,10 @@ def main() -> int:
         config_root=args.config_root,
         sync_report_path=args.sync_report,
         limit=args.limit,
-        source_version=args.source_version,
+        item_types=type_filter or None,
+        indexed_manifest_path=args.indexed_path,
+        skip_indexed=not args.include_indexed,
     )
-
-    if args.types:
-        type_filter = set(args.types)
-        records = [record for record in records if record.type in type_filter]
 
     output_path = Path(args.output)
     _write_jsonl(output_path, [record.to_dict() for record in records])
@@ -67,7 +93,7 @@ def main() -> int:
     summary = {
         "output": str(output_path),
         "record_count": len(records),
-        **({"type_filter": args.types} if args.types else {}),
+        **({"type_filter": sorted(type_filter)} if type_filter else {}),
         **stats,
     }
     print(json.dumps(summary, indent=2))

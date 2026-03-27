@@ -13,30 +13,35 @@ STRUCTURED_EXTRACTION_SYSTEM_PROMPT = (
     "VALUE RULES\n"
     "- Non-null values must be lowercase underscore_tokens.\n"
     "- Scalars: one token or null.\n"
-    "- Arrays: unique tokens or [].\n\n"
+    "- Arrays: unique tokens or [].\n"
+    "- Each field must represent a single concept only.\n"
+    "- Do not combine multiple attributes into one token.\n\n"
+    "TAXONOMY\n"
+    "- category = the main visible item class, chosen at the schema root level rather than a more specific child type.\n"
+    "- category must be one of the values in CLOSED LISTS.\n"
+    "- subcategory must be a concise, canonical direct child refinement of the chosen category, or null.\n"
+    "- Prefer the listed child examples. If no close match exists, use null.\n"
+    "- subcategory must be a valid child of the selected category. If unsure, set subcategory = null.\n"
+    "- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n"
+    "- Do not repeat category in subcategory.\n"
+    "- Do not compose multiple attributes into subcategory.\n\n"
+)
+
+STRUCTURED_EXTRACTION_EVIDENCE_PROMPT = (
     "EVIDENCE\n"
     "- Use only directly visible details from the provided images.\n"
     "- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n"
-    "- If unclear or inapplicable, output null or [].\n"
-    "- If the images conflict, trust the overview image over the icon.\n\n"
-    "TAXONOMY\n"
-    "- category = broadest stable visible class.\n"
-    "- category and subcategory form a single parent_child hierarchy.\n"
-    "- category must be chosen from the provided category roots.\n"
-    "- subcategory is an open-vocabulary direct child refinement of the chosen category, or null.\n"
-    "- Prefer the listed child examples when they fit; other clear child refinements are allowed.\n"
-    "- Never invent category tokens outside the provided category roots.\n"
-    "- If you use a listed subcategory example, keep it under its canonical category.\n"
-    "- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n"
-    "- Do not repeat category in subcategory.\n"
-    "- Never output incompatible category/subcategory pairs.\n\n"
-    "FIELD RULES\n"
-    "- pattern = repeated surface motif or print.\n"
-    "- material = visible fabric or surface type.\n"
-    "- structure = built-in fabric shaping, formation, or visible surface texture.\n"
-    "- ornament = attached or applied decorative detail, not an edge or band finish.\n"
-    "- Do not encode the same concept in multiple fields.\n"
+    "- If unclear, weak, or inapplicable, output null or [].\n"
+    "- Prefer null over uncertain or weak signals.\n"
+    "- If the images conflict, trust the overview image over the icon."
 )
+
+_SHARED_FIELD_GUIDANCE_LINES: dict[str, str] = {
+    "pattern": "- pattern = repeated surface motif or print.",
+    "material": "- material = visible fabric or surface type.",
+    "structure": "- structure = built-in fabric shaping, formation, or visible surface texture.",
+    "ornament": "- ornament = attached or applied decorative detail, not an edge or band finish.",
+}
 
 _ITEM_TYPE_FIELD_GUIDANCE: dict[str, str] = {
     "bottoms": (
@@ -55,7 +60,9 @@ _ITEM_TYPE_FIELD_GUIDANCE: dict[str, str] = {
         "- category/subcategory describe the visible arrangement only.\n"
         "- haircut belongs only in haircut.\n"
         "- texture belongs only in texture.\n"
-        "- bangs belongs only in bangs."
+        "- bangs belongs only in bangs.\n"
+        "- If no clear fringe crosses the forehead, use no_bangs.\n"
+        "- Do not infer bangs from parting alone."
     ),
     "shoes": (
         "SHOES FIELD RULES\n"
@@ -254,6 +261,7 @@ _SHOES_TAXONOMY: _TaxonomyDefinition = (
     ("mary_janes", ()),
     ("mules", ()),
     ("slippers", ()),
+    ("barefoot", ()),
 )
 
 _SOCKS_TAXONOMY: _TaxonomyDefinition = (
@@ -286,6 +294,7 @@ _HEADWEAR_TAXONOMY: _TaxonomyDefinition = (
     ("crown", ("coronet", "tiara")),
     ("veil", ()),
     ("headdress", ()),
+    ("headpiece", ()),
 )
 
 _EARRINGS_TAXONOMY: _TaxonomyDefinition = (
@@ -311,7 +320,7 @@ _NECKWEAR_TAXONOMY: _TaxonomyDefinition = (
         ),
     ),
     ("choker", ("lace_choker", "ribbon_choker")),
-    ("pendant", ("charm", "locket", "medallion", "tassel")),
+    ("pendant", ("charm", "locket", "medallion")),
     ("collar", ()),
     ("scarf", ()),
 )
@@ -341,7 +350,6 @@ _GLOVES_TAXONOMY: _TaxonomyDefinition = (
         "gloves",
         (
             "fingerless_gloves",
-            "lace_gloves",
             "mittens",
             "opera_gloves",
         ),
@@ -363,7 +371,8 @@ _HANDHELDS_TAXONOMY: _TaxonomyDefinition = (
 )
 
 _CHEST_ACCESSORIES_TAXONOMY: _TaxonomyDefinition = (
-    ("brooch", ("bow_brooch", "cape_pin", "corsage", "pin")),
+    ("brooch", ("bow_brooch", "cape_pin", "pin")),
+    ("corsage", ()),
     ("sash", ()),
 )
 
@@ -394,7 +403,9 @@ _BACKPIECES_TAXONOMY: _TaxonomyDefinition = (
 _RINGS_TAXONOMY: _TaxonomyDefinition = (("ring", ()),)
 
 _ARM_DECORATIONS_TAXONOMY: _TaxonomyDefinition = (
-    ("armlet", ("arm_cuff", "sleeve_garter")),
+    ("armlet", ("arm_cuff",)),
+    ("sleeve_garter", ()),
+    ("wrist_corsage", ()),
 )
 
 _ABILITY_HANDHELDS_TAXONOMY: _TaxonomyDefinition = (
@@ -525,31 +536,6 @@ _SOCK_HEIGHT_TOKENS: tuple[str, ...] = (
     "knee",
     "over_knee",
     "thigh_high",
-)
-
-_COLOR_ENUM_TOKENS: tuple[str, ...] = (
-    "white",
-    "black",
-    "gray",
-    "multicolor",
-    "cream",
-    "beige",
-    "pink",
-    "red",
-    "burgundy",
-    "orange",
-    "yellow",
-    "green",
-    "mint",
-    "teal",
-    "blue",
-    "navy",
-    "purple",
-    "lavender",
-    "brown",
-    "gold",
-    "silver",
-    "rose_gold",
 )
 
 # Illustrative examples only — not exhaustive, model may go beyond these.
@@ -789,9 +775,6 @@ CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
     "dress_silhouette": _DRESS_SILHOUETTE_TOKENS,
     "bangs": _HAIR_BANGS_TOKENS,
     "heel_type": _HEEL_TYPE_TOKENS,
-    # color enumerations
-    "primary_color": _COLOR_ENUM_TOKENS,
-    "secondary_color": _COLOR_ENUM_TOKENS,
 }
 
 
@@ -836,23 +819,18 @@ def _subcategory_guidance_lines_for(
         if children
     ]
     if not hierarchy_lines:
-        return [
-            "  subcategory: open vocabulary; use null or another direct child refinement if one is clearly visible"
-        ]
+        return []
 
-    lines = [
-        "  subcategory: open vocabulary; prefer these child examples under the chosen category, otherwise use another clear direct child refinement or null"
-    ]
-    lines.append("  category/subcategory hierarchy examples:")
+    lines = ["  subcategory children by category:"]
     lines.extend(hierarchy_lines)
     if any(not children for _category, children in taxonomy):
         lines.append(
-            "    categories without listed children -> usually null unless another direct child refinement is clearly visible"
+            "    categories without listed children -> usually use null unless a clear direct child refinement is visible"
         )
     return lines
 
 
-def _canonical_block(slot: str, field_names: tuple[str, ...]) -> str:
+def _vocabulary_blocks(slot: str, field_names: tuple[str, ...]) -> tuple[str, str]:
     filtered_lines: list[str] = []
     example_lines: list[str] = []
     filtered_lines.extend(_category_lines_for(slot, field_names))
@@ -868,20 +846,18 @@ def _canonical_block(slot: str, field_names: tuple[str, ...]) -> str:
         if example_tokens:
             example_lines.append(f"  {name} examples: {', '.join(example_tokens)}")
             continue
-    sections: list[str] = []
-    if filtered_lines:
-        sections.append(
-            "CLOSED LISTS — only these values are valid for these fields:\n"
-            + "\n".join(filtered_lines)
-        )
-    if example_lines:
-        sections.append(
-            "OPEN VOCABULARY — illustrative examples, other tokens are allowed:\n"
-            + "\n".join(example_lines)
-        )
-    if not sections:
-        return ""
-    return "\n\n".join(sections)
+    closed_lists = (
+        "CLOSED LISTS — only these values are valid for these fields:\n"
+        + "\n".join(filtered_lines)
+        if filtered_lines
+        else ""
+    )
+    open_vocab = (
+        "OPEN VOCABULARY — preferred canonical examples:\n" + "\n".join(example_lines)
+        if example_lines
+        else ""
+    )
+    return closed_lists, open_vocab
 
 
 def build_extraction_user_message(
@@ -893,13 +869,27 @@ def build_extraction_user_message(
 ) -> str:
     schema = _schema_template_for(slot)
     resolved_field_names = field_names or _field_names_for(slot)
-    canonical = _canonical_block(slot, resolved_field_names)
+    closed_lists, open_vocab = _vocabulary_blocks(slot, resolved_field_names)
+    shared_field_guidance_lines = [
+        _SHARED_FIELD_GUIDANCE_LINES[name]
+        for name in resolved_field_names
+        if name in _SHARED_FIELD_GUIDANCE_LINES
+    ]
     resolved_field_guidance = field_guidance or _ITEM_TYPE_FIELD_GUIDANCE.get(slot)
     sections: list[str] = []
-    if canonical:
-        sections.append(canonical)
+    if closed_lists:
+        sections.append(closed_lists)
     if resolved_field_guidance:
         sections.append(resolved_field_guidance)
+    if shared_field_guidance_lines:
+        sections.append(
+            "FIELD RULES\n"
+            + "\n".join(shared_field_guidance_lines)
+            + "\n- Do not encode the same concept in multiple fields."
+        )
+    sections.append(STRUCTURED_EXTRACTION_EVIDENCE_PROMPT)
+    if open_vocab:
+        sections.append(open_vocab)
     if visual_tags and visual_tags.strip():
         sections.append(f"Visual context from tagger: {visual_tags}")
     sections.append(

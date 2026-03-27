@@ -25,6 +25,7 @@ DEFAULT_SYNC_REPORT = (
     / "reports"
     / "database-sync-report.json"
 )
+DEFAULT_INDEXED_MANIFEST = PROJECT_ROOT / "manifest" / "item-indexed.jsonl"
 
 
 def _is_base_item(item_id: int) -> bool:
@@ -78,6 +79,23 @@ def _load_json(path: Path) -> dict[str, Any]:
         return json.load(handle)
 
 
+def _load_indexed_item_ids(path: Path) -> set[int]:
+    item_ids: set[int] = set()
+    if not path.exists():
+        return item_ids
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+                item_ids.add(int(payload["item_id"]))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+    return item_ids
+
+
 def _find_image_path(root: Path, item_id: int) -> Path | None:
     for extension in IMAGE_EXTENSIONS:
         candidate = root / f"{item_id}{extension}"
@@ -108,8 +126,10 @@ def build_manifest(
     sync_report_path: str | None = None,
     limit: int | None = None,
     item_id: int | None = None,
-    source_version: str | None = None,
-) -> tuple[list[ManifestRecord], dict[str, int | str]]:
+    item_types: set[str] | None = None,
+    indexed_manifest_path: str | None = None,
+    skip_indexed: bool = True,
+) -> tuple[list[ManifestRecord], dict[str, int]]:
     paths = resolve_manifest_paths(
         tracker_root=tracker_root,
         config_root=config_root,
@@ -120,23 +140,22 @@ def build_manifest(
     item_config = _load_json(paths.item_config_path)
     minor_type_info = _load_json(paths.minor_type_path)
     items = sync_report.get("syncedDetails", {}).get("items", [])
-
-    resolved_source_version = (
-        source_version
-        or sync_report.get("timestamp")
-        or str(paths.sync_report_path.stat().st_mtime_ns)
+    selected_item_types = set(item_types or ())
+    indexed_item_ids = (
+        _load_indexed_item_ids(
+            Path(indexed_manifest_path or DEFAULT_INDEXED_MANIFEST)
+        )
+        if skip_indexed and item_id is None
+        else set()
     )
 
     manifest: list[ManifestRecord] = []
     int_stats: dict[str, int] = {
         "skipped_count": 0,
         "non_base_skipped_count": 0,
+        "indexed_skipped_count": 0,
         "missing_icon_count": 0,
         "missing_overview_count": 0,
-    }
-    stats: dict[str, int | str] = {
-        **int_stats,
-        "source_version": str(resolved_source_version),
     }
 
     for raw in items:
@@ -153,6 +172,11 @@ def build_manifest(
         item_type = _resolve_item_type(item_payload, minor_type_info)
         if not is_supported_item_type(item_type):
             int_stats["skipped_count"] += 1
+            continue
+        if selected_item_types and item_type not in selected_item_types:
+            continue
+        if current_item_id in indexed_item_ids:
+            int_stats["indexed_skipped_count"] += 1
             continue
 
         icon_path = _find_image_path(paths.item_icon_root, current_item_id)
@@ -172,17 +196,11 @@ def build_manifest(
         manifest.append(
             ManifestRecord(
                 item_id=current_item_id,
-                type=item_type,
-                icon_path=str(icon_path or ""),
-                overview_path=str(overview_path or ""),
-                has_icon=has_icon,
-                has_overview=has_overview,
-                source_version=str(resolved_source_version),
+                item_type=item_type,
             )
         )
 
         if limit is not None and len(manifest) >= limit:
             break
 
-    stats.update(int_stats)
-    return manifest, stats
+    return manifest, int_stats
