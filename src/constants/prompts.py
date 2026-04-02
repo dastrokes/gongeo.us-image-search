@@ -192,6 +192,9 @@ _DRESSES_TAXONOMY: _TaxonomyDefinition = (
             "sundress",
             "sweater_dress",
             "wrap_dress",
+            "corset_dress",
+            "tea_dress",
+            "tunic_dress",
         ),
     ),
     ("jumpsuit", ("romper", "onesie")),
@@ -343,6 +346,7 @@ _CHOKERS_TAXONOMY: _TaxonomyDefinition = (
     ("pendant", ("charm", "locket", "medallion", "tassel")),
     ("collar", ()),
     ("scarf", ()),
+    ("headphone", ()),
 )
 
 _GLOVES_TAXONOMY: _TaxonomyDefinition = (
@@ -358,6 +362,7 @@ _GLOVES_TAXONOMY: _TaxonomyDefinition = (
 
 _HANDHELDS_TAXONOMY: _TaxonomyDefinition = (
     ("fan", ()),
+    ("handbag", ("purse",)),
     ("parasol", ()),
     ("wand", ()),
     ("staff", ()),
@@ -365,8 +370,10 @@ _HANDHELDS_TAXONOMY: _TaxonomyDefinition = (
     ("book", ("spellbook",)),
     ("bouquet", ()),
     ("basket", ()),
-    ("instrument", ("lute", "violin")),
+    ("instrument", ()),
     ("plush", ()),
+    ("weapon", ()),
+    ("tool", ()),
     ("handheld", ()),
 )
 
@@ -397,15 +404,69 @@ _BACKPIECES_TAXONOMY: _TaxonomyDefinition = (
     ("backpack", ()),
     ("back_bow", ()),
     ("tail", ()),
+    ("drape", ()),
     ("backpiece", ()),
 )
 
 _RINGS_TAXONOMY: _TaxonomyDefinition = (("ring", ()),)
 
+_BODY_PAINT_TAXONOMY: _TaxonomyDefinition = (("body_paint", ()),)
+
 _ARM_DECORATIONS_TAXONOMY: _TaxonomyDefinition = (
     ("armlet", ("arm_cuff",)),
     ("sleeve_garter", ()),
     ("wrist_corsage", ()),
+)
+
+_FACE_DECORATIONS_TAXONOMY: _TaxonomyDefinition = (
+    (
+        "mask",
+        (
+            "full_mask",
+            "half_mask",
+            "lower_face_mask",
+            "eye_mask",
+            "ornamental_mask",
+        ),
+    ),
+    (
+        "blindfold",
+        (
+            "cloth_blindfold",
+            "decorative_blindfold",
+            "ornamental_blindfold",
+        ),
+    ),
+    (
+        "eyewear",
+        (
+            "glasses",
+            "sunglasses",
+            "goggles",
+            "monocle",
+        ),
+    ),
+    (
+        "eyepatch",
+        (
+            "medical_eyepatch",
+            "decorative_eyepatch",
+        ),
+    ),
+    (
+        "facial_cover",
+        (
+            "mouth_cover",
+            "nose_cover",
+            "bandage",
+            "face_shield",
+        ),
+    ),
+    ("face_paint", ()),
+    ("face_veil", ()),
+    ("face_marking", ()),
+    ("face_jewelry", ()),
+    ("face_prop", ()),
 )
 
 _ABILITY_HANDHELDS_TAXONOMY: _TaxonomyDefinition = (
@@ -438,6 +499,8 @@ _ITEM_TYPE_TAXONOMIES: dict[str, _TaxonomyDefinition] = {
     "backpieces": _BACKPIECES_TAXONOMY,
     "rings": _RINGS_TAXONOMY,
     "armDecorations": _ARM_DECORATIONS_TAXONOMY,
+    "faceDecorations": _FACE_DECORATIONS_TAXONOMY,
+    "bodyPaint": _BODY_PAINT_TAXONOMY,
     "abilityHandhelds": _ABILITY_HANDHELDS_TAXONOMY,
 }
 

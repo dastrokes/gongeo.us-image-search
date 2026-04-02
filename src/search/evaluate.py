@@ -33,6 +33,9 @@ def load_search_documents(path: str | Path) -> list[dict[str, object]]:
         for line in handle:
             payload = json.loads(line)
             metadata = dict(payload.get("metadata", {}))
+            structured_data = metadata.get("structured_data")
+            if isinstance(structured_data, dict):
+                metadata.update(structured_data)
             metadata["item_id"] = int(metadata.get("item_id", payload.get("id", 0)))
             metadata["search_text"] = str(payload.get("data", ""))
             documents.append(metadata)

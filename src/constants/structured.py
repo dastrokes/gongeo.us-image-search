@@ -85,6 +85,8 @@ ACCESSORY_ITEM_TYPES: tuple[str, ...] = (
     "backpieces",
     "rings",
     "armDecorations",
+    "faceDecorations",
+    "bodyPaint",
     "abilityHandhelds",
 )
 

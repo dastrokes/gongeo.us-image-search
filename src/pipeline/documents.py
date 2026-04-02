@@ -3,6 +3,10 @@ from __future__ import annotations
 from models.schemas import SearchDocumentRecord, StructuredItemRecord
 
 
+def _has_value(value: object) -> bool:
+    return value not in (None, "", [], {})
+
+
 def _dedupe(values: list[str]) -> list[str]:
     deduped: list[str] = []
     seen: set[str] = set()
@@ -35,22 +39,17 @@ def _item_tokens(data: dict[str, object], field_name: str) -> list[str]:
 
 
 def build_search_text(record: StructuredItemRecord) -> str:
-    lines = [
-        f"item id: {record.item_id}",
-        f"slot: {record.item_type}",
-    ]
+    search_terms = [record.item_type]
     category = str(record.data.get("category") or "").strip()
     if category:
-        lines.append(f"category: {category}")
+        search_terms.append(category)
     subcategory = str(record.data.get("subcategory") or "").strip()
     if subcategory:
-        lines.append(f"subcategory: {subcategory}")
+        search_terms.append(subcategory)
     placement = str(record.data.get("placement") or "").strip()
     if placement:
-        lines.append(f"placement: {placement}")
+        search_terms.append(placement)
     ornament = _item_tokens(record.data, "ornament")
-    if ornament:
-        lines.append(f"ornament: {', '.join(ornament)}")
 
     attribute_values = _dedupe(
         list(
@@ -68,22 +67,21 @@ def build_search_text(record: StructuredItemRecord) -> str:
             for value in _flatten_values(field_value)
         )
     )
-    if attribute_values:
-        lines.append(f"attributes: {', '.join(attribute_values)}")
-    return "\n".join(lines).strip()
+    search_terms.extend(ornament)
+    search_terms.extend(attribute_values)
+    return " ".join(_dedupe(search_terms)).strip()
 
 
 def build_document_record(record: StructuredItemRecord) -> SearchDocumentRecord:
     metadata = {
         "item_id": record.item_id,
         "item_type": record.item_type,
-        "slot": record.item_type,
     }
     metadata.update(
         {
             key: value
             for key, value in record.data.items()
-            if key not in {"primary_color", "secondary_color"}
+            if key not in {"primary_color", "secondary_color"} and _has_value(value)
         }
     )
     return SearchDocumentRecord(

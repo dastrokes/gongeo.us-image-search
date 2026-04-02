@@ -142,9 +142,7 @@ def build_manifest(
     items = sync_report.get("syncedDetails", {}).get("items", [])
     selected_item_types = set(item_types or ())
     indexed_item_ids = (
-        _load_indexed_item_ids(
-            Path(indexed_manifest_path or DEFAULT_INDEXED_MANIFEST)
-        )
+        _load_indexed_item_ids(Path(indexed_manifest_path or DEFAULT_INDEXED_MANIFEST))
         if skip_indexed and item_id is None
         else set()
     )

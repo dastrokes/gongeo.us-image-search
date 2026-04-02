@@ -237,27 +237,41 @@ def query_upstash(request: QueryRequest, config: UpstashConfig) -> list[QueryRes
     results: list[QueryResult] = []
     for match in response:
         metadata = getattr(match, "metadata", {}) or {}
+        structured_metadata = (
+            dict(metadata.get("structured_data", {}) or {})
+            if isinstance(metadata.get("structured_data"), dict)
+            else {}
+        )
         if "item_id" not in metadata:
             continue
         item_type = str(metadata.get("item_type", "unknown"))
         if not is_supported_item_type(item_type):
             continue
         schema_definition = schema_definition_for_item_type(item_type)
-        structured_data = {
-            field_definition.name: metadata.get(field_definition.name)
+        structured_source = metadata if any(
+            field_definition.name in metadata
             for field_definition in schema_definition.fields
-            if field_definition.name in metadata
+        ) else structured_metadata
+        structured_data = {
+            field_definition.name: structured_source.get(field_definition.name)
+            for field_definition in schema_definition.fields
+            if field_definition.name in structured_source
         }
         if not structured_data and isinstance(metadata.get("structured_data"), dict):
             structured_data = dict(metadata.get("structured_data", {}) or {})
+        colors_value = metadata.get("colors", structured_metadata.get("colors", []))
         results.append(
             QueryResult(
                 item_id=int(metadata.get("item_id")),
                 score=float(getattr(match, "score", 0.0)),
                 item_type=item_type,
-                colors=list(metadata.get("colors", [])),
-                primary_color=metadata.get("primary_color"),
-                secondary_color=metadata.get("secondary_color"),
+                colors=list(colors_value) if isinstance(colors_value, list) else [],
+                primary_color=metadata.get(
+                    "primary_color", structured_metadata.get("primary_color")
+                ),
+                secondary_color=metadata.get(
+                    "secondary_color", structured_metadata.get("secondary_color")
+                ),
                 structured_data=structured_data,
             )
         )

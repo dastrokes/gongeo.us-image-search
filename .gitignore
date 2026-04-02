@@ -31,8 +31,11 @@ ENV/
 !.env.example
 
 # Output
-# manifest/*
-# index/*
+manifest/*
+# Search indices
+index/
+index-*/
+
 
 # Model cache
 .cache/

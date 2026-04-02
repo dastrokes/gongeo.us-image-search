@@ -89,4 +89,5 @@ python manifest.py
 - The canonical output is one normalized JSON object per item keyed by `item_id`.
 - Extraction uses item-type-specific prompts; only fields relevant to the slot are included.
 - Search documents are derived from normalized structured JSON, not captions or taxonomy assignments.
+- Search-document `data` is value-only text for embeddings; metadata stays flat, with `metadata.item_type` preserved for filtering.
 - Upstash filtering supports item type and color metadata.
