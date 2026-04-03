@@ -1,6 +1,6 @@
 # Image Search
 
-Offline structured extraction and Upstash-backed semantic item search for Infinity Nikki items.
+Offline structured extraction for Infinity Nikki items.
 
 ## Layout
 
@@ -9,7 +9,6 @@ Source lives under `src/` (added to `sys.path` by the root wrappers):
 - `src/constants/` — settings, structured field definitions, and extraction prompts
 - `src/models/` — dataclass schemas for manifests, structured records, and search documents
 - `src/pipeline/` — manifest ingestion, vision extraction, and search-document generation
-- `src/search/` — Upstash sync and search evaluation
 
 Root `cli.py` and `manifest.py` are thin compatibility entry-points that prepend `src/` to `sys.path` before delegating.
 
@@ -45,14 +44,6 @@ Set these in `.env` or your shell:
 
 - `TRACKER_ROOT` — path to `gongeo.us-nikki-tracker` repo
 - `CONFIG_DECODER_OUTPUT` — path to `gongeo.us-config-decoder/cfg/config_output`
-- `UPSTASH_VECTOR_REST_URL`
-- `UPSTASH_VECTOR_REST_TOKEN`
-
-Optional for index creation:
-
-- `UPSTASH_EMAIL`
-- `UPSTASH_API_KEY`
-- `UPSTASH_VECTOR_MANAGEMENT_URL`
 
 ## Commands
 
@@ -65,15 +56,6 @@ python cli.py index --item-id 1020123456   # single-item debug
 
 # Rebuild search documents from cached extraction (no re-extraction)
 python cli.py refresh
-
-# Upload search documents to Upstash Vector
-python cli.py sync
-
-# Query Upstash interactively
-python cli.py query --q "floral lace dress" --limit 20
-
-# Evaluate search quality against a query set
-python cli.py evaluate --queries path/to/queries.jsonl
 
 # Regenerate the base-item manifest only
 python manifest.py
@@ -90,4 +72,3 @@ python manifest.py
 - Extraction uses item-type-specific prompts; only fields relevant to the slot are included.
 - Search documents are derived from normalized structured JSON, not captions or taxonomy assignments.
 - Search-document `data` is value-only text for embeddings; metadata stays flat, with `metadata.item_type` preserved for filtering.
-- Upstash filtering supports item type and color metadata.

@@ -54,7 +54,6 @@ class SearchDocumentRecord:
 @dataclass
 class BuildSummary:
     extraction_model_id: str
-    upstash_embedding_model: str
     item_count: int
     skipped_count: int
     missing_icon_count: int
@@ -64,42 +63,6 @@ class BuildSummary:
     build_finished_at: str
     duration_seconds: float
     search_report_path: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(cast(Any, self))
-
-
-@dataclass
-class QueryRequest:
-    q: str
-    limit: int = 20
-    item_type: list[str] = field(default_factory=list)
-    colors: list[str] = field(default_factory=list)
-
-
-@dataclass
-class QueryResult:
-    item_id: int
-    score: float
-    item_type: str = ""
-    colors: list[str] = field(default_factory=list)
-    primary_color: str | None = None
-    secondary_color: str | None = None
-    structured_data: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class EvaluationQuery:
-    query: str
-    expected_item_ids: list[int]
-    filters: dict[str, list[Any]] = field(default_factory=dict)
-
-
-@dataclass
-class EvaluationMetrics:
-    recall_at_10: float
-    mrr_at_10: float
-    ndcg_at_10: float
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(cast(Any, self))

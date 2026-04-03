@@ -596,7 +596,8 @@ _SLEEVE_LENGTH_TOKENS: tuple[str, ...] = (
 
 _SOCK_HEIGHT_TOKENS: tuple[str, ...] = (
     "ankle",
-    "knee",
+    "crew",
+    "knee_high",
     "over_knee",
     "thigh_high",
 )

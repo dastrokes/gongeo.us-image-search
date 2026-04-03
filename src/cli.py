@@ -8,17 +8,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from constants.settings import (
-    DEFAULT_EMBEDDING_MODEL,
     DEFAULT_EXTRACTION_BACKEND,
     DEFAULT_EXTRACTION_MODEL_ID,
     DEFAULT_GEMINI_MODEL,
-    DEFAULT_INDEX_DIMENSION_COUNT,
-    DEFAULT_INDEX_METRIC,
-    DEFAULT_INDEX_NAME,
-    DEFAULT_INDEX_REGION,
-    DEFAULT_INDEX_TYPE,
     DEFAULT_MODEL_QUANTIZATION,
-    DEFAULT_SPARSE_EMBEDDING_MODEL,
     PROJECT_ROOT,
 )
 from models.schemas import (
@@ -487,7 +480,6 @@ def run_build_index(args: argparse.Namespace) -> int:
     finished_at = datetime.now(timezone.utc)
     summary = BuildSummary(
         extraction_model_id=extractor.model_id,
-        upstash_embedding_model=DEFAULT_EMBEDDING_MODEL,
         item_count=len(search_document_rows),
         skipped_count=int(manifest_stats["skipped_count"]),
         missing_icon_count=int(manifest_stats["missing_icon_count"]),
@@ -597,9 +589,6 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
         summary_path,
         {
             "extraction_model_id": extraction_model_id,
-            "upstash_embedding_model": str(
-                summary_payload.get("upstash_embedding_model", DEFAULT_EMBEDDING_MODEL)
-            ),
             "item_count": len(search_document_rows),
             "skipped_count": int(summary_payload.get("skipped_count", 0)),
             "missing_icon_count": int(summary_payload.get("missing_icon_count", 0)),
@@ -630,92 +619,6 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
             indent=2,
         )
     )
-    return 0
-
-
-def run_sync_upstash(args: argparse.Namespace) -> int:
-    from search.upstash import UpstashConfig, create_index, sync_documents
-
-    config = UpstashConfig.from_env(
-        rest_url=args.rest_url,
-        rest_token=args.rest_token,
-        embedding_model=args.embedding_model,
-        require_rest=not args.create_index,
-    )
-
-    if args.create_index:
-        created = create_index(
-            name=args.index_name,
-            region=args.region,
-            dimension_count=args.dimension_count,
-            similarity_function=args.metric,
-            embedding_model=args.embedding_model,
-            sparse_embedding_model=args.sparse_embedding_model,
-            index_type=args.index_type,
-            config=config,
-        )
-        print(json.dumps(created, indent=2))
-        return 0
-
-    stats = sync_documents(
-        documents_path=args.documents_path,
-        config=config,
-        batch_size=args.batch_size,
-    )
-    print(json.dumps(stats, indent=2))
-    return 0
-
-
-def run_query_upstash(args: argparse.Namespace) -> int:
-    from models.schemas import QueryRequest
-    from search.upstash import UpstashConfig, query_upstash
-
-    config = UpstashConfig.from_env(
-        rest_url=args.rest_url,
-        rest_token=args.rest_token,
-        embedding_model=args.embedding_model,
-    )
-    request = QueryRequest(
-        q=args.q,
-        limit=args.limit,
-        item_type=args.item_type or [],
-    )
-    results = query_upstash(request, config)
-    print(
-        json.dumps(
-            [
-                {
-                    "item_id": result.item_id,
-                    "score": result.score,
-                    "item_type": result.item_type,
-                    "structured_data": result.structured_data,
-                }
-                for result in results
-            ],
-            indent=2,
-        )
-    )
-    return 0
-
-
-def run_evaluate(args: argparse.Namespace) -> int:
-    from search.evaluate import evaluate_queries
-    from search.upstash import UpstashConfig
-
-    config = UpstashConfig.from_env(
-        rest_url=args.rest_url,
-        rest_token=args.rest_token,
-        embedding_model=args.embedding_model,
-    )
-    report = evaluate_queries(
-        queries_path=args.queries,
-        metadata_path=args.metadata_path,
-        config=config,
-        limit=args.limit,
-    )
-    output_path = Path(args.output)
-    _write_json(output_path, report)
-    print(json.dumps(report["summary"], indent=2))
     return 0
 
 
@@ -788,55 +691,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     refresh_parser.add_argument("--output-root", default=str(_default_output_root()))
     refresh_parser.set_defaults(func=run_refresh_derived)
-
-    sync_parser = subparsers.add_parser("sync", help="Upsert documents into Upstash")
-    sync_parser.add_argument(
-        "--documents-path",
-        default=str(_default_output_root() / "item-search-documents.jsonl"),
-    )
-    sync_parser.add_argument("--batch-size", type=int, default=100)
-    sync_parser.add_argument("--rest-url", default=None)
-    sync_parser.add_argument("--rest-token", default=None)
-    sync_parser.add_argument("--embedding-model", default=DEFAULT_EMBEDDING_MODEL)
-    sync_parser.add_argument(
-        "--sparse-embedding-model", default=DEFAULT_SPARSE_EMBEDDING_MODEL
-    )
-    sync_parser.add_argument("--create-index", action="store_true")
-    sync_parser.add_argument("--index-name", default=DEFAULT_INDEX_NAME)
-    sync_parser.add_argument("--region", default=DEFAULT_INDEX_REGION)
-    sync_parser.add_argument("--index-type", default=DEFAULT_INDEX_TYPE)
-    sync_parser.add_argument(
-        "--dimension-count", type=int, default=DEFAULT_INDEX_DIMENSION_COUNT
-    )
-    sync_parser.add_argument("--metric", default=DEFAULT_INDEX_METRIC)
-    sync_parser.set_defaults(func=run_sync_upstash)
-
-    query_parser = subparsers.add_parser("query", help="Query Upstash with raw text")
-    query_parser.add_argument("--q", required=True)
-    query_parser.add_argument("--limit", type=int, default=20)
-    query_parser.add_argument(
-        "--item-type", "--type", action="append", dest="item_type"
-    )
-    query_parser.add_argument("--rest-url", default=None)
-    query_parser.add_argument("--rest-token", default=None)
-    query_parser.add_argument("--embedding-model", default=DEFAULT_EMBEDDING_MODEL)
-    query_parser.set_defaults(func=run_query_upstash)
-
-    evaluate_parser = subparsers.add_parser("evaluate", help="Evaluate Upstash search")
-    evaluate_parser.add_argument("--queries", required=True)
-    evaluate_parser.add_argument(
-        "--metadata-path",
-        default=str(_default_output_root() / "item-search-documents.jsonl"),
-    )
-    evaluate_parser.add_argument("--limit", type=int, default=10)
-    evaluate_parser.add_argument(
-        "--output",
-        default=str(_default_output_root() / "evaluation-report.json"),
-    )
-    evaluate_parser.add_argument("--rest-url", default=None)
-    evaluate_parser.add_argument("--rest-token", default=None)
-    evaluate_parser.add_argument("--embedding-model", default=DEFAULT_EMBEDDING_MODEL)
-    evaluate_parser.set_defaults(func=run_evaluate)
 
     return parser
 
