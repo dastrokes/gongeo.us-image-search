@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from constants.tracker_export import load_tracker_export, normalize_supported_item_type
+
 
 @dataclass(frozen=True, slots=True)
 class StructuredFieldDefinition:
@@ -32,6 +34,26 @@ def _field(
 
 
 _COLOR_ALIASES: tuple[tuple[str, str], ...] = (("grey", "gray"),)
+_STRUCTURE_ALIASES: tuple[tuple[str, str], ...] = (
+    ("drape", "draped"),
+    ("draping", "draped"),
+    ("gather", "gathered"),
+    ("gathers", "gathered"),
+    ("gathering", "gathered"),
+    ("pleat", "pleated"),
+    ("pleats", "pleated"),
+    ("pleating", "pleated"),
+    ("quilt", "quilted"),
+    ("quilting", "quilted"),
+    ("rib", "ribbed"),
+    ("ribbing", "ribbed"),
+    ("ruche", "ruched"),
+    ("ruching", "ruched"),
+    ("ruffle", "ruffled"),
+    ("ruffles", "ruffled"),
+    ("smock", "smocked"),
+    ("smocking", "smocked"),
+)
 _CATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
     ("apron_dress", "pinafore_dress"),
     ("boot", "boots"),
@@ -69,43 +91,63 @@ _SUBCATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
     ("stud_earring", "stud_earrings"),
 )
 
-GARMENT_ITEM_TYPES: tuple[str, ...] = ("outerwear", "tops", "dresses", "bottoms")
+_FIELD_ALIASES: dict[str, tuple[tuple[str, str], ...]] = {
+    "category": _CATEGORY_ALIASES,
+    "subcategory": _SUBCATEGORY_ALIASES,
+    "primary_color": _COLOR_ALIASES,
+    "secondary_color": _COLOR_ALIASES,
+    "structure": _STRUCTURE_ALIASES,
+}
 
-ACCESSORY_ITEM_TYPES: tuple[str, ...] = (
-    "hairAccessories",
-    "headwear",
-    "earrings",
-    "neckwear",
-    "bracelets",
-    "chokers",
-    "gloves",
-    "handhelds",
-    "chestAccessories",
-    "pendants",
-    "backpieces",
-    "rings",
-    "armDecorations",
-    "faceDecorations",
-    "bodyPaint",
-    "abilityHandhelds",
+_tracker_export = load_tracker_export()
+_field_kind_by_name = {
+    str(name): str(kind)
+    for name, kind in (_tracker_export.get("fieldKindByName") or {}).items()
+}
+_schema_key_by_item_type = {
+    normalize_supported_item_type(str(item_type)): str(schema_key)
+    for item_type, schema_key in (
+        _tracker_export.get("schemaKeyByItemType") or {}
+    ).items()
+}
+_field_names_by_item_type = {
+    normalize_supported_item_type(str(item_type)): tuple(
+        str(field_name) for field_name in (field_names or [])
+    )
+    for item_type, field_names in (
+        _tracker_export.get("fieldNamesByItemType") or {}
+    ).items()
+}
+
+WEARABLE_ITEM_TYPES: tuple[str, ...] = tuple(
+    normalize_supported_item_type(str(item_type))
+    for item_type in (_tracker_export.get("supportedItemTypes") or [])
 )
 
-CLOTHING_ITEM_TYPES: tuple[str, ...] = (
-    "hair",
-    "dresses",
-    "tops",
-    "bottoms",
-    "outerwear",
-    "socks",
-    "shoes",
+GARMENT_ITEM_TYPES: tuple[str, ...] = tuple(
+    item_type
+    for item_type in WEARABLE_ITEM_TYPES
+    if _schema_key_by_item_type.get(item_type) == "garment"
 )
 
-WEARABLE_ITEM_TYPES: tuple[str, ...] = (
-    "hair",
-    *GARMENT_ITEM_TYPES,
-    "socks",
-    "shoes",
-    *ACCESSORY_ITEM_TYPES,
+ACCESSORY_ITEM_TYPES: tuple[str, ...] = tuple(
+    item_type
+    for item_type in WEARABLE_ITEM_TYPES
+    if _schema_key_by_item_type.get(item_type) == "accessory"
+)
+
+CLOTHING_ITEM_TYPES: tuple[str, ...] = tuple(
+    item_type
+    for item_type in (
+        "hair",
+        "dresses",
+        "tops",
+        "bottoms",
+        "outerwear",
+        "socks",
+        "shoes",
+    )
+    if item_type in WEARABLE_ITEM_TYPES
 )
 
 SPECIAL_ITEM_TYPE_FILTERS: dict[str, tuple[str, ...]] = {
@@ -121,7 +163,8 @@ SPECIAL_ITEM_TYPE_FILTERS: dict[str, tuple[str, ...]] = {
 def expand_item_type_filters(item_types: Iterable[str] | None) -> set[str]:
     expanded: set[str] = set()
     for item_type in item_types or ():
-        expanded.update(SPECIAL_ITEM_TYPE_FILTERS.get(item_type, (item_type,)))
+        normalized = normalize_supported_item_type(item_type)
+        expanded.update(SPECIAL_ITEM_TYPE_FILTERS.get(normalized, (normalized,)))
     unknown = expanded.difference(WEARABLE_ITEM_TYPES)
     if unknown:
         joined = ", ".join(sorted(unknown))
@@ -129,125 +172,13 @@ def expand_item_type_filters(item_types: Iterable[str] | None) -> set[str]:
     return expanded
 
 
-_SHARED_COLOR_FIELDS: tuple[StructuredFieldDefinition, ...] = (
-    _field("primary_color", "scalar", aliases=_COLOR_ALIASES),
-    _field("secondary_color", "scalar", aliases=_COLOR_ALIASES),
-)
-
-_SHARED_VISUAL_FIELDS: tuple[StructuredFieldDefinition, ...] = (
-    _field("pattern", "array"),
-    _field("material", "array"),
-    _field("structure", "array"),
-    _field("ornament", "array"),
-)
-
-
 _FIELD_LIBRARY: dict[str, StructuredFieldDefinition] = {
-    "category": _field("category", "scalar", aliases=_CATEGORY_ALIASES),
-    "subcategory": _field("subcategory", "scalar", aliases=_SUBCATEGORY_ALIASES),
-    "primary_color": _SHARED_COLOR_FIELDS[0],
-    "secondary_color": _SHARED_COLOR_FIELDS[1],
-    "pattern": _SHARED_VISUAL_FIELDS[0],
-    "material": _SHARED_VISUAL_FIELDS[1],
-    "structure": _SHARED_VISUAL_FIELDS[2],
-    "ornament": _SHARED_VISUAL_FIELDS[3],
-    # length / height fields
-    "top_length": _field("top_length", "scalar"),
-    "bottom_length": _field("bottom_length", "scalar"),
-    "hair_length": _field("hair_length", "scalar"),
-    # upper-body structure
-    "fit": _field("fit", "scalar"),
-    "neckline": _field("neckline", "scalar"),
-    "shoulder_style": _field("shoulder_style", "scalar"),
-    "sleeve_length": _field("sleeve_length", "scalar"),
-    "sleeve_style": _field("sleeve_style", "scalar"),
-    # bottoms-specific
-    "skirt_silhouette": _field("skirt_silhouette", "scalar"),
-    "pant_shape": _field("pant_shape", "scalar"),
-    "waist_height": _field("waist_height", "scalar"),
-    # dresses-specific
-    "dress_silhouette": _field("dress_silhouette", "scalar"),
-    "waistline": _field("waistline", "scalar"),
-    # hair
-    "haircut": _field("haircut", "scalar"),
-    "texture": _field("texture", "scalar"),
-    "bangs": _field("bangs", "scalar"),
-    # shoes
-    "heel_type": _field("heel_type", "scalar"),
-    "heel_height": _field("heel_height", "scalar"),
-    "sole_height": _field("sole_height", "scalar"),
-    "shaft_height": _field("shaft_height", "scalar"),
-    # socks
-    "sock_height": _field("sock_height", "scalar"),
-}
-
-_SHARED_COLOR_FIELD_NAMES: tuple[str, ...] = ("primary_color", "secondary_color")
-_SHARED_VISUAL_FIELD_NAMES: tuple[str, ...] = (
-    "pattern",
-    "material",
-    "structure",
-    "ornament",
-)
-# Kept as separate stored fields for compatibility, but treated as a parent/child
-# taxonomy pair by the prompt and extractor layers.
-_TAXONOMY_FIELD_NAMES: tuple[str, ...] = ("category", "subcategory")
-# Shared upper-body structure fields (outerwear, tops, dresses)
-_UPPER_BODY_FIELD_NAMES: tuple[str, ...] = (
-    "top_length",
-    "fit",
-    "neckline",
-    "shoulder_style",
-    "sleeve_length",
-    "sleeve_style",
-)
-
-OUTERWEAR_FIELDS: tuple[str, ...] = (*_UPPER_BODY_FIELD_NAMES,)
-TOP_FIELDS: tuple[str, ...] = (*_UPPER_BODY_FIELD_NAMES,)
-BOTTOM_FIELDS: tuple[str, ...] = (
-    "bottom_length",
-    "skirt_silhouette",
-    "pant_shape",
-    "waist_height",
-)
-DRESS_FIELDS: tuple[str, ...] = (
-    "bottom_length",
-    "dress_silhouette",
-    "fit",
-    "waistline",
-    "neckline",
-    "shoulder_style",
-    "sleeve_length",
-    "sleeve_style",
-)
-SHOE_FIELDS: tuple[str, ...] = (
-    "heel_type",
-    "heel_height",
-    "sole_height",
-    "shaft_height",
-)
-SOCK_FIELDS: tuple[str, ...] = ("sock_height",)
-
-_FIELD_NAMES_BY_ITEM_TYPE: dict[str, tuple[str, ...]] = {
-    "outerwear": (
-        *_TAXONOMY_FIELD_NAMES,
-        *OUTERWEAR_FIELDS,
-        *_SHARED_VISUAL_FIELD_NAMES,
-    ),
-    "tops": (
-        *_TAXONOMY_FIELD_NAMES,
-        *TOP_FIELDS,
-        *_SHARED_VISUAL_FIELD_NAMES,
-    ),
-    "bottoms": (
-        *_TAXONOMY_FIELD_NAMES,
-        *BOTTOM_FIELDS,
-        *_SHARED_VISUAL_FIELD_NAMES,
-    ),
-    "dresses": (
-        *_TAXONOMY_FIELD_NAMES,
-        *DRESS_FIELDS,
-        *_SHARED_VISUAL_FIELD_NAMES,
-    ),
+    field_name: _field(
+        field_name,
+        field_kind,
+        aliases=_FIELD_ALIASES.get(field_name, ()),
+    )
+    for field_name, field_kind in _field_kind_by_name.items()
 }
 
 
@@ -255,76 +186,31 @@ def _fields(*field_names: str) -> tuple[StructuredFieldDefinition, ...]:
     return tuple(_FIELD_LIBRARY[name] for name in field_names)
 
 
-STRUCTURED_SCHEMAS: dict[str, StructuredSchemaDefinition] = {
-    "outerwear": StructuredSchemaDefinition(
-        name="garment",
-        item_types=("outerwear",),
-        fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["outerwear"]),
-    ),
-    "tops": StructuredSchemaDefinition(
-        name="garment",
-        item_types=("tops",),
-        fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["tops"]),
-    ),
-    "bottoms": StructuredSchemaDefinition(
-        name="garment",
-        item_types=("bottoms",),
-        fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["bottoms"]),
-    ),
-    "dresses": StructuredSchemaDefinition(
-        name="garment",
-        item_types=("dresses",),
-        fields=_fields(*_FIELD_NAMES_BY_ITEM_TYPE["dresses"]),
-    ),
-    "hair": StructuredSchemaDefinition(
-        name="hair",
-        item_types=("hair",),
-        fields=_fields(
-            *_TAXONOMY_FIELD_NAMES,
-            "hair_length",
-            "haircut",
-            "texture",
-            "bangs",
-        ),
-    ),
-    "shoes": StructuredSchemaDefinition(
-        name="shoes",
-        item_types=("shoes",),
-        fields=_fields(
-            *_TAXONOMY_FIELD_NAMES,
-            *SHOE_FIELDS,
-            *_SHARED_VISUAL_FIELD_NAMES,
-        ),
-    ),
-    "socks": StructuredSchemaDefinition(
-        name="socks",
-        item_types=("socks",),
-        fields=_fields(
-            *_TAXONOMY_FIELD_NAMES,
-            *SOCK_FIELDS,
-            *_SHARED_VISUAL_FIELD_NAMES,
-        ),
-    ),
-    "accessory": StructuredSchemaDefinition(
-        name="accessory",
-        item_types=ACCESSORY_ITEM_TYPES,
-        fields=_fields(
-            *_TAXONOMY_FIELD_NAMES,
-            *_SHARED_VISUAL_FIELD_NAMES,
-        ),
-    ),
-}
-
-ITEM_TYPE_TO_SCHEMA_KEY: dict[str, str] = {
-    item_type: schema_key
-    for schema_key, schema in STRUCTURED_SCHEMAS.items()
-    for item_type in schema.item_types
+STRUCTURED_SCHEMA_ITEM_TYPES: dict[str, tuple[str, ...]] = {
+    schema_key: tuple(
+        item_type
+        for item_type in WEARABLE_ITEM_TYPES
+        if _schema_key_by_item_type.get(item_type) == schema_key
+    )
+    for schema_key in sorted(set(_schema_key_by_item_type.values()))
 }
 
 
 def schema_definition_for_item_type(item_type: str) -> StructuredSchemaDefinition:
-    return STRUCTURED_SCHEMAS[ITEM_TYPE_TO_SCHEMA_KEY.get(item_type, "accessory")]
+    normalized = normalize_supported_item_type(item_type)
+    schema_key = _schema_key_by_item_type.get(normalized, "accessory")
+    schema_item_types = STRUCTURED_SCHEMA_ITEM_TYPES.get(schema_key, ())
+    fallback_item_type = schema_item_types[0] if schema_item_types else None
+    field_names = _field_names_by_item_type.get(
+        normalized,
+        _field_names_by_item_type.get(fallback_item_type or "", ()),
+    )
+    return StructuredSchemaDefinition(
+        name=schema_key,
+        item_types=schema_item_types,
+        fields=_fields(*field_names),
+    )
 
 
 def is_supported_item_type(item_type: str) -> bool:
-    return item_type in WEARABLE_ITEM_TYPES
+    return normalize_supported_item_type(item_type) in WEARABLE_ITEM_TYPES

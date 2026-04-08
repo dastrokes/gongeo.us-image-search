@@ -55,9 +55,9 @@ def main() -> int:
         help="Include all supported item types not covered by --clothing",
     )
     parser.add_argument(
-        "--indexed-path",
-        default=str(PROJECT_ROOT / "manifest" / "item-indexed.jsonl"),
-        help="JSONL manifest of already-indexed records to skip if present",
+        "--item-attributes-path",
+        default=str(PROJECT_ROOT / "manifest" / "item-attributes.jsonl"),
+        help="Canonical item-attributes JSONL snapshot of already-published items to skip if present; only item_id is read",
     )
     parser.add_argument(
         "--include-indexed",
@@ -83,7 +83,7 @@ def main() -> int:
         sync_report_path=args.sync_report,
         limit=args.limit,
         item_types=type_filter or None,
-        indexed_manifest_path=args.indexed_path,
+        item_attributes_path=args.item_attributes_path,
         skip_indexed=not args.include_indexed,
     )
 

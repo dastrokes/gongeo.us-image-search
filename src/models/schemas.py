@@ -17,7 +17,6 @@ class ManifestRecord:
 class StructuredItemRecord:
     item_id: int
     item_type: str
-    source_version: str
     data: dict[str, Any] = field(default_factory=dict)
     parse_error: str | None = None
 
@@ -36,6 +35,18 @@ class StructuredDebugRecord:
     normalized_data: dict[str, Any] = field(default_factory=dict)
     filter_report: dict[str, Any] = field(default_factory=dict)
     parse_error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(cast(Any, self))
+
+
+@dataclass
+class ItemAttributesRecord:
+    item_id: int
+    item_type: str
+    category: str | None = None
+    subcategory: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(cast(Any, self))
@@ -63,6 +74,7 @@ class BuildSummary:
     build_finished_at: str
     duration_seconds: float
     search_report_path: str | None = None
+    item_attributes_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(cast(Any, self))

@@ -12,6 +12,7 @@ from constants.items import (
     TYPE_KEY_MAP,
 )
 from constants.settings import PROJECT_ROOT
+from constants.tracker_export import normalize_supported_item_type
 from constants.structured import is_supported_item_type
 from models.schemas import ManifestRecord
 
@@ -21,11 +22,11 @@ DEFAULT_CONFIG_ROOT = (
 )
 DEFAULT_SYNC_REPORT = (
     PROJECT_ROOT.parent
-    / "gongeo.us-processor"
+    / "gongeo.us-data-processor"
     / "reports"
     / "database-sync-report.json"
 )
-DEFAULT_INDEXED_MANIFEST = PROJECT_ROOT / "manifest" / "item-indexed.jsonl"
+DEFAULT_ITEM_ATTRIBUTES_MANIFEST = PROJECT_ROOT / "manifest" / "item-attributes.jsonl"
 
 
 def _is_base_item(item_id: int) -> bool:
@@ -79,7 +80,7 @@ def _load_json(path: Path) -> dict[str, Any]:
         return json.load(handle)
 
 
-def _load_indexed_item_ids(path: Path) -> set[int]:
+def _load_existing_item_ids(path: Path) -> set[int]:
     item_ids: set[int] = set()
     if not path.exists():
         return item_ids
@@ -116,7 +117,9 @@ def _resolve_item_type(
     type_info = minor_type_info.get(str(minor_type))
     if not type_info:
         return "unknown"
-    return TYPE_KEY_MAP.get(type_info.get("l10nshow_name"), "unknown")
+    return normalize_supported_item_type(
+        TYPE_KEY_MAP.get(type_info.get("l10nshow_name"), "unknown")
+    )
 
 
 def build_manifest(
@@ -126,8 +129,9 @@ def build_manifest(
     sync_report_path: str | None = None,
     limit: int | None = None,
     item_id: int | None = None,
+    item_ids: set[int] | None = None,
     item_types: set[str] | None = None,
-    indexed_manifest_path: str | None = None,
+    item_attributes_path: str | None = None,
     skip_indexed: bool = True,
 ) -> tuple[list[ManifestRecord], dict[str, int]]:
     paths = resolve_manifest_paths(
@@ -140,10 +144,17 @@ def build_manifest(
     item_config = _load_json(paths.item_config_path)
     minor_type_info = _load_json(paths.minor_type_path)
     items = sync_report.get("syncedDetails", {}).get("items", [])
-    selected_item_types = set(item_types or ())
+    selected_item_types = {
+        normalize_supported_item_type(item_type) for item_type in (item_types or ())
+    }
+    selected_item_ids = set(item_ids or ())
+    if item_id is not None:
+        selected_item_ids.add(item_id)
     indexed_item_ids = (
-        _load_indexed_item_ids(Path(indexed_manifest_path or DEFAULT_INDEXED_MANIFEST))
-        if skip_indexed and item_id is None
+        _load_existing_item_ids(
+            Path(item_attributes_path or DEFAULT_ITEM_ATTRIBUTES_MANIFEST)
+        )
+        if skip_indexed and not selected_item_ids
         else set()
     )
 
@@ -159,7 +170,7 @@ def build_manifest(
     for raw in items:
         current_item_id = int(raw["id"])
 
-        if item_id is not None and current_item_id != item_id:
+        if selected_item_ids and current_item_id not in selected_item_ids:
             continue
 
         if not _is_base_item(current_item_id):

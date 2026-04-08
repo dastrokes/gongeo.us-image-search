@@ -61,8 +61,12 @@ def _default_manifest_root() -> Path:
 
 def _cleanup_stale_outputs(output_root: Path) -> None:
     for filename in (
+        "item-structured-raw.jsonl",
+        "item-attributes.jsonl",
+        "item-structured-final.jsonl",
         "item-official-metadata.jsonl",
         "item-documents.jsonl",
+        "item-search-documents.jsonl",
         "item-metadata.parquet",
         "taxonomy-concepts.jsonl",
         "item-visual-features.jsonl",
@@ -136,7 +140,6 @@ def _structured_record_from_payload(payload: dict[str, object]) -> StructuredIte
     return StructuredItemRecord(
         item_id=int(payload["item_id"]),
         item_type=item_type,
-        source_version=str(payload.get("source_version", "")),
         data=VisionStructuredExtractor.normalize_payload(item_type, data),
         parse_error=(
             str(payload["parse_error"])
@@ -166,6 +169,22 @@ def _structured_debug_from_payload(payload: dict[str, object]) -> StructuredDebu
             else None
         ),
     )
+
+
+def _build_raw_structured_row(
+    structured_record: StructuredItemRecord,
+    debug_record: StructuredDebugRecord,
+) -> dict[str, object]:
+    return {
+        "item_id": structured_record.item_id,
+        "item_type": structured_record.item_type,
+        "data": debug_record.raw_payload or {},
+        "parse_error": structured_record.parse_error,
+    }
+
+
+def _parse_item_ids(raw_values: list[int] | None) -> set[int]:
+    return {int(value) for value in (raw_values or [])}
 
 
 def _is_empty_normalization_value(value: object) -> bool:
@@ -219,8 +238,8 @@ def _build_search_report_row(
     *,
     item_id: int,
     item_type: str,
+    normalized_data: dict[str, object],
     final_data: dict[str, object],
-    source_data: dict[str, object] | None = None,
     debug_record: StructuredDebugRecord | None = None,
 ) -> dict[str, object] | None:
     filter_report = _compact_filter_report(
@@ -228,10 +247,10 @@ def _build_search_report_row(
     )
     raw_payload_changes = _build_change_rows(
         debug_record.raw_payload if debug_record is not None else None,
-        final_data,
+        normalized_data,
     )
-    special_post_processing = _build_change_rows(source_data, final_data)
-    if not any((filter_report, raw_payload_changes, special_post_processing)):
+    override_changes = _build_change_rows(normalized_data, final_data)
+    if not any((filter_report, raw_payload_changes, override_changes)):
         return None
     row = {
         "item_id": item_id,
@@ -240,10 +259,10 @@ def _build_search_report_row(
         "source_raw_payload": (
             debug_record.raw_payload if debug_record is not None else None
         ),
-        "source_structured_data": source_data,
+        "normalized_data": normalized_data,
         "final_data": final_data,
-        "raw_to_final_changes": raw_payload_changes,
-        "special_post_processing": special_post_processing,
+        "raw_to_normalized_changes": raw_payload_changes,
+        "normalized_to_final_changes": override_changes,
     }
     return {
         key: value
@@ -296,9 +315,20 @@ def _run_single_item_debug(
     return 0
 
 
+def _manifest_record_from_payload(payload: dict[str, object]) -> ManifestRecord:
+    return ManifestRecord(
+        item_id=int(payload["item_id"]),
+        item_type=str(payload["item_type"]),
+    )
+
+
 def run_build_index(args: argparse.Namespace) -> int:
-    from constants.structured import is_supported_item_type
-    from pipeline.documents import build_document_record
+    from constants.structured import expand_item_type_filters, is_supported_item_type
+    from pipeline.finalize import (
+        apply_curated_override,
+        build_structured_payload_from_item_attributes,
+        load_curated_override_map,
+    )
     from pipeline.manifest import build_manifest
     from pipeline.extraction import (
         GeminiExtractorConfig,
@@ -310,12 +340,18 @@ def run_build_index(args: argparse.Namespace) -> int:
     output_root = Path(args.output_root or _default_output_root())
     manifest_root = Path(args.manifest_root or _default_manifest_root())
     manifest_path = manifest_root / "item-manifest.jsonl"
+    raw_structured_path = output_root / "item-structured-raw.jsonl"
     structured_data_path = output_root / "item-structured-data.jsonl"
+    item_attributes_path = output_root / "item-attributes.jsonl"
     structured_debug_path = output_root / "item-structured-debug.jsonl"
-    search_documents_path = output_root / "item-search-documents.jsonl"
     search_report_path = output_root / "item-search-report.jsonl"
     summary_path = output_root / "build-summary.json"
     started_at = datetime.now(timezone.utc)
+    selected_item_ids = _parse_item_ids(getattr(args, "item_ids", None))
+    requested_item_types = expand_item_type_filters(getattr(args, "types", None))
+    is_single_item_debug = (
+        args.item_id is not None and not selected_item_ids and not requested_item_types
+    )
 
     if (
         not args.regen_manifest
@@ -326,8 +362,15 @@ def run_build_index(args: argparse.Namespace) -> int:
         manifest_records: list[ManifestRecord] = []
         with manifest_path.open("r", encoding="utf-8") as handle:
             for line in handle:
-                record = ManifestRecord(**json.loads(line))
-                if args.item_id is not None and record.item_id != args.item_id:
+                record = _manifest_record_from_payload(json.loads(line))
+                if is_single_item_debug and record.item_id != args.item_id:
+                    continue
+                if selected_item_ids and record.item_id not in selected_item_ids:
+                    continue
+                if (
+                    requested_item_types
+                    and record.item_type not in requested_item_types
+                ):
                     continue
                 if not is_supported_item_type(record.item_type):
                     continue
@@ -348,13 +391,19 @@ def run_build_index(args: argparse.Namespace) -> int:
             sync_report_path=args.sync_report,
             limit=args.limit,
             item_id=args.item_id,
+            item_ids=selected_item_ids or None,
+            item_types=requested_item_types or None,
         )
-        if args.item_id is None:
+        if (
+            not is_single_item_debug
+            and not selected_item_ids
+            and not requested_item_types
+        ):
             _write_jsonl(
                 manifest_path, [record.to_dict() for record in manifest_records]
             )
 
-    if args.item_id is not None and not manifest_records:
+    if is_single_item_debug and not manifest_records:
         print(
             json.dumps({"item_id": args.item_id, "error": "item_not_found"}, indent=2)
         )
@@ -385,7 +434,7 @@ def run_build_index(args: argparse.Namespace) -> int:
             )
         )
 
-    if args.item_id is not None:
+    if is_single_item_debug:
         return _run_single_item_debug(
             record=manifest_records[0],
             extractor=extractor,
@@ -443,9 +492,11 @@ def run_build_index(args: argparse.Namespace) -> int:
 
     _cleanup_stale_outputs(output_root)
 
+    override_map = load_curated_override_map()
+    raw_rows: list[dict[str, object]] = []
     structured_rows: list[dict[str, object]] = []
+    item_attribute_rows: list[dict[str, object]] = []
     debug_rows: list[dict[str, object]] = []
-    search_document_rows: list[dict[str, object]] = []
     search_report_rows: list[dict[str, object]] = []
     structured_parse_fail_count = 0
 
@@ -456,14 +507,19 @@ def run_build_index(args: argparse.Namespace) -> int:
             continue
         structured_record = _structured_record_from_payload(structured_payload)
         debug_record = _structured_debug_from_payload(debug_payload)
+        final_record = apply_curated_override(
+            structured_record,
+            override_map.get(structured_record.item_id),
+        )
+        raw_rows.append(_build_raw_structured_row(structured_record, debug_record))
         structured_rows.append(structured_record.to_dict())
+        item_attribute_rows.append(final_record.to_dict())
         debug_rows.append(debug_record.to_dict())
-        search_document_rows.append(build_document_record(structured_record).to_dict())
         search_report_row = _build_search_report_row(
             item_id=structured_record.item_id,
             item_type=structured_record.item_type,
-            final_data=structured_record.data,
-            source_data=debug_record.normalized_data,
+            normalized_data=structured_record.data,
+            final_data=build_structured_payload_from_item_attributes(final_record),
             debug_record=debug_record,
         )
         if search_report_row is not None:
@@ -472,15 +528,16 @@ def run_build_index(args: argparse.Namespace) -> int:
             structured_parse_fail_count += 1
 
     output_root.mkdir(parents=True, exist_ok=True)
+    _write_jsonl(raw_structured_path, raw_rows)
     _write_jsonl(structured_data_path, structured_rows)
+    _write_jsonl(item_attributes_path, item_attribute_rows)
     _write_jsonl(structured_debug_path, debug_rows)
-    _write_jsonl(search_documents_path, search_document_rows)
     _write_jsonl(search_report_path, search_report_rows)
 
     finished_at = datetime.now(timezone.utc)
     summary = BuildSummary(
         extraction_model_id=extractor.model_id,
-        item_count=len(search_document_rows),
+        item_count=len(item_attribute_rows),
         skipped_count=int(manifest_stats["skipped_count"]),
         missing_icon_count=int(manifest_stats["missing_icon_count"]),
         missing_overview_count=int(manifest_stats["missing_overview_count"]),
@@ -489,6 +546,7 @@ def run_build_index(args: argparse.Namespace) -> int:
         build_finished_at=finished_at.isoformat(),
         duration_seconds=(finished_at - started_at).total_seconds(),
         search_report_path=str(search_report_path),
+        item_attributes_path=str(item_attributes_path),
     )
     _write_json(summary_path, summary.to_dict())
 
@@ -499,22 +557,35 @@ def run_build_index(args: argparse.Namespace) -> int:
 
 
 def run_refresh_derived(args: argparse.Namespace) -> int:
-    from constants.structured import is_supported_item_type
-    from pipeline.documents import build_document_record
+    from constants.structured import expand_item_type_filters, is_supported_item_type
+    from pipeline.finalize import (
+        apply_curated_override,
+        build_structured_payload_from_item_attributes,
+        load_curated_override_map,
+    )
 
     manifest_path = Path(args.manifest_path)
     structured_path = Path(args.structured_path)
     structured_debug_path = Path(args.structured_debug_path)
     output_root = Path(args.output_root or _default_output_root())
-    search_documents_path = output_root / "item-search-documents.jsonl"
+    item_attributes_path = output_root / "item-attributes.jsonl"
     search_report_path = output_root / "item-search-report.jsonl"
     summary_path = output_root / "build-summary.json"
+    selected_item_ids = _parse_item_ids(getattr(args, "item_ids", None))
+    if getattr(args, "item_id", None) is not None:
+        selected_item_ids.add(int(args.item_id))
+    requested_item_types = expand_item_type_filters(getattr(args, "types", None))
 
     print(f"Loading manifest from {manifest_path} ...")
     manifest_records = [
-        ManifestRecord(**row)
+        _manifest_record_from_payload(row)
         for row in _load_manifest_records(manifest_path)
         if is_supported_item_type(str(row.get("item_type", "")))
+        and (not selected_item_ids or int(row.get("item_id", 0)) in selected_item_ids)
+        and (
+            not requested_item_types
+            or str(row.get("item_type", "")) in requested_item_types
+        )
     ]
     print(f"Loading structured data from {structured_path} ...")
     structured_cache = _load_record_cache(structured_path)
@@ -532,6 +603,11 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
             item_id
             for item_id, payload in structured_cache.items()
             if is_supported_item_type(str(payload.get("item_type", "")))
+            and (not selected_item_ids or item_id in selected_item_ids)
+            and (
+                not requested_item_types
+                or str(payload.get("item_type", "")) in requested_item_types
+            )
         ]
 
     summary_payload: dict[str, object] = {}
@@ -544,7 +620,8 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
         summary_payload.get("extraction_model_id", DEFAULT_EXTRACTION_MODEL_ID)
     )
 
-    search_document_rows: list[dict[str, object]] = []
+    override_map = load_curated_override_map()
+    item_attribute_rows: list[dict[str, object]] = []
     search_report_rows: list[dict[str, object]] = []
     structured_parse_fail_count = 0
 
@@ -553,7 +630,11 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
         if structured_payload is None:
             continue
         structured_record = _structured_record_from_payload(structured_payload)
-        search_document_rows.append(build_document_record(structured_record).to_dict())
+        final_record = apply_curated_override(
+            structured_record,
+            override_map.get(structured_record.item_id),
+        )
+        item_attribute_rows.append(final_record.to_dict())
         debug_payload = debug_cache.get(item_id)
         debug_record: StructuredDebugRecord | None = None
         if debug_payload is not None:
@@ -561,12 +642,8 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
         row = _build_search_report_row(
             item_id=structured_record.item_id,
             item_type=structured_record.item_type,
-            final_data=structured_record.data,
-            source_data=(
-                dict(structured_payload.get("data", {}) or {})
-                if isinstance(structured_payload.get("data"), dict)
-                else None
-            ),
+            normalized_data=structured_record.data,
+            final_data=build_structured_payload_from_item_attributes(final_record),
             debug_record=debug_record,
         )
         if row is not None:
@@ -574,7 +651,15 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
         if structured_record.parse_error is not None:
             structured_parse_fail_count += 1
 
-    _write_jsonl(search_documents_path, search_document_rows)
+    _write_jsonl(item_attributes_path, item_attribute_rows)
+    try:
+        (output_root / "item-structured-final.jsonl").unlink(missing_ok=True)
+    except OSError:
+        pass
+    try:
+        (output_root / "item-search-documents.jsonl").unlink(missing_ok=True)
+    except OSError:
+        pass
     try:
         (output_root / "item-filter-report.jsonl").unlink(missing_ok=True)
     except OSError:
@@ -589,7 +674,7 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
         summary_path,
         {
             "extraction_model_id": extraction_model_id,
-            "item_count": len(search_document_rows),
+            "item_count": len(item_attribute_rows),
             "skipped_count": int(summary_payload.get("skipped_count", 0)),
             "missing_icon_count": int(summary_payload.get("missing_icon_count", 0)),
             "missing_overview_count": int(
@@ -602,6 +687,7 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
             "build_finished_at": refreshed_at,
             "duration_seconds": float(summary_payload.get("duration_seconds", 0)),
             "search_report_path": str(search_report_path),
+            "item_attributes_path": str(item_attributes_path),
         },
     )
 
@@ -611,9 +697,9 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
                 "manifest_path": str(manifest_path),
                 "structured_path": str(structured_path),
                 "structured_debug_path": str(structured_debug_path),
-                "search_documents_path": str(search_documents_path),
+                "item_attributes_path": str(item_attributes_path),
                 "search_report_path": str(search_report_path),
-                "processed_item_count": len(search_document_rows),
+                "processed_item_count": len(item_attribute_rows),
                 "structured_parse_fail_count": structured_parse_fail_count,
             },
             indent=2,
@@ -629,9 +715,18 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     build_parser = subparsers.add_parser(
-        "index", help="Build local structured search artifacts"
+        "index",
+        help="Build local structured extraction artifacts and canonical item attributes",
     )
     build_parser.add_argument("--item-id", type=int, default=None)
+    build_parser.add_argument("--item-ids", nargs="+", type=int, default=None)
+    build_parser.add_argument(
+        "--type",
+        action="append",
+        dest="types",
+        metavar="TYPE",
+        help="Filter by item type (repeatable, supports special values clothing/accessories)",
+    )
     build_parser.add_argument("--limit", type=int, default=None)
     build_parser.add_argument("--batch-size", type=int, default=10)
     build_parser.add_argument("--extraction-inference-batch-size", type=int, default=2)
@@ -675,7 +770,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     refresh_parser = subparsers.add_parser(
         "refresh",
-        help="Rebuild search documents from cached manifest and structured data",
+        help="Rebuild canonical item attributes from cached manifest and structured data",
     )
     refresh_parser.add_argument(
         "--manifest-path",
@@ -688,6 +783,15 @@ def build_parser() -> argparse.ArgumentParser:
     refresh_parser.add_argument(
         "--structured-debug-path",
         default=str(_default_output_root() / "item-structured-debug.jsonl"),
+    )
+    refresh_parser.add_argument("--item-id", type=int, default=None)
+    refresh_parser.add_argument("--item-ids", nargs="+", type=int, default=None)
+    refresh_parser.add_argument(
+        "--type",
+        action="append",
+        dest="types",
+        metavar="TYPE",
+        help="Filter by item type (repeatable, supports special values clothing/accessories)",
     )
     refresh_parser.add_argument("--output-root", default=str(_default_output_root()))
     refresh_parser.set_defaults(func=run_refresh_derived)

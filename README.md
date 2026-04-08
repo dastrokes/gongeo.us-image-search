@@ -19,14 +19,18 @@ Root `cli.py` and `manifest.py` are thin compatibility entry-points that prepend
 - `reports/database-sync-report.json` — synced item list and source version
 - `gongeo.us-config-decoder/cfg/config_output/item/TbItem.json` — item minor-type mapping
 - `gongeo.us-config-decoder/cfg/config_output/clothes/TbClothesMinorTypeInfo.json` — minor-type labels
+- `gongeo.us-nikki-tracker/data/item-search/generated/image-search-taxonomy.json` — canonical tracker-owned taxonomy/schema export
+- `gongeo.us-nikki-tracker/data/item-search/generated/overrides.json` — curated per-item maintainer overrides
+- `manifest/item-attributes.jsonl` — optional canonical item-attributes snapshot used to skip already-published items when rebuilding the manifest
 - `gongeo.us-nikki-tracker/public/images/items/` — overview and icon images
 
 It produces:
 
 - `manifest/item-manifest.jsonl`
+- `index/item-structured-raw.jsonl`
 - `index/item-structured-data.jsonl`
+- `index/item-attributes.jsonl`
 - `index/item-structured-debug.jsonl`
-- `index/item-search-documents.jsonl`
 - `index/item-search-report.jsonl`
 - `index/build-summary.json`
 
@@ -50,25 +54,33 @@ Set these in `.env` or your shell:
 Keep dev runs capped at `--limit 10` unless intentionally wider.
 
 ```bash
-# Extract structured data and build search documents
+# Extract structured data and build canonical item attributes
 python cli.py index --limit 10
 python cli.py index --item-id 1020123456   # single-item debug
+python cli.py index --type dresses --type outerwear
+python cli.py index --item-ids 1020100001 1020100002
 
-# Rebuild search documents from cached extraction (no re-extraction)
+# Rebuild canonical item attributes from cached extraction (no re-extraction)
 python cli.py refresh
+python cli.py refresh --type dresses
+python cli.py refresh --item-id 1020100001
 
 # Regenerate the base-item manifest only
 python manifest.py
 ```
 
+If you want manifest generation to skip items that are already in the current published Supabase dataset, copy the tracker-generated local mirror from `gongeo.us-nikki-tracker/data/item-search/generated/supabase/item-attributes.jsonl` into `manifest/item-attributes.jsonl` before running `python manifest.py` or `python cli.py index --regen-manifest`.
+
 `index --item-id <ID>` prints one JSON bundle: prompt, raw model response, parsed payload, and normalized structured output.
 
-`refresh` rebuilds `index/item-search-documents.jsonl`, `index/item-search-report.jsonl`, and `index/build-summary.json` from cached structured data — use when document formatting or downstream normalization changes but re-extraction is not needed.
+`refresh` rebuilds `index/item-attributes.jsonl`, `index/item-search-report.jsonl`, and `index/build-summary.json` from cached normalized structured data plus tracker overrides — use when override application or downstream normalization changes but re-extraction is not needed.
 
 ## Notes
 
 - Imports use bare module names (`from constants.settings import ...`) because `src/` is prepended to `sys.path`.
-- The canonical output is one normalized JSON object per item keyed by `item_id`.
+- The build now materializes three layers per item: raw extracted payload, normalized structured payload, and final canonical `item-attributes` payload after tracker overrides are applied.
 - Extraction uses item-type-specific prompts; only fields relevant to the slot are included.
-- Search documents are derived from normalized structured JSON, not captions or taxonomy assignments.
-- Search-document `data` is value-only text for embeddings; metadata stays flat, with `metadata.item_type` preserved for filtering.
+- `item-attributes.jsonl` is the only persisted final artifact.
+- `metadata` in `item-attributes.jsonl` contains only actual tag fields and does not repeat `item_id`, `item_type`, `slot`, `category`, or `subcategory`.
+- Search documents are derived from canonical item-attributes rows, not stored as a separate final artifact.
+- `manifest/item-attributes.jsonl` uses the same row shape as the canonical item-attributes artifact, so the tracker Supabase mirror can be copied there directly.

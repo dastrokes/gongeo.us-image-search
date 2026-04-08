@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import json
 
-from constants.structured import (
-    WEARABLE_ITEM_TYPES,
-    schema_definition_for_item_type,
-)
+from constants.structured import WEARABLE_ITEM_TYPES, schema_definition_for_item_type
+from constants.tracker_export import load_tracker_export, normalize_supported_item_type
 
 STRUCTURED_EXTRACTION_SYSTEM_PROMPT = (
     "You are a deterministic structured extraction engine for Infinity Nikki items.\n\n"
@@ -72,856 +71,132 @@ _ITEM_TYPE_FIELD_GUIDANCE: dict[str, str] = {
     ),
 }
 
-_TaxonomyDefinition = tuple[tuple[str, tuple[str, ...]], ...]
-
-_OUTERWEAR_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "jacket",
-        (
-            "blazer",
-            "bolero",
-            "bomber_jacket",
-            "military_jacket",
-            "puffer_jacket",
-            "shirt_jacket",
-            "windbreaker",
-        ),
-    ),
-    (
-        "coat",
-        (
-            "cape_coat",
-            "duster_coat",
-            "duffle_coat",
-            "fur_coat",
-            "pea_coat",
-            "tailcoat",
-            "trench_coat",
-        ),
-    ),
-    (
-        "cape",
-        (
-            "capelet",
-            "cloak",
-            "hooded_cape",
-            "pifeng",
-            "poncho",
-        ),
-    ),
-    ("cardigan", ("long_cardigan", "shrug")),
-    ("vest", ("bijia", "hooded_vest", "waistcoat")),
-    ("robe", ("beizi", "daxiushan")),
-    ("shawl", ("stole",)),
+_tracker_export = load_tracker_export()
+_shared_terms = _tracker_export.get("terms", {}).get("sharedFieldValues", {})
+_scoped_terms = _tracker_export.get("terms", {}).get("scopedFieldValues", {})
+_field_kind_by_name = _tracker_export.get("fieldKindByName", {})
+_subcategory_parent_by_type = _tracker_export.get("taxonomy", {}).get(
+    "subcategoryParentByType", {}
 )
 
-_TOPS_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "blouse",
-        (
-            "maid_blouse",
-            "milkmaid_top",
-            "peasant_blouse",
-            "sailor_blouse",
-            "school_uniform_blouse",
-        ),
-    ),
-    (
-        "shirt",
-        (
-            "button_up_shirt",
-            "henley_shirt",
-            "officer_shirt",
-            "polo_shirt",
-        ),
-    ),
-    ("t_shirt", ()),
-    ("sweater", ("sweater_vest",)),
-    ("sweatshirt", ("hoodie",)),
-    ("camisole", ("bralette",)),
-    ("corset", ("bustier",)),
-    ("tunic", ()),
-    ("tank_top", ()),
-    ("tube_top", ("bandeau_top",)),
-    ("bodysuit", ("leotard",)),
-)
-
-_BOTTOMS_TAXONOMY: _TaxonomyDefinition = (
-    ("skirt", ("ma_mian_skirt", "sarong", "wrap_skirt")),
-    (
-        "pants",
-        (
-            "cargo_pants",
-            "culottes",
-            "harem_pants",
-            "jodhpurs",
-            "palazzo_pants",
-        ),
-    ),
-    (
-        "shorts",
-        (
-            "bermuda_shorts",
-            "bloomers",
-            "ruffle_shorts",
-            "tailored_shorts",
-        ),
-    ),
-    ("leggings", ()),
-    ("overalls", ("bib_overalls", "overall_shorts")),
-    ("skort", ()),
-)
-
-_DRESSES_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "dress",
-        (
-            "babydoll_dress",
-            "coat_dress",
-            "gown",
-            "kaftan",
-            "lolita_dress",
-            "maid_dress",
-            "pinafore_dress",
-            "qipao",
-            "ruqun",
-            "sailor_dress",
-            "shirt_dress",
-            "shenyi",
-            "slip_dress",
-            "sundress",
-            "sweater_dress",
-            "wrap_dress",
-            "corset_dress",
-            "tea_dress",
-            "tunic_dress",
-        ),
-    ),
-    ("jumpsuit", ("romper", "onesie")),
-)
-
-_HAIR_TAXONOMY: _TaxonomyDefinition = (
-    ("loose", ()),
-    ("ponytail", ("high_ponytail", "low_ponytail", "side_ponytail")),
-    (
-        "twin_tails",
-        (
-            "drill_twin_tails",
-            "high_twin_tails",
-            "low_twin_tails",
-            "side_twin_tails",
-        ),
-    ),
-    (
-        "bun",
-        (
-            "high_bun",
-            "low_bun",
-            "messy_bun",
-            "side_bun",
-            "space_buns",
-            "top_knot",
-        ),
-    ),
-    (
-        "braid",
-        (
-            "crown_braid",
-            "fishtail_braid",
-            "french_braid",
-            "side_braid",
-            "twin_braids",
-        ),
-    ),
-    ("half_up", ("half_up_braid", "half_up_bun", "half_up_ponytail")),
-    (
-        "updo",
-        (
-            "chignon",
-            "double_ring_bun",
-            "flying_immortal_bun",
-            "liangbatou",
-        ),
-    ),
-)
-
-_SHOES_TAXONOMY: _TaxonomyDefinition = (
-    ("boots", ("combat_boots", "cowboy_boots", "riding_boots")),
-    (
-        "heels",
-        (
-            "ankle_strap_heels",
-            "dorsay_heels",
-            "pumps",
-            "slingback_heels",
-            "t_strap_heels",
-        ),
-    ),
-    ("flats", ("ballet_flats", "embroidered_shoes", "lace_up_flats")),
-    ("sandals", ("gladiator_sandals", "platform_sandals")),
-    ("sneakers", ("high_top_sneakers",)),
-    ("loafers", ("penny_loafers",)),
-    ("mary_janes", ()),
-    ("mules", ()),
-    ("slippers", ()),
-    ("barefoot", ()),
-)
-
-_SOCKS_TAXONOMY: _TaxonomyDefinition = (
-    ("socks", ("ruffled_socks",)),
-    ("stockings", ("garter_stockings", "lace_stockings")),
-    ("tights", ("fishnet_tights", "pantyhose", "printed_tights")),
-    ("leg_warmers", ()),
-)
-
-_HAIR_ACCESSORIES_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "hair_ornament",
-        (
-            "bow",
-            "flower",
-            "hairclip",
-            "hairpin",
-            "ribbon",
-        ),
-    ),
-    ("headband", ()),
-    ("hair_comb", ()),
-    ("headpiece", ()),
-)
-
-_HEADWEAR_TAXONOMY: _TaxonomyDefinition = (
-    ("hat", ("mini_hat", "top_hat", "wide_brim_hat", "witch_hat")),
-    ("bonnet", ()),
-    ("beret", ()),
-    ("crown", ("coronet", "tiara")),
-    ("veil", ()),
-    ("headdress", ()),
-    ("headpiece", ()),
-)
-
-_EARRINGS_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "earring",
-        (
-            "chandelier_earrings",
-            "drop_earrings",
-            "hoop_earrings",
-            "stud_earrings",
-        ),
-    ),
-    ("ear_cuff", ()),
-)
-
-_NECKWEAR_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "necklace",
-        (
-            "lariat_necklace",
-            "pendant_necklace",
-            "strand_necklace",
-        ),
-    ),
-    ("choker", ("lace_choker", "ribbon_choker")),
-    ("pendant", ("charm", "locket", "medallion")),
-    ("collar", ()),
-    ("scarf", ()),
-)
-
-_BRACELETS_TAXONOMY: _TaxonomyDefinition = (
-    ("bracelet", ("bangle", "beaded_bracelet", "charm_bracelet")),
-    ("cuff", ()),
-)
-
-_CHOKERS_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "necklace",
-        (
-            "lariat_necklace",
-            "pendant_necklace",
-            "strand_necklace",
-        ),
-    ),
-    ("choker", ("lace_choker", "ribbon_choker")),
-    ("pendant", ("charm", "locket", "medallion", "tassel")),
-    ("collar", ()),
-    ("scarf", ()),
-    ("headphone", ()),
-)
-
-_GLOVES_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "gloves",
-        (
-            "fingerless_gloves",
-            "mittens",
-            "opera_gloves",
-        ),
-    ),
-)
-
-_HANDHELDS_TAXONOMY: _TaxonomyDefinition = (
-    ("fan", ()),
-    ("handbag", ("purse",)),
-    ("parasol", ()),
-    ("wand", ()),
-    ("staff", ()),
-    ("lantern", ()),
-    ("book", ("spellbook",)),
-    ("bouquet", ()),
-    ("basket", ()),
-    ("instrument", ()),
-    ("plush", ()),
-    ("weapon", ()),
-    ("tool", ()),
-    ("handheld", ()),
-)
-
-_CHEST_ACCESSORIES_TAXONOMY: _TaxonomyDefinition = (
-    ("brooch", ("bow_brooch", "cape_pin", "pin")),
-    ("corsage", ()),
-    ("sash", ()),
-)
-
-_PENDANTS_TAXONOMY: _TaxonomyDefinition = (
-    ("garter", ("leg_garter", "thigh_garter")),
-    (
-        "bag",
-        (
-            "belt_bag",
-            "crossbody_bag",
-            "handbag",
-            "mini_bag",
-            "pouch",
-            "satchel",
-            "shoulder_bag",
-        ),
-    ),
-)
-
-_BACKPIECES_TAXONOMY: _TaxonomyDefinition = (
-    ("wings", ()),
-    ("backpack", ()),
-    ("back_bow", ()),
-    ("tail", ()),
-    ("drape", ()),
-    ("backpiece", ()),
-)
-
-_RINGS_TAXONOMY: _TaxonomyDefinition = (("ring", ()),)
-
-_BODY_PAINT_TAXONOMY: _TaxonomyDefinition = (("body_paint", ()),)
-
-_ARM_DECORATIONS_TAXONOMY: _TaxonomyDefinition = (
-    ("armlet", ("arm_cuff",)),
-    ("sleeve_garter", ()),
-    ("wrist_corsage", ()),
-)
-
-_FACE_DECORATIONS_TAXONOMY: _TaxonomyDefinition = (
-    (
-        "mask",
-        (
-            "full_mask",
-            "half_mask",
-            "lower_face_mask",
-            "eye_mask",
-            "ornamental_mask",
-        ),
-    ),
-    (
-        "blindfold",
-        (
-            "cloth_blindfold",
-            "decorative_blindfold",
-            "ornamental_blindfold",
-        ),
-    ),
-    (
-        "eyewear",
-        (
-            "glasses",
-            "sunglasses",
-            "goggles",
-            "monocle",
-        ),
-    ),
-    (
-        "eyepatch",
-        (
-            "medical_eyepatch",
-            "decorative_eyepatch",
-        ),
-    ),
-    (
-        "facial_cover",
-        (
-            "mouth_cover",
-            "nose_cover",
-            "bandage",
-            "face_shield",
-        ),
-    ),
-    ("face_paint", ()),
-    ("face_veil", ()),
-    ("face_marking", ()),
-    ("face_jewelry", ()),
-    ("face_prop", ()),
-)
-
-_ABILITY_HANDHELDS_TAXONOMY: _TaxonomyDefinition = (
-    ("wand", ()),
-    ("staff", ()),
-    ("lantern", ()),
-    ("book", ("spellbook",)),
-    ("orb", ()),
-    ("handheld", ()),
-)
-
-_ITEM_TYPE_TAXONOMIES: dict[str, _TaxonomyDefinition] = {
-    "outerwear": _OUTERWEAR_TAXONOMY,
-    "tops": _TOPS_TAXONOMY,
-    "bottoms": _BOTTOMS_TAXONOMY,
-    "dresses": _DRESSES_TAXONOMY,
-    "hair": _HAIR_TAXONOMY,
-    "shoes": _SHOES_TAXONOMY,
-    "socks": _SOCKS_TAXONOMY,
-    "hairAccessories": _HAIR_ACCESSORIES_TAXONOMY,
-    "headwear": _HEADWEAR_TAXONOMY,
-    "earrings": _EARRINGS_TAXONOMY,
-    "neckwear": _NECKWEAR_TAXONOMY,
-    "bracelets": _BRACELETS_TAXONOMY,
-    "chokers": _CHOKERS_TAXONOMY,
-    "gloves": _GLOVES_TAXONOMY,
-    "handhelds": _HANDHELDS_TAXONOMY,
-    "chestAccessories": _CHEST_ACCESSORIES_TAXONOMY,
-    "pendants": _PENDANTS_TAXONOMY,
-    "backpieces": _BACKPIECES_TAXONOMY,
-    "rings": _RINGS_TAXONOMY,
-    "armDecorations": _ARM_DECORATIONS_TAXONOMY,
-    "faceDecorations": _FACE_DECORATIONS_TAXONOMY,
-    "bodyPaint": _BODY_PAINT_TAXONOMY,
-    "abilityHandhelds": _ABILITY_HANDHELDS_TAXONOMY,
+CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
+    str(field_name): tuple(str(value) for value in values or [])
+    for field_name, values in _shared_terms.items()
 }
-
-
-def _category_tokens_for_taxonomy(
-    taxonomy: _TaxonomyDefinition,
-) -> tuple[str, ...]:
-    return tuple(category for category, _children in taxonomy)
-
-
-def _subcategory_tokens_for_taxonomy(
-    taxonomy: _TaxonomyDefinition,
-) -> tuple[str, ...]:
-    return tuple(child for _category, children in taxonomy for child in children)
-
-
 CANONICAL_CATEGORY_TOKENS: dict[str, tuple[str, ...]] = {
-    item_type: _category_tokens_for_taxonomy(taxonomy)
-    for item_type, taxonomy in _ITEM_TYPE_TAXONOMIES.items()
+    normalize_supported_item_type(str(item_type)): tuple(
+        str(value) for value in values or []
+    )
+    for item_type, values in (_scoped_terms.get("category") or {}).items()
 }
-
 CANONICAL_SUBCATEGORY_TOKENS: dict[str, tuple[str, ...]] = {
-    item_type: _subcategory_tokens_for_taxonomy(taxonomy)
-    for item_type, taxonomy in _ITEM_TYPE_TAXONOMIES.items()
+    normalize_supported_item_type(str(item_type)): tuple(
+        str(value) for value in values or []
+    )
+    for item_type, values in (_scoped_terms.get("subcategory") or {}).items()
 }
-
-SUBCATEGORY_HIERARCHY: dict[str, str] = {}
-for _item_type, _taxonomy in _ITEM_TYPE_TAXONOMIES.items():
-    for _category, _children in _taxonomy:
-        for _child in _children:
-            _existing_parent = SUBCATEGORY_HIERARCHY.get(_child)
-            if _existing_parent is not None and _existing_parent != _category:
-                raise RuntimeError(
-                    "subcategory parent mismatch: "
-                    f"{_child} -> {_existing_parent} vs {_category}"
-                )
-            SUBCATEGORY_HIERARCHY[_child] = _category
+SUBCATEGORY_HIERARCHY: dict[str, dict[str, str]] = {
+    normalize_supported_item_type(str(item_type)): {
+        str(child): str(parent) for child, parent in (parent_map or {}).items()
+    }
+    for item_type, parent_map in _subcategory_parent_by_type.items()
+}
+FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
+    CANONICAL_ATTRIBUTE_TOKENS.keys()
+)
+EXAMPLE_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {}
 
 TOKEN_ALIASES: dict[str, str] = {}
+for item_type in WEARABLE_ITEM_TYPES:
+    for field_definition in schema_definition_for_item_type(item_type).fields:
+        for source, target in field_definition.alias_pairs:
+            TOKEN_ALIASES[source] = target
 
-FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
-    {
-        "top_length",
-        "bottom_length",
-        "hair_length",
-        "sleeve_length",
-        "shaft_height",
-        "heel_height",
-        "sole_height",
-        "sock_height",
-        "waist_height",
-    }
-)
 
-_UPPER_LENGTH_TOKENS: tuple[str, ...] = (
-    "ultra_crop",
-    "crop",
-    "waist_length",
-    "hip_length",
-    "upper_thigh",
-    "mid_thigh",
-    "knee_length",
-    "midi",
-    "maxi",
-    "ankle_length",
-    "floor_length",
-)
-_LOWER_LENGTH_TOKENS: tuple[str, ...] = (
-    "micro",
-    "mini",
-    "upper_thigh",
-    "mid_thigh",
-    "knee_length",
-    "midi",
-    "maxi",
-    "ankle_length",
-    "floor_length",
-)
-_HAIR_LENGTH_TOKENS: tuple[str, ...] = (
-    "short",
-    "medium",
-    "long",
-    "very_long",
-)
-_SLEEVE_LENGTH_TOKENS: tuple[str, ...] = (
-    "sleeveless",
-    "short",
-    "elbow",
-    "three_quarter",
-    "long",
-    "extra_long",
-)
+def normalise_token(token: str) -> str:
+    return TOKEN_ALIASES.get(token, token)
 
-_SOCK_HEIGHT_TOKENS: tuple[str, ...] = (
-    "ankle",
-    "crew",
-    "knee_high",
-    "over_knee",
-    "thigh_high",
-)
 
-# Illustrative examples only — not exhaustive, model may go beyond these.
-# Shared fields apply to every slot that includes the field in its schema.
-# Must not overlap with CANONICAL_ATTRIBUTE_TOKENS.
-EXAMPLE_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
-    "pattern": (
-        "solid",
-        "floral",
-        "plaid",
-        "striped",
-        "polka_dot",
-        "checkered",
-        "gradient",
-        "star",
-        "animal_print",
-        "camouflage",
-    ),
-    "material": (
-        "denim",
-        "knit",
-        "lace",
-        "tulle",
-        "velvet",
-        "leather",
-        "sheer",
-        "satin",
-        "chiffon",
-        "mesh",
-        "fur",
-    ),
-    "ornament": (
-        "bow",
-        "ruffle",
-        "frill",
-        "embroidery",
-        "applique",
-        "bead_detail",
-        "pearl_detail",
-        "sequin",
-        "button_detail",
-        "buckle",
-        "chain_detail",
-        "star",
-    ),
-    "structure": (
-        "pleated",
-        "gathered",
-        "ruched",
-        "smocked",
-        "peplum",
-        "quilted",
-        "draped",
-        "ribbed",
-        "cable_knit",
-    ),
-}
-
-_NECKLINE_TOKENS: tuple[str, ...] = (
-    "crew_neck",
-    "v_neck",
-    "square_neck",
-    "sweetheart_neck",
-    "boat_neck",
-    "scoop_neck",
-    "keyhole_neck",
-    "halter_neck",
-    "turtleneck",
-    "mock_neck",
-    "collared",
-    # collar variants folded into neckline
-    "peter_pan_collar",
-    "sailor_collar",
-    "mandarin_collar",
-    # Chinese neckline forms
-    "cross_collar",
-    "right_cross_collar",
-    "duijin_collar",
-)
-_SHOULDER_STYLE_TOKENS: tuple[str, ...] = (
-    "off_shoulder",
-    "one_shoulder",
-    "cold_shoulder",
-    "halter",
-    "strapless",
-)
-_GARMENT_FIT_TOKENS: tuple[str, ...] = (
-    "bodycon",
-    "fitted",
-    "regular",
-    "loose",
-    "oversized",
-)
-_SLEEVE_STYLE_TOKENS: tuple[str, ...] = (
-    # --- construction (very distinct) ---
-    "raglan_sleeve",
-    "dolman_sleeve",
-    # --- volume / shape (core set) ---
-    "puff_sleeve",
-    "bishop_sleeve",
-    "bell_sleeve",
-    "flare_sleeve",
-    # --- structure / notable design ---
-    "slit_sleeve",
-    "split_sleeve",
-    "detached_sleeves",
-    # --- shoulder-specific ---
-    "cap_sleeve",
-    # --- Chinese traditional sleeve forms ---
-    "shuixiu_sleeve",
-    "daxiu_sleeve",
-    "pipa_sleeve",
-    "zhishou_sleeve",
-)
-
-_DRESS_SILHOUETTE_TOKENS: tuple[str, ...] = (
-    "shift",
-    "sheath",
-    "a_line",
-    "fit_and_flare",
-    "trumpet",
-    "mermaid",
-    "trapeze",
-    "balloon",
-    "tiered",
-)
-_SKIRT_SILHOUETTE_TOKENS: tuple[str, ...] = (
-    "straight",
-    "a_line",
-    "circle",
-    "pencil",
-    "layered",
-    "tiered",
-    "bubble",
-    "trumpet",
-    "asymmetric",
-)
-_PANT_SHAPE_TOKENS: tuple[str, ...] = (
-    "straight",
-    "slim",
-    "wide_leg",
-    "flared",
-    "tapered",
-)
-_WAIST_HEIGHT_TOKENS: tuple[str, ...] = (
-    "low_rise",
-    "mid_rise",
-    "high_rise",
-    "ultra_high_rise",
-)
-_WAISTLINE_TOKENS: tuple[str, ...] = (
-    "natural_waist",
-    "empire_waist",
-    "drop_waist",
-    "no_waist",
-    "basque_waist",
-    "wrap_waist",
-)
-_HEEL_TYPE_TOKENS: tuple[str, ...] = (
-    "block",
-    "stiletto",
-    "kitten",
-    "wedge",
-    "cone",
-)
-_HEEL_HEIGHT_TOKENS: tuple[str, ...] = (
-    "flat",
-    "low",
-    "high",
-)
-_SOLE_HEIGHT_TOKENS: tuple[str, ...] = (
-    "flat",
-    "low",
-    "high",
-)
-_SHAFT_HEIGHT_TOKENS: tuple[str, ...] = (
-    "ankle",
-    "mid_calf",
-    "knee_high",
-    "over_knee",
-)
-
-_HAIR_TEXTURE_TOKENS: tuple[str, ...] = (
-    "straight",
-    "wavy",
-    "curly",
-    "coiled",
-    "drill",
-)
-_HAIRCUT_TOKENS: tuple[str, ...] = (
-    "bob",
-    "lob",
-    "pixie_cut",
-    "wolf_cut",
-    "shag",
-    "hime_cut",
-    "layered_cut",
-    "blunt_cut",
-)
-_HAIR_BANGS_TOKENS: tuple[str, ...] = (
-    "no_bangs",
-    "blunt_bangs",
-    "side_swept_bangs",
-    "curtain_bangs",
-    "wispy_bangs",
-)
-
-EXAMPLE_ATTRIBUTE_TOKENS.update(
-    {
-        "haircut": _HAIRCUT_TOKENS,
-        "texture": _HAIR_TEXTURE_TOKENS,
-    }
-)
-
-# Closed-list fields only — model must pick from these tokens exclusively.
-# Includes filtered measurement-style fields plus other genuinely closed enumerations.
-# Must not overlap with EXAMPLE_ATTRIBUTE_TOKENS.
-CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
-    # measurement fields (FILTERED_CANONICAL_ATTRIBUTE_FIELDS)
-    "top_length": _UPPER_LENGTH_TOKENS,
-    "bottom_length": _LOWER_LENGTH_TOKENS,
-    "hair_length": _HAIR_LENGTH_TOKENS,
-    "sleeve_length": _SLEEVE_LENGTH_TOKENS,
-    "shaft_height": _SHAFT_HEIGHT_TOKENS,
-    "heel_height": _HEEL_HEIGHT_TOKENS,
-    "sole_height": _SOLE_HEIGHT_TOKENS,
-    "sock_height": _SOCK_HEIGHT_TOKENS,
-    # closed enumerations
-    "waistline": _WAISTLINE_TOKENS,
-    "waist_height": _WAIST_HEIGHT_TOKENS,
-    "fit": _GARMENT_FIT_TOKENS,
-    "neckline": _NECKLINE_TOKENS,
-    "shoulder_style": _SHOULDER_STYLE_TOKENS,
-    "sleeve_style": _SLEEVE_STYLE_TOKENS,
-    "skirt_silhouette": _SKIRT_SILHOUETTE_TOKENS,
-    "pant_shape": _PANT_SHAPE_TOKENS,
-    "dress_silhouette": _DRESS_SILHOUETTE_TOKENS,
-    "bangs": _HAIR_BANGS_TOKENS,
-    "heel_type": _HEEL_TYPE_TOKENS,
-}
+def get_subcategory_ancestors(item_type: str, subcategory: str) -> list[str]:
+    ancestors: list[str] = []
+    current = subcategory
+    hierarchy = SUBCATEGORY_HIERARCHY.get(normalize_supported_item_type(item_type), {})
+    while current in hierarchy:
+        current = hierarchy[current]
+        ancestors.append(current)
+    return ancestors
 
 
 def _field_names_for(slot: str) -> tuple[str, ...]:
     return tuple(
         field_definition.name
-        for field_definition in schema_definition_for_item_type(slot).fields
+        for field_definition in schema_definition_for_item_type(
+            normalize_supported_item_type(slot)
+        ).fields
     )
 
 
-def _schema_template_for(slot: str) -> str:
-    schema_definition = schema_definition_for_item_type(slot)
-    lines = ["{"]
-    last = len(schema_definition.fields) - 1
-    for index, field_definition in enumerate(schema_definition.fields):
-        comma = "," if index < last else ""
-        value = "[]" if field_definition.kind == "array" else "null"
-        lines.append(f'  "{field_definition.name}": {value}{comma}')
-    lines.append("}")
-    return "\n".join(lines)
+def _schema_template_for(
+    slot: str,
+    field_names: tuple[str, ...] | None = None,
+) -> dict[str, object]:
+    normalized_slot = normalize_supported_item_type(slot)
+    allowed_fields = set(field_names or _field_names_for(normalized_slot))
+    template: dict[str, object] = {}
+    for field_definition in schema_definition_for_item_type(normalized_slot).fields:
+        if field_definition.name not in allowed_fields:
+            continue
+        template[field_definition.name] = (
+            [] if field_definition.kind == "array" else None
+        )
+    return template
 
 
-def _category_lines_for(slot: str, field_names: tuple[str, ...]) -> list[str]:
-    taxonomy = _ITEM_TYPE_TAXONOMIES.get(slot)
-    if taxonomy is None or "category" not in field_names:
+def _category_guidance_lines_for(slot: str) -> list[str]:
+    normalized_slot = normalize_supported_item_type(slot)
+    categories = CANONICAL_CATEGORY_TOKENS.get(normalized_slot, ())
+    if not categories:
         return []
-
-    lines = [f"  category: {', '.join(CANONICAL_CATEGORY_TOKENS[slot])}"]
-    return lines
+    return [f"  category: {', '.join(categories)}"]
 
 
 def _subcategory_guidance_lines_for(
-    slot: str, field_names: tuple[str, ...]
+    slot: str,
+    field_names: tuple[str, ...],
 ) -> list[str]:
-    taxonomy = _ITEM_TYPE_TAXONOMIES.get(slot)
-    if taxonomy is None or "subcategory" not in field_names:
+    if "subcategory" not in field_names:
         return []
 
-    hierarchy_lines = [
-        f"    {category} -> {', '.join(children)}"
-        for category, children in taxonomy
-        if children
-    ]
-    if not hierarchy_lines:
-        return []
+    normalized_slot = normalize_supported_item_type(slot)
+    hierarchy = SUBCATEGORY_HIERARCHY.get(normalized_slot, {})
+    categories = CANONICAL_CATEGORY_TOKENS.get(normalized_slot, ())
+    lines: list[str] = ["  subcategory by category:"]
 
-    lines = ["  subcategory children by category:"]
-    lines.extend(hierarchy_lines)
-    if any(not children for _category, children in taxonomy):
-        lines.append(
-            "    categories without listed children -> usually use null unless a clear direct child refinement is visible"
+    for category in categories:
+        children = sorted(
+            child for child, parent in hierarchy.items() if parent == category
         )
+        if not children:
+            lines.append(f"    {category}: null")
+            continue
+        lines.append(f"    {category}: {', '.join(children)}")
+
     return lines
 
 
-def _vocabulary_blocks(slot: str, field_names: tuple[str, ...]) -> tuple[str, str]:
-    filtered_lines: list[str] = []
-    example_lines: list[str] = []
-    filtered_lines.extend(_category_lines_for(slot, field_names))
-    example_lines.extend(_subcategory_guidance_lines_for(slot, field_names))
-    for name in field_names:
-        if name in {"category", "subcategory"}:
+def _attribute_guidance_lines_for(
+    slot: str,
+    field_names: tuple[str, ...],
+) -> list[str]:
+    normalized_slot = normalize_supported_item_type(slot)
+    lines: list[str] = []
+    for field_name in field_names:
+        if field_name in {"category", "subcategory"}:
             continue
-        canonical_tokens = CANONICAL_ATTRIBUTE_TOKENS.get(name)
+        canonical_tokens = CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ())
         if canonical_tokens:
-            filtered_lines.append(f"  {name}: {', '.join(canonical_tokens)}")
-            continue
-        example_tokens = EXAMPLE_ATTRIBUTE_TOKENS.get(name)
-        if example_tokens:
-            example_lines.append(f"  {name} examples: {', '.join(example_tokens)}")
-            continue
-    closed_lists = (
-        "CLOSED LISTS — only these values are valid for these fields:\n"
-        + "\n".join(filtered_lines)
-        if filtered_lines
-        else ""
-    )
-    open_vocab = (
-        "OPEN VOCABULARY — preferred canonical examples:\n" + "\n".join(example_lines)
-        if example_lines
-        else ""
-    )
-    return closed_lists, open_vocab
+            lines.append(f"  {field_name}: {', '.join(canonical_tokens)}")
+    return lines
 
 
 def build_extraction_user_message(
@@ -931,85 +206,67 @@ def build_extraction_user_message(
     field_guidance: str | None = None,
     field_names: tuple[str, ...] | None = None,
 ) -> str:
-    schema = _schema_template_for(slot)
-    resolved_field_names = field_names or _field_names_for(slot)
-    closed_lists, open_vocab = _vocabulary_blocks(slot, resolved_field_names)
-    shared_field_guidance_lines = [
-        _SHARED_FIELD_GUIDANCE_LINES[name]
-        for name in resolved_field_names
-        if name in _SHARED_FIELD_GUIDANCE_LINES
+    normalized_slot = normalize_supported_item_type(slot)
+    resolved_field_names = field_names or _field_names_for(normalized_slot)
+    schema = _schema_template_for(normalized_slot, resolved_field_names)
+    closed_list_lines = [
+        *_category_guidance_lines_for(normalized_slot),
+        *_subcategory_guidance_lines_for(normalized_slot, resolved_field_names),
+        *_attribute_guidance_lines_for(normalized_slot, resolved_field_names),
     ]
-    resolved_field_guidance = field_guidance or _ITEM_TYPE_FIELD_GUIDANCE.get(slot)
-    sections: list[str] = []
-    if closed_lists:
-        sections.append(closed_lists)
-    if resolved_field_guidance:
-        sections.append(resolved_field_guidance)
-    if shared_field_guidance_lines:
-        sections.append(
-            "FIELD RULES\n"
-            + "\n".join(shared_field_guidance_lines)
-            + "\n- Do not encode the same concept in multiple fields."
-        )
-    sections.append(STRUCTURED_EXTRACTION_EVIDENCE_PROMPT)
-    if open_vocab:
-        sections.append(open_vocab)
-    if visual_tags and visual_tags.strip():
-        sections.append(f"Visual context from tagger: {visual_tags}")
-    sections.append(
-        "Two images are provided: the overview image and the icon.\n"
-        "The overview image takes priority over the icon.\n"
-        f"Output only the following JSON, nothing else:\n{schema}"
+
+    parts = [
+        f"ITEM TYPE\n- slot = {normalized_slot}",
+        "SCHEMA TEMPLATE\n" + json.dumps(schema, ensure_ascii=False, indent=2),
+        STRUCTURED_EXTRACTION_EVIDENCE_PROMPT,
+    ]
+
+    if visual_tags:
+        parts.append(f"VISUAL CONTEXT\n- hint = {visual_tags}")
+
+    guidance_blocks = [
+        _ITEM_TYPE_FIELD_GUIDANCE.get(normalized_slot),
+        field_guidance,
+        *(
+            _SHARED_FIELD_GUIDANCE_LINES[field_name]
+            for field_name in resolved_field_names
+            if field_name in _SHARED_FIELD_GUIDANCE_LINES
+        ),
+    ]
+    filtered_guidance_blocks = [block for block in guidance_blocks if block]
+    if filtered_guidance_blocks:
+        parts.append("\n".join(filtered_guidance_blocks))
+
+    if closed_list_lines:
+        parts.append("CLOSED LISTS\n" + "\n".join(closed_list_lines))
+
+    parts.append(
+        "OUTPUT\n"
+        "- Return exactly one JSON object matching the schema template.\n"
+        "- Preserve the field order shown in SCHEMA TEMPLATE.\n"
+        "- Use null or [] when unsupported, invisible, or uncertain."
     )
-    return "\n\n".join(sections)
-
-
-def normalise_token(token: str) -> str:
-    return TOKEN_ALIASES.get(token, token)
-
-
-def get_subcategory_ancestors(subcategory: str) -> list[str]:
-    ancestors: list[str] = []
-    current = subcategory
-    while current in SUBCATEGORY_HIERARCHY:
-        current = SUBCATEGORY_HIERARCHY[current]
-        ancestors.append(current)
-    return ancestors
+    return "\n\n".join(parts)
 
 
 def _validate_taxonomy_config() -> None:
     expected_item_types = set(WEARABLE_ITEM_TYPES)
-    configured_item_types = set(_ITEM_TYPE_TAXONOMIES)
-    if expected_item_types != configured_item_types:
-        missing_taxonomies = sorted(expected_item_types - configured_item_types)
-        extra_taxonomies = sorted(configured_item_types - expected_item_types)
-        raise RuntimeError(
-            "taxonomy config mismatch: "
-            f"missing={missing_taxonomies}, extra={extra_taxonomies}"
-        )
-
-    for item_type, taxonomy in _ITEM_TYPE_TAXONOMIES.items():
-        categories = [category for category, _children in taxonomy]
-        if len(categories) != len(set(categories)):
-            raise RuntimeError(f"duplicate categories configured for {item_type}")
-
-        category_set = set(categories)
-        seen_children: set[str] = set()
-        for category, children in taxonomy:
-            for child in children:
-                if child in category_set:
-                    raise RuntimeError(
-                        f"subcategory duplicates category token: {item_type}:{child}"
-                    )
-                if child in seen_children:
-                    raise RuntimeError(
-                        f"duplicate subcategory configured for {item_type}:{child}"
-                    )
-                seen_children.add(child)
+    actual_item_types = set(CANONICAL_CATEGORY_TOKENS) | set(
+        CANONICAL_SUBCATEGORY_TOKENS
+    )
+    if expected_item_types != actual_item_types:
+        missing = ", ".join(sorted(expected_item_types.difference(actual_item_types)))
+        extra = ", ".join(sorted(actual_item_types.difference(expected_item_types)))
+        problems = []
+        if missing:
+            problems.append(f"missing={missing}")
+        if extra:
+            problems.append(f"extra={extra}")
+        joined = "; ".join(problems)
+        raise RuntimeError(f"tracker export taxonomy mismatch: {joined}")
 
 
 _validate_taxonomy_config()
-
 
 __all__ = [
     "CANONICAL_ATTRIBUTE_TOKENS",

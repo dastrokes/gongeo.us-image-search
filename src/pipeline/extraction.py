@@ -37,18 +37,20 @@ from models.schemas import (
 )
 from pipeline.manifest import _find_image_path, resolve_manifest_paths
 
-_LEGACY_BOTTOMS_LENGTH_TOKEN_ALIASES: dict[str, str] = {
-    "mini": "upper_thigh",
-    "midi": "mid_calf",
-    "maxi": "ankle_length",
-    "short": "mid_thigh",
-}
+_ORNAMENT_SUFFIXES_TO_STRIP: tuple[str, ...] = (
+    "detail",
+    "motif",
+    "charm",
+    "emblem",
+    "applique",
+)
 
 _CATEGORY_BOTTOM_LENGTH_TOKEN_ALIASES: dict[str, dict[str, str]] = {
     "dress": {
         "micro": "mini",
         "upper_thigh": "mini",
         "mid_thigh": "mini",
+        "mid_calf": "midi",
         "ankle_length": "maxi",
     },
     "jumpsuit": {
@@ -62,6 +64,7 @@ _CATEGORY_BOTTOM_LENGTH_TOKEN_ALIASES: dict[str, dict[str, str]] = {
         "micro": "mini",
         "upper_thigh": "mini",
         "mid_thigh": "mini",
+        "mid_calf": "midi",
         "ankle_length": "maxi",
     },
     "shorts": {
@@ -75,6 +78,7 @@ _CATEGORY_BOTTOM_LENGTH_TOKEN_ALIASES: dict[str, dict[str, str]] = {
     "skort": {
         "micro": "upper_thigh",
         "mini": "upper_thigh",
+        "mid_calf": "midi",
         "midi": "knee_length",
         "maxi": "knee_length",
         "ankle_length": "knee_length",
@@ -333,7 +337,24 @@ class VisionStructuredExtractor:
             cls._normalize_token(source): cls._normalize_token(target)
             for source, target in field_definition.alias_pairs
         }
-        return alias_map.get(value, value)
+        normalized = alias_map.get(value, value)
+        return cls._post_process_token(normalized, field_definition)
+
+    @staticmethod
+    def _post_process_token(
+        value: str,
+        field_definition: StructuredFieldDefinition,
+    ) -> str:
+        if field_definition.name != "ornament":
+            return value
+        for suffix in _ORNAMENT_SUFFIXES_TO_STRIP:
+            suffix_token = f"_{suffix}"
+            if not value.endswith(suffix_token):
+                continue
+            stripped = value[: -len(suffix_token)].strip("_")
+            if stripped:
+                return stripped
+        return value
 
     @classmethod
     def _normalize_scalar(
@@ -514,10 +535,7 @@ class VisionStructuredExtractor:
             name="bottom_length",
             kind="scalar",
         )
-        normalized = cls._normalize_scalar(value, legacy_field_definition)
-        if normalized is None:
-            return None
-        return _LEGACY_BOTTOMS_LENGTH_TOKEN_ALIASES.get(normalized, normalized)
+        return cls._normalize_scalar(value, legacy_field_definition)
 
     @classmethod
     def _coerce_legacy_bottoms_payload(
@@ -557,13 +575,15 @@ class VisionStructuredExtractor:
         subcategory = str(normalized.get("subcategory") or "").strip()
         canonical_categories = set(CANONICAL_CATEGORY_TOKENS.get(item_type, ()))
 
-        if not category and subcategory in SUBCATEGORY_HIERARCHY:
-            normalized["category"] = SUBCATEGORY_HIERARCHY[subcategory]
+        hierarchy = SUBCATEGORY_HIERARCHY.get(item_type, {})
+
+        if not category and subcategory in hierarchy:
+            normalized["category"] = hierarchy[subcategory]
             category = str(normalized.get("category") or "").strip()
 
         promoted_subcategory: str | None = None
         if category and category not in canonical_categories:
-            promoted_parent = SUBCATEGORY_HIERARCHY.get(category)
+            promoted_parent = hierarchy.get(category)
             if promoted_parent is not None:
                 promoted_subcategory = category
                 normalized["category"] = promoted_parent
@@ -573,10 +593,10 @@ class VisionStructuredExtractor:
             normalized["subcategory"] = promoted_subcategory
             subcategory = promoted_subcategory
 
-        if subcategory in SUBCATEGORY_HIERARCHY:
-            ancestors = get_subcategory_ancestors(subcategory)
+        if subcategory in hierarchy:
+            ancestors = get_subcategory_ancestors(item_type, subcategory)
             if not category or category not in ancestors:
-                normalized["category"] = SUBCATEGORY_HIERARCHY[subcategory]
+                normalized["category"] = hierarchy[subcategory]
                 category = str(normalized.get("category") or "").strip()
 
         if subcategory and subcategory == category:
@@ -664,10 +684,11 @@ class VisionStructuredExtractor:
         subcategory = str(normalized_payload.get("subcategory") or "").strip()
         if not category or not subcategory:
             return None
-        parent = SUBCATEGORY_HIERARCHY.get(subcategory)
+        hierarchy = SUBCATEGORY_HIERARCHY.get(item_type, {})
+        parent = hierarchy.get(subcategory)
         if parent is None:
             return None
-        ancestors = get_subcategory_ancestors(subcategory)
+        ancestors = get_subcategory_ancestors(item_type, subcategory)
         if category in ancestors:
             return None
         return {
@@ -694,7 +715,7 @@ class VisionStructuredExtractor:
         known_examples_for_category = sorted(
             example
             for example in CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ())
-            if SUBCATEGORY_HIERARCHY.get(example) == category
+            if SUBCATEGORY_HIERARCHY.get(item_type, {}).get(example) == category
         )
         return {
             "item_type": item_type,
@@ -798,7 +819,6 @@ class VisionStructuredExtractor:
         structured_record = StructuredItemRecord(
             item_id=record.item_id,
             item_type=record.item_type,
-            source_version="",
             data=normalized_payload,
             parse_error=parse_error,
         )
@@ -1007,7 +1027,6 @@ class GeminiStructuredExtractor:
         structured_record = StructuredItemRecord(
             item_id=record.item_id,
             item_type=record.item_type,
-            source_version="",
             data=normalized_payload,
             parse_error=parse_error,
         )
