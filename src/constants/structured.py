@@ -90,10 +90,24 @@ _SUBCATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
     ("shawl", "stole"),
     ("stud_earring", "stud_earrings"),
 )
+_GARMENT_FEATURE_ALIASES: tuple[tuple[str, str], ...] = (
+    ("belt", "belted"),
+    ("buttoned", "button_up"),
+    ("buttoned_up", "button_up"),
+    ("button_front", "button_up"),
+    ("hood", "hooded"),
+    ("hoodie", "hooded"),
+    ("laced", "lace_up"),
+    ("laced_up", "lace_up"),
+    ("zip_front", "zip_up"),
+    ("zipped", "zip_up"),
+    ("zippered", "zip_up"),
+)
 
 _FIELD_ALIASES: dict[str, tuple[tuple[str, str], ...]] = {
     "category": _CATEGORY_ALIASES,
     "subcategory": _SUBCATEGORY_ALIASES,
+    "garment_feature": _GARMENT_FEATURE_ALIASES,
     "primary_color": _COLOR_ALIASES,
     "secondary_color": _COLOR_ALIASES,
     "structure": _STRUCTURE_ALIASES,

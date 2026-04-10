@@ -18,7 +18,7 @@ from constants.settings import (
 from constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
-    CANONICAL_SUBCATEGORY_TOKENS,
+    FILTERED_CANONICAL_ATTRIBUTE_FIELDS,
     SUBCATEGORY_HIERARCHY,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
     build_extraction_user_message,
@@ -703,26 +703,13 @@ class VisionStructuredExtractor:
         item_type: str,
         normalized_payload: dict[str, object],
     ) -> dict[str, object] | None:
-        category = str(normalized_payload.get("category") or "").strip()
         subcategory = str(normalized_payload.get("subcategory") or "").strip()
         if not subcategory:
             return None
 
-        canonical_subcategories = set(CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ()))
-        if subcategory in canonical_subcategories:
-            return None
-
-        known_examples_for_category = sorted(
-            example
-            for example in CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ())
-            if SUBCATEGORY_HIERARCHY.get(item_type, {}).get(example) == category
-        )
-        return {
-            "item_type": item_type,
-            "category": category or None,
-            "subcategory": subcategory,
-            "known_examples_for_category": known_examples_for_category,
-        }
+        # Subcategory is intentionally open-list. Tracker terms are preferred
+        # examples, not a canonical-only validation gate.
+        return None
 
     @classmethod
     def build_filter_report(
@@ -748,7 +735,7 @@ class VisionStructuredExtractor:
             normalized_values = cls._normalized_raw_values(raw_value, field_definition)
             if field_name == "category":
                 canonical_tokens = set(CANONICAL_CATEGORY_TOKENS.get(item_type, ()))
-            elif field_name in CANONICAL_ATTRIBUTE_TOKENS:
+            elif field_name in FILTERED_CANONICAL_ATTRIBUTE_FIELDS:
                 canonical_tokens = set(CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ()))
             else:
                 canonical_tokens = set()

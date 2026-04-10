@@ -13,14 +13,16 @@ STRUCTURED_EXTRACTION_SYSTEM_PROMPT = (
     "- Non-null values must be lowercase underscore_tokens.\n"
     "- Scalars: one token or null.\n"
     "- Arrays: unique tokens or [].\n"
+    "- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n"
     "- Each field must represent a single concept only.\n"
     "- Do not combine multiple attributes into one token.\n\n"
     "TAXONOMY\n"
     "- category = the main visible item class, chosen at the schema root level rather than a more specific child type.\n"
     "- category must be one of the values in CLOSED LISTS.\n"
-    "- subcategory must be a concise, canonical direct child refinement of the chosen category, or null.\n"
-    "- Prefer the listed child examples. If no close match exists, use null.\n"
-    "- subcategory must be a valid child of the selected category. If unsure, set subcategory = null.\n"
+    "- subcategory should be a concise direct child refinement of the chosen category, or null.\n"
+    "- Prefer the listed child examples when they fit, but subcategory is open-list.\n"
+    "- If no listed child term fits well, you may use a new concise child refinement or null.\n"
+    "- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n"
     "- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n"
     "- Do not repeat category in subcategory.\n"
     "- Do not compose multiple attributes into subcategory.\n\n"
@@ -40,6 +42,14 @@ _SHARED_FIELD_GUIDANCE_LINES: dict[str, str] = {
     "material": "- material = visible fabric or surface type.",
     "structure": "- structure = built-in fabric shaping, formation, or visible surface texture.",
     "ornament": "- ornament = attached or applied decorative detail, not an edge or band finish.",
+    "garment_feature": "- garment_feature = visible functional garment features or closures such as hooded, belted, button_up, lace_up, or zip_up; do not use purely decorative buttons, bows, or lacing.",
+}
+_OPEN_LIST_FIELD_EXAMPLES: dict[str, tuple[str, ...]] = {
+    "garment_feature": ("hooded", "belted", "button_up", "lace_up", "zip_up"),
+    "material": ("lace", "leather", "knit", "satin", "sheer"),
+    "ornament": ("bow", "button", "chain", "embroidery", "ruffle"),
+    "pattern": ("floral", "plaid", "solid", "star", "striped"),
+    "structure": ("cutout", "draped", "gathered", "pleated", "ribbed"),
 }
 
 _ITEM_TYPE_FIELD_GUIDANCE: dict[str, str] = {
@@ -83,6 +93,11 @@ CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
     str(field_name): tuple(str(value) for value in values or [])
     for field_name, values in _shared_terms.items()
 }
+FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
+    str(field_name)
+    for field_name, kind in (_field_kind_by_name or {}).items()
+    if str(kind) == "scalar" and str(field_name) not in {"category", "subcategory"}
+)
 CANONICAL_CATEGORY_TOKENS: dict[str, tuple[str, ...]] = {
     normalize_supported_item_type(str(item_type)): tuple(
         str(value) for value in values or []
@@ -101,9 +116,6 @@ SUBCATEGORY_HIERARCHY: dict[str, dict[str, str]] = {
     }
     for item_type, parent_map in _subcategory_parent_by_type.items()
 }
-FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
-    CANONICAL_ATTRIBUTE_TOKENS.keys()
-)
 EXAMPLE_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {}
 
 TOKEN_ALIASES: dict[str, str] = {}
@@ -170,16 +182,16 @@ def _subcategory_guidance_lines_for(
     normalized_slot = normalize_supported_item_type(slot)
     hierarchy = SUBCATEGORY_HIERARCHY.get(normalized_slot, {})
     categories = CANONICAL_CATEGORY_TOKENS.get(normalized_slot, ())
-    lines: list[str] = ["  subcategory by category:"]
+    lines: list[str] = []
 
     for category in categories:
         children = sorted(
             child for child, parent in hierarchy.items() if parent == category
         )
         if not children:
-            lines.append(f"    {category}: null")
+            lines.append(f"  {category}: null")
             continue
-        lines.append(f"    {category}: {', '.join(children)}")
+        lines.append(f"  {category}: {', '.join(children)}")
 
     return lines
 
@@ -188,15 +200,26 @@ def _attribute_guidance_lines_for(
     slot: str,
     field_names: tuple[str, ...],
 ) -> list[str]:
-    normalized_slot = normalize_supported_item_type(slot)
     lines: list[str] = []
     for field_name in field_names:
-        if field_name in {"category", "subcategory"}:
+        if field_name not in FILTERED_CANONICAL_ATTRIBUTE_FIELDS:
             continue
         canonical_tokens = CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ())
         if canonical_tokens:
             lines.append(f"  {field_name}: {', '.join(canonical_tokens)}")
     return lines
+
+
+def _shared_field_guidance_line(field_name: str) -> str | None:
+    base_line = _SHARED_FIELD_GUIDANCE_LINES.get(field_name)
+    if not base_line:
+        return None
+
+    example_tokens = _OPEN_LIST_FIELD_EXAMPLES.get(field_name)
+    if not example_tokens:
+        return base_line
+
+    return f"{base_line} Examples: {', '.join(example_tokens)}."
 
 
 def build_extraction_user_message(
@@ -209,9 +232,11 @@ def build_extraction_user_message(
     normalized_slot = normalize_supported_item_type(slot)
     resolved_field_names = field_names or _field_names_for(normalized_slot)
     schema = _schema_template_for(normalized_slot, resolved_field_names)
+    preferred_subcategory_lines = _subcategory_guidance_lines_for(
+        normalized_slot, resolved_field_names
+    )
     closed_list_lines = [
         *_category_guidance_lines_for(normalized_slot),
-        *_subcategory_guidance_lines_for(normalized_slot, resolved_field_names),
         *_attribute_guidance_lines_for(normalized_slot, resolved_field_names),
     ]
 
@@ -228,9 +253,8 @@ def build_extraction_user_message(
         _ITEM_TYPE_FIELD_GUIDANCE.get(normalized_slot),
         field_guidance,
         *(
-            _SHARED_FIELD_GUIDANCE_LINES[field_name]
+            _shared_field_guidance_line(field_name)
             for field_name in resolved_field_names
-            if field_name in _SHARED_FIELD_GUIDANCE_LINES
         ),
     ]
     filtered_guidance_blocks = [block for block in guidance_blocks if block]
@@ -239,6 +263,10 @@ def build_extraction_user_message(
 
     if closed_list_lines:
         parts.append("CLOSED LISTS\n" + "\n".join(closed_list_lines))
+    if preferred_subcategory_lines:
+        parts.append(
+            "PREFERRED SUBCATEGORY EXAMPLES\n" + "\n".join(preferred_subcategory_lines)
+        )
 
     parts.append(
         "OUTPUT\n"
