@@ -17,6 +17,7 @@ Root `cli.py` and `manifest.py` are thin compatibility entry-points that prepend
 `index` reads:
 
 - `reports/database-sync-report.json` — synced item list and source version
+- `reports/theme-sync-report.json` — processor-side missing-theme item exclusions
 - `gongeo.us-config-decoder/cfg/config_output/item/TbItem.json` — item minor-type mapping
 - `gongeo.us-config-decoder/cfg/config_output/clothes/TbClothesMinorTypeInfo.json` — minor-type labels
 - `gongeo.us-nikki-tracker/data/item-search/generated/image-search-taxonomy.json` — canonical tracker-owned taxonomy/schema export

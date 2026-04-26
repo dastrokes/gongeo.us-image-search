@@ -51,8 +51,30 @@ _STRUCTURE_ALIASES: tuple[tuple[str, str], ...] = (
     ("ruching", "ruched"),
     ("ruffle", "ruffled"),
     ("ruffles", "ruffled"),
+    ("ruffled_hem", "ruffled"),
     ("smock", "smocked"),
     ("smocking", "smocked"),
+    ("strapped", "strap"),
+    ("straps", "strap"),
+)
+_PATTERN_ALIASES: tuple[tuple[str, str], ...] = (
+    ("butterfly_wing", "butterfly"),
+    ("leopard_print", "leopard"),
+)
+_ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
+    ("bird_figurine", "bird"),
+    ("beads", "bead"),
+    ("feathers", "feather"),
+    ("flowers", "flower"),
+    ("gem", "gemstone"),
+    ("lightbulb", "light_bulb"),
+    ("pearls", "pearl"),
+    ("plush_animal", "plushie"),
+    ("pompom", "pom_pom"),
+    ("pom_poms", "pom_pom"),
+    ("pompoms", "pom_pom"),
+    ("studs", "stud"),
+    ("wings", "wing"),
 )
 _CATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
     ("apron_dress", "pinafore_dress"),
@@ -88,6 +110,7 @@ _SUBCATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
     ("overall_dress", "pinafore_dress"),
     ("playsuit", "romper"),
     ("shawl", "stole"),
+    ("side_buns", "side_bun"),
     ("stud_earring", "stud_earrings"),
 )
 _GARMENT_FEATURE_ALIASES: tuple[tuple[str, str], ...] = (
@@ -108,6 +131,8 @@ _FIELD_ALIASES: dict[str, tuple[tuple[str, str], ...]] = {
     "category": _CATEGORY_ALIASES,
     "subcategory": _SUBCATEGORY_ALIASES,
     "garment_feature": _GARMENT_FEATURE_ALIASES,
+    "ornament": _ORNAMENT_ALIASES,
+    "pattern": _PATTERN_ALIASES,
     "primary_color": _COLOR_ALIASES,
     "secondary_color": _COLOR_ALIASES,
     "structure": _STRUCTURE_ALIASES,

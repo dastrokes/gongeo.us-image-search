@@ -17,7 +17,7 @@ DEFAULT_TRACKER_EXPORT = (
     / "image-search-taxonomy.json"
 )
 DEFAULT_TRACKER_OVERRIDES = (
-    DEFAULT_TRACKER_ROOT / "data" / "item-search" / "overrides.json"
+    DEFAULT_TRACKER_ROOT / "data" / "item-search" / "generated" / "overrides.json"
 )
 
 
@@ -49,6 +49,8 @@ def load_tracker_export(path: str | None = None) -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def load_tracker_overrides(path: str | None = None) -> dict[str, Any]:
     overrides_path = resolve_tracker_overrides_path(path)
+    if not overrides_path.is_file():
+        return {}
     with overrides_path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 

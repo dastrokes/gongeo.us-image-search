@@ -97,6 +97,27 @@ def _load_existing_item_ids(path: Path) -> set[int]:
     return item_ids
 
 
+def _resolve_theme_sync_report_path(sync_report_path: Path) -> Path:
+    return sync_report_path.with_name("theme-sync-report.json")
+
+
+def _load_processor_excluded_item_ids(sync_report_path: Path) -> set[int]:
+    theme_report_path = _resolve_theme_sync_report_path(sync_report_path)
+    if not theme_report_path.exists():
+        return set()
+
+    theme_report = _load_json(theme_report_path)
+    excluded_ids: set[int] = set()
+    for entry in theme_report.get("missingThemes", []) or []:
+        if not isinstance(entry, dict) or entry.get("type") != "item":
+            continue
+        try:
+            excluded_ids.add(int(entry["id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return excluded_ids
+
+
 def _find_image_path(root: Path, item_id: int) -> Path | None:
     for extension in IMAGE_EXTENSIONS:
         candidate = root / f"{item_id}{extension}"
@@ -144,6 +165,9 @@ def build_manifest(
     item_config = _load_json(paths.item_config_path)
     minor_type_info = _load_json(paths.minor_type_path)
     items = sync_report.get("syncedDetails", {}).get("items", [])
+    processor_excluded_item_ids = _load_processor_excluded_item_ids(
+        paths.sync_report_path
+    )
     selected_item_types = {
         normalize_supported_item_type(item_type) for item_type in (item_types or ())
     }
@@ -165,12 +189,16 @@ def build_manifest(
         "indexed_skipped_count": 0,
         "missing_icon_count": 0,
         "missing_overview_count": 0,
+        "processor_excluded_count": 0,
     }
 
     for raw in items:
         current_item_id = int(raw["id"])
 
         if selected_item_ids and current_item_id not in selected_item_ids:
+            continue
+        if current_item_id in processor_excluded_item_ids:
+            int_stats["processor_excluded_count"] += 1
             continue
 
         if not _is_base_item(current_item_id):
