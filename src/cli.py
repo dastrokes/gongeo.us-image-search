@@ -222,6 +222,9 @@ def _compact_filter_report(
 ) -> dict[str, object]:
     report = filter_report or {}
     compacted = {
+        "cross_field_ownership": list(
+            report.get("cross_field_ownership", []) or []
+        ),
         "non_canonical": list(report.get("non_canonical", []) or []),
         "parent_child_mismatch": report.get("parent_child_mismatch"),
         "subcategory_not_in_list": report.get("subcategory_not_in_list"),

@@ -62,6 +62,7 @@ _PATTERN_ALIASES: tuple[tuple[str, str], ...] = (
     ("leopard_print", "leopard"),
 )
 _ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
+    ("binder_clip", "clip"),
     ("bird_figurine", "bird"),
     ("beads", "bead"),
     ("feathers", "feather"),
@@ -253,3 +254,4 @@ def schema_definition_for_item_type(item_type: str) -> StructuredSchemaDefinitio
 
 def is_supported_item_type(item_type: str) -> bool:
     return normalize_supported_item_type(item_type) in WEARABLE_ITEM_TYPES
+

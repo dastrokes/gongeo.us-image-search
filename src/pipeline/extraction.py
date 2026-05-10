@@ -112,6 +112,27 @@ _CATEGORY_BOTTOM_LENGTH_TOKEN_ALIASES: dict[str, dict[str, str]] = {
 }
 
 
+_CROSS_FIELD_TOKEN_OWNERSHIP: dict[
+    str,
+    dict[str, tuple[str | None, str | None]],
+] = {
+    "ornament": {
+        "paper": ("material", "paper"),
+    },
+    "pattern": {
+        "filigree": ("ornament", "filigree"),
+        "snowflake": ("ornament", "snowflake"),
+    },
+    "structure": {
+        "cage": ("ornament", "cage"),
+        "cross": ("pattern", "cross"),
+        "filigree": ("ornament", "filigree"),
+        "mesh": ("material", "mesh"),
+        "net": (None, None),
+    },
+}
+
+
 @dataclass(slots=True)
 class StructuredExtractorConfig:
     model_id: str = DEFAULT_EXTRACTION_MODEL_ID
@@ -399,6 +420,53 @@ class VisionStructuredExtractor:
             normalized_values.append(normalized)
         return normalized_values
 
+
+    @classmethod
+    def _normalize_cross_field_concepts(
+        cls,
+        normalized: dict[str, object],
+        field_definitions: dict[str, StructuredFieldDefinition],
+    ) -> dict[str, object]:
+        for source_field, ownership_map in _CROSS_FIELD_TOKEN_OWNERSHIP.items():
+            source_definition = field_definitions.get(source_field)
+            if source_definition is None or source_definition.kind != "array":
+                continue
+
+            source_values = normalized.get(source_field)
+            if not isinstance(source_values, list) or not source_values:
+                continue
+
+            kept_values: list[str] = []
+            for value in source_values:
+                ownership = ownership_map.get(value)
+                if ownership is None:
+                    kept_values.append(value)
+                    continue
+
+                target_field, target_value = ownership
+                if target_field is None:
+                    continue
+
+                target_definition = field_definitions.get(target_field)
+                if target_definition is None or target_definition.kind != "array":
+                    kept_values.append(value)
+                    continue
+
+                destination = normalized.get(target_field)
+                if not isinstance(destination, list):
+                    destination = []
+                    normalized[target_field] = destination
+
+                normalized_target = cls._collapse_alias(
+                    target_value or value,
+                    target_definition,
+                )
+                if normalized_target and normalized_target not in destination:
+                    destination.append(normalized_target)
+
+            normalized[source_field] = kept_values
+        return normalized
+
     @staticmethod
     def _output_template(
         schema_definition: StructuredSchemaDefinition,
@@ -653,6 +721,10 @@ class VisionStructuredExtractor:
                 normalized[field_name] = cls._normalize_scalar(
                     raw_value, field_definition
                 )
+        normalized = cls._normalize_cross_field_concepts(
+            normalized,
+            field_definitions,
+        )
         normalized = cls._normalize_taxonomy_fields(item_type, normalized)
         return cls._normalize_bottom_length_for_category(normalized)
 
@@ -674,6 +746,42 @@ class VisionStructuredExtractor:
             if normalized:
                 normalized_values.append(normalized)
         return normalized_values
+
+    @classmethod
+    def _cross_field_ownership_rows(
+        cls,
+        raw_payload: dict[str, object],
+        field_definitions: dict[str, StructuredFieldDefinition],
+    ) -> list[dict[str, str | None]]:
+        rows: list[dict[str, str | None]] = []
+        seen: set[tuple[str, str, str | None, str | None]] = set()
+
+        for field_name, raw_value in raw_payload.items():
+            field_definition = field_definitions.get(field_name)
+            if field_definition is None:
+                continue
+            ownership_map = _CROSS_FIELD_TOKEN_OWNERSHIP.get(field_name)
+            if not ownership_map:
+                continue
+
+            for token in cls._normalized_raw_values(raw_value, field_definition):
+                ownership = ownership_map.get(token)
+                if ownership is None:
+                    continue
+                target_field, target_token = ownership
+                fingerprint = (field_name, token, target_field, target_token)
+                if fingerprint in seen:
+                    continue
+                seen.add(fingerprint)
+                rows.append(
+                    {
+                        "field": field_name,
+                        "token": token,
+                        "target_field": target_field,
+                        "target_token": target_token,
+                    }
+                )
+        return rows
 
     @staticmethod
     def _category_mismatch(
@@ -760,11 +868,17 @@ class VisionStructuredExtractor:
                 and field_name in {"bottom_length", "skirt_length", "pants_length"}
             )
         )
+        cross_field_ownership = cls._cross_field_ownership_rows(
+            raw_payload,
+            field_definitions,
+        )
         category_mismatch = cls._category_mismatch(item_type, normalized_payload)
         subcategory_not_in_list = cls._subcategory_not_in_list(
             item_type, normalized_payload
         )
         return {
+            "cross_field_ownership": cross_field_ownership,
+            "cross_field_ownership_count": len(cross_field_ownership),
             "non_canonical": non_canonical,
             "non_canonical_count": len(non_canonical),
             "unknown_fields": unknown_fields,
