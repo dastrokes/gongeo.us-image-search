@@ -57,7 +57,7 @@ From `gongeo.us-image-search`:
 
 ```bash
 git status --short
-python -m pip install -r requirements.txt
+uv sync
 ```
 
 From `gongeo.us-nikki-tracker`:
@@ -117,13 +117,13 @@ Run the copy command from `gongeo.us-image-search`. This file is only a local sk
 For a non-destructive sanity manifest:
 
 ```bash
-python manifest.py --limit 10 --output manifest/item-manifest.sanity.jsonl
+uv run python manifest.py --limit 10 --output manifest/item-manifest.sanity.jsonl
 ```
 
 For the real new-ID manifest:
 
 ```bash
-python manifest.py
+uv run python manifest.py
 ```
 
 Review the printed summary:
@@ -187,7 +187,7 @@ Fix missing assets in tracker when possible. Items with both images missing are 
 First debug one representative new item:
 
 ```bash
-python cli.py index --item-id <item_id>
+uv run python cli.py index --item-id <item_id>
 ```
 
 This prints the prompt, raw model response, parsed payload, image paths, and normalized output without writing a full batch.
@@ -195,22 +195,22 @@ This prints the prompt, raw model response, parsed payload, image paths, and nor
 Run a small batch into temporary roots:
 
 ```bash
-python cli.py index --limit 10 --regen-manifest --output-root index/sanity --manifest-root manifest/sanity
+uv run python cli.py index --limit 10 --regen-manifest --output-root index/sanity --manifest-root manifest/sanity
 ```
 
 For the real new-ID batch:
 
 ```bash
-python cli.py index --regen-manifest
+uv run python cli.py index --regen-manifest
 ```
 
 Useful scoped variants:
 
 ```bash
-python cli.py index --regen-manifest --item-ids <id1> <id2> <id3>
-python cli.py index --regen-manifest --type dresses --type outerwear
-python cli.py index --regen-manifest --backend gemini
-python cli.py index --regen-manifest --backend local --device cuda --quantization none
+uv run python cli.py index --regen-manifest --item-ids <id1> <id2> <id3>
+uv run python cli.py index --regen-manifest --type dresses --type outerwear
+uv run python cli.py index --regen-manifest --backend gemini
+uv run python cli.py index --regen-manifest --backend local --device cuda --quantization none
 ```
 
 The index command checkpoints `index/item-structured-data.jsonl` and `index/item-structured-debug.jsonl`. If a run is interrupted, rerun the same command and completed items are skipped.
@@ -264,13 +264,13 @@ If output is wrong for a few items, prefer tracker overrides for curated correct
 - Rebuild derived image-search output without re-extraction:
 
 ```bash
-python cli.py refresh --item-ids <id1> <id2>
+uv run python cli.py refresh --item-ids <id1> <id2>
 ```
 
 If normalization logic changed rather than only overrides, run:
 
 ```bash
-python cli.py refresh
+uv run python cli.py refresh
 ```
 
 ## Terms And Taxonomy Dedupe
@@ -487,14 +487,14 @@ Wrong labels only:
 Wrong metadata for a few items:
 
 1. Add or edit tracker overrides.
-2. Run `python cli.py refresh --item-ids <id1> <id2>` in image-search.
+2. Run `uv run python cli.py refresh --item-ids <id1> <id2>` in image-search.
 3. Publish the refreshed small JSONL with `--scope item-ids`.
 
 Bad extraction caused by missing or poor images:
 
 1. Fix `public/images/items` and/or `public/images/items/icons` in tracker.
 2. Remove the affected cached rows from the image-search output or run into a clean `--output-root`.
-3. Rerun `python cli.py index --item-ids <id>`.
+3. Rerun `uv run python cli.py index --item-ids <id>`.
 4. Sanity-check and publish.
 
 New valid token missing from filters/search:
@@ -526,10 +526,10 @@ Image-search:
 
 ```powershell
 Copy-Item ..\gongeo.us-nikki-tracker\data\item-search\generated\supabase\item-attributes.jsonl .\manifest\item-attributes.jsonl
-python manifest.py
-python cli.py index --item-id <representative_new_id>
-python cli.py index --limit 10 --regen-manifest --output-root index/sanity --manifest-root manifest/sanity
-python cli.py index --regen-manifest
+uv run python manifest.py
+uv run python cli.py index --item-id <representative_new_id>
+uv run python cli.py index --limit 10 --regen-manifest --output-root index/sanity --manifest-root manifest/sanity
+uv run python cli.py index --regen-manifest
 ```
 
 Tracker term/localization review:

@@ -28,17 +28,22 @@ Root `cli.py` and `manifest.py` are thin compatibility entry-points that prepend
 It produces:
 
 - `manifest/item-manifest.jsonl`
+- `manifest/item-color-manifest.jsonl` when running `colors`
 - `index/item-structured-raw.jsonl`
 - `index/item-structured-data.jsonl`
 - `index/item-attributes.jsonl`
 - `index/item-structured-debug.jsonl`
 - `index/item-search-report.jsonl`
 - `index/build-summary.json`
+- `index/item-colors.jsonl` when running `colors`
+- `index/item-color-debug.jsonl` when running `colors`
+- `index/item-color-report.jsonl` when running `colors`
+- `index/color-build-summary.json` when running `colors`
 
 ## Install
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 Default extraction uses `Qwen/Qwen3-VL-4B-Instruct` with 4-bit quantization (requires CUDA).
@@ -56,21 +61,26 @@ Keep dev runs capped at `--limit 10` unless intentionally wider.
 
 ```bash
 # Extract structured data and build canonical item attributes
-python cli.py index --limit 10
-python cli.py index --item-id 1020123456   # single-item debug
-python cli.py index --type dresses --type outerwear
-python cli.py index --item-ids 1020100001 1020100002
+uv run python cli.py index --limit 10
+uv run python cli.py index --item-id 1020123456   # single-item debug
+uv run python cli.py index --type dresses --type outerwear
+uv run python cli.py index --item-ids 1020100001 1020100002
 
 # Rebuild canonical item attributes from cached extraction (no re-extraction)
-python cli.py refresh
-python cli.py refresh --type dresses
-python cli.py refresh --item-id 1020100001
+uv run python cli.py refresh
+uv run python cli.py refresh --type dresses
+uv run python cli.py refresh --item-id 1020100001
 
 # Regenerate the base-item manifest only
-python manifest.py
+uv run python manifest.py
+
+# Build standalone icon-derived color tags for all synced items
+uv run python cli.py colors --limit 10
+uv run python cli.py colors --type hair --limit 10
+uv run python cli.py colors --item-id 1020100001
 ```
 
-If you want manifest generation to skip items that are already in the current published Supabase dataset, copy the tracker-generated local mirror from `gongeo.us-nikki-tracker/data/item-search/generated/supabase/item-attributes.jsonl` into `manifest/item-attributes.jsonl` before running `python manifest.py` or `python cli.py index --regen-manifest`.
+If you want manifest generation to skip items that are already in the current published Supabase dataset, copy the tracker-generated local mirror from `gongeo.us-nikki-tracker/data/item-search/generated/supabase/item-attributes.jsonl` into `manifest/item-attributes.jsonl` before running `uv run python manifest.py` or `uv run python cli.py index --regen-manifest`.
 
 `index --item-id <ID>` prints one JSON bundle: prompt, raw model response, parsed payload, and normalized structured output.
 
@@ -85,3 +95,6 @@ If you want manifest generation to skip items that are already in the current pu
 - `metadata` in `item-attributes.jsonl` contains only actual tag fields and does not repeat `item_id`, `item_type`, `slot`, `category`, or `subcategory`.
 - Search documents are derived from canonical item-attributes rows, not stored as a separate final artifact.
 - `manifest/item-attributes.jsonl` uses the same row shape as the canonical item-attributes artifact, so the tracker Supabase mirror can be copied there directly.
+- `colors` is intentionally separate from `index` and does not read or write `item-attributes.jsonl`.
+- Color tagging is not base-item restricted; it reads all synced items with available transparent icon PNGs.
+- Hair color rows are flagged for review because hair icons can include face, skin, and clothing pixels.
