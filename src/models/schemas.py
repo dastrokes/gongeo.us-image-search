@@ -53,16 +53,6 @@ class ItemAttributesRecord:
 
 
 @dataclass
-class SearchDocumentRecord:
-    id: int
-    data: str
-    metadata: dict[str, Any]
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(cast(Any, self))
-
-
-@dataclass
 class BuildSummary:
     extraction_model_id: str
     item_count: int

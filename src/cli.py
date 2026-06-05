@@ -59,32 +59,6 @@ def _default_manifest_root() -> Path:
     return PROJECT_ROOT / "manifest"
 
 
-def _cleanup_stale_outputs(output_root: Path) -> None:
-    for filename in (
-        "item-structured-raw.jsonl",
-        "item-attributes.jsonl",
-        "item-structured-final.jsonl",
-        "item-official-metadata.jsonl",
-        "item-documents.jsonl",
-        "item-search-documents.jsonl",
-        "item-metadata.parquet",
-        "taxonomy-concepts.jsonl",
-        "item-visual-features.jsonl",
-        "item-structured-candidates.jsonl",
-        "item-tag-assignments.jsonl",
-        "item-review-queue.jsonl",
-        "item-unmapped-terms.jsonl",
-        "item-captions-debug.jsonl",
-        "item-filter-report.jsonl",
-        "item-normalization-report.jsonl",
-        "item-search-report.jsonl",
-    ):
-        try:
-            (output_root / filename).unlink(missing_ok=True)
-        except OSError:
-            pass
-
-
 def _manifest_needs_regen(manifest_path: Path) -> bool:
     if not manifest_path.exists():
         return True
@@ -493,8 +467,6 @@ def run_build_index(args: argparse.Namespace) -> int:
         )
         raise
 
-    _cleanup_stale_outputs(output_root)
-
     override_map = load_curated_override_map()
     raw_rows: list[dict[str, object]] = []
     structured_rows: list[dict[str, object]] = []
@@ -655,22 +627,6 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
             structured_parse_fail_count += 1
 
     _write_jsonl(item_attributes_path, item_attribute_rows)
-    try:
-        (output_root / "item-structured-final.jsonl").unlink(missing_ok=True)
-    except OSError:
-        pass
-    try:
-        (output_root / "item-search-documents.jsonl").unlink(missing_ok=True)
-    except OSError:
-        pass
-    try:
-        (output_root / "item-filter-report.jsonl").unlink(missing_ok=True)
-    except OSError:
-        pass
-    try:
-        (output_root / "item-normalization-report.jsonl").unlink(missing_ok=True)
-    except OSError:
-        pass
     _write_jsonl(search_report_path, search_report_rows)
     refreshed_at = datetime.now(timezone.utc).isoformat()
     _write_json(

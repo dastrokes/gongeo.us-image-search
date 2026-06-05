@@ -116,8 +116,6 @@ SUBCATEGORY_HIERARCHY: dict[str, dict[str, str]] = {
     }
     for item_type, parent_map in _subcategory_parent_by_type.items()
 }
-EXAMPLE_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {}
-
 TOKEN_ALIASES: dict[str, str] = {}
 for item_type in WEARABLE_ITEM_TYPES:
     for field_definition in schema_definition_for_item_type(item_type).fields:
@@ -300,7 +298,6 @@ __all__ = [
     "CANONICAL_ATTRIBUTE_TOKENS",
     "CANONICAL_CATEGORY_TOKENS",
     "CANONICAL_SUBCATEGORY_TOKENS",
-    "EXAMPLE_ATTRIBUTE_TOKENS",
     "FILTERED_CANONICAL_ATTRIBUTE_FIELDS",
     "STRUCTURED_EXTRACTION_SYSTEM_PROMPT",
     "SUBCATEGORY_HIERARCHY",

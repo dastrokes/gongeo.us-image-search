@@ -595,45 +595,6 @@ class VisionStructuredExtractor:
         return payload, None
 
     @classmethod
-    def _normalize_legacy_bottoms_length(
-        cls,
-        value: object,
-    ) -> str | None:
-        legacy_field_definition = StructuredFieldDefinition(
-            name="bottom_length",
-            kind="scalar",
-        )
-        return cls._normalize_scalar(value, legacy_field_definition)
-
-    @classmethod
-    def _coerce_legacy_bottoms_payload(
-        cls,
-        payload: dict[str, object],
-    ) -> dict[str, object]:
-        working_payload = dict(payload)
-        if "bottom_length" in working_payload:
-            normalized_bottom_length = cls._normalize_legacy_bottoms_length(
-                working_payload.get("bottom_length")
-            )
-            if normalized_bottom_length is None:
-                working_payload.pop("bottom_length", None)
-            else:
-                working_payload["bottom_length"] = normalized_bottom_length
-        else:
-            for legacy_field_name in ("skirt_length", "pants_length"):
-                if legacy_field_name not in working_payload:
-                    continue
-                normalized_bottom_length = cls._normalize_legacy_bottoms_length(
-                    working_payload.pop(legacy_field_name)
-                )
-                if normalized_bottom_length is not None:
-                    working_payload["bottom_length"] = normalized_bottom_length
-                    break
-        working_payload.pop("skirt_length", None)
-        working_payload.pop("pants_length", None)
-        return working_payload
-
-    @classmethod
     def _normalize_taxonomy_fields(
         cls,
         item_type: str,
@@ -701,15 +662,11 @@ class VisionStructuredExtractor:
         if not isinstance(payload, dict):
             return normalized
 
-        working_payload = payload
-        if item_type == "bottoms":
-            working_payload = cls._coerce_legacy_bottoms_payload(payload)
-
         field_definitions = {
             field_definition.name: field_definition
             for field_definition in schema_definition.fields
         }
-        for field_name, raw_value in working_payload.items():
+        for field_name, raw_value in payload.items():
             field_definition = field_definitions.get(field_name)
             if field_definition is None:
                 continue
@@ -863,10 +820,6 @@ class VisionStructuredExtractor:
             field_name
             for field_name in raw_payload
             if field_name not in field_definitions
-            and not (
-                item_type == "bottoms"
-                and field_name in {"bottom_length", "skirt_length", "pants_length"}
-            )
         )
         cross_field_ownership = cls._cross_field_ownership_rows(
             raw_payload,

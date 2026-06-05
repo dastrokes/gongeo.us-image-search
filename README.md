@@ -8,7 +8,7 @@ Source lives under `src/` (added to `sys.path` by the root wrappers):
 
 - `src/constants/` — settings, structured field definitions, and extraction prompts
 - `src/models/` — dataclass schemas for manifests, structured records, and search documents
-- `src/pipeline/` — manifest ingestion, vision extraction, and search-document generation
+- `src/pipeline/` — manifest ingestion, vision extraction, and canonical attribute generation
 
 Root `cli.py` and `manifest.py` are thin compatibility entry-points that prepend `src/` to `sys.path` before delegating.
 

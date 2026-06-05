@@ -33,7 +33,6 @@ def _field(
     )
 
 
-_COLOR_ALIASES: tuple[tuple[str, str], ...] = (("grey", "gray"),)
 _STRUCTURE_ALIASES: tuple[tuple[str, str], ...] = (
     ("drape", "draped"),
     ("draping", "draped"),
@@ -134,8 +133,6 @@ _FIELD_ALIASES: dict[str, tuple[tuple[str, str], ...]] = {
     "garment_feature": _GARMENT_FEATURE_ALIASES,
     "ornament": _ORNAMENT_ALIASES,
     "pattern": _PATTERN_ALIASES,
-    "primary_color": _COLOR_ALIASES,
-    "secondary_color": _COLOR_ALIASES,
     "structure": _STRUCTURE_ALIASES,
 }
 
