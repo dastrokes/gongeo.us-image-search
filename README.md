@@ -97,4 +97,6 @@ If you want manifest generation to skip items that are already in the current pu
 - `manifest/item-attributes.jsonl` uses the same row shape as the canonical item-attributes artifact, so the tracker Supabase mirror can be copied there directly.
 - `colors` is intentionally separate from `index` and does not read or write `item-attributes.jsonl`.
 - Color tagging is not base-item restricted; it reads all synced items with available transparent icon PNGs.
+- Canonical color labels are `black`, `white`, `cream`, `gray`, `red`, `pink`, `orange`, `yellow`, `green`, `olive`, `teal`, `blue`, `navy`, `purple`, `brown`, `beige`, `gold`, `silver`; `multicolor` is derived when enough meaningful color roles are present.
+- Color rows expose `primary_colors` and `secondary_colors` arrays for color roles.
 - Hair color rows are flagged for review because hair icons can include face, skin, and clothing pixels.

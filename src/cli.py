@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-
 import argparse
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from constants.settings import (
@@ -74,6 +73,23 @@ def _manifest_needs_regen(manifest_path: Path) -> bool:
     except json.JSONDecodeError:
         return True
     return set(payload) != {"item_id", "item_type"}
+
+
+def _color_manifest_needs_regen(manifest_path: Path) -> bool:
+    if not manifest_path.exists():
+        return True
+    try:
+        with manifest_path.open("r", encoding="utf-8") as handle:
+            first_line = handle.readline().strip()
+    except OSError:
+        return True
+    if not first_line:
+        return True
+    try:
+        payload = json.loads(first_line)
+    except json.JSONDecodeError:
+        return True
+    return set(payload) != {"item_id", "item_type", "icon_path"}
 
 
 def _load_manifest_records(manifest_path: Path, limit: int | None = None) -> list[dict]:
@@ -196,9 +212,7 @@ def _compact_filter_report(
 ) -> dict[str, object]:
     report = filter_report or {}
     compacted = {
-        "cross_field_ownership": list(
-            report.get("cross_field_ownership", []) or []
-        ),
+        "cross_field_ownership": list(report.get("cross_field_ownership", []) or []),
         "non_canonical": list(report.get("non_canonical", []) or []),
         "parent_child_mismatch": report.get("parent_child_mismatch"),
         "subcategory_not_in_list": report.get("subcategory_not_in_list"),
@@ -299,20 +313,193 @@ def _manifest_record_from_payload(payload: dict[str, object]) -> ManifestRecord:
     )
 
 
+def _is_complete_cached_color(
+    color_payload: dict | None,
+    debug_payload: dict | None,
+) -> bool:
+    if color_payload is None or debug_payload is None:
+        return False
+    return isinstance(color_payload.get("color_tags"), list)
+
+
+def _build_color_report_row(
+    color_payload: dict[str, object],
+    debug_payload: dict[str, object],
+) -> dict[str, object] | None:
+    if not color_payload.get("needs_review"):
+        return None
+    return {
+        "item_id": int(color_payload["item_id"]),
+        "item_type": str(color_payload["item_type"]),
+        "review_reasons": list(color_payload.get("review_reasons", []) or []),
+        "color_tags": list(color_payload.get("color_tags", []) or []),
+        "swatches": list(color_payload.get("swatches", []) or []),
+        "debug": {
+            "visible_pixel_count": debug_payload.get("visible_pixel_count", 0),
+            "sampled_pixel_count": debug_payload.get("sampled_pixel_count", 0),
+            "ignored_pixel_count": debug_payload.get("ignored_pixel_count", 0),
+            "color_weights": dict(debug_payload.get("color_weights", {}) or {}),
+            "image_path": debug_payload.get("image_path"),
+        },
+    }
+
+
+def run_build_colors(args: argparse.Namespace) -> int:
+    from constants.structured import expand_item_type_filters, is_supported_item_type
+    from pipeline.color_extraction import (
+        color_manifest_record_from_payload,
+        extract_color_record,
+    )
+    from pipeline.color_manifest import build_color_manifest
+
+    output_root = Path(args.output_root or _default_output_root())
+    manifest_root = Path(args.manifest_root or _default_manifest_root())
+    manifest_path = manifest_root / "item-color-manifest.jsonl"
+    item_colors_path = output_root / "item-colors.jsonl"
+    color_debug_path = output_root / "item-color-debug.jsonl"
+    color_report_path = output_root / "item-color-report.jsonl"
+    summary_path = output_root / "color-build-summary.json"
+    started_at = datetime.now(UTC)
+    selected_item_ids = _parse_item_ids(getattr(args, "item_ids", None))
+    requested_item_types = expand_item_type_filters(getattr(args, "types", None))
+
+    if (
+        not args.regen_manifest
+        and manifest_path.exists()
+        and not _color_manifest_needs_regen(manifest_path)
+    ):
+        print(f"Loading existing color manifest from {manifest_path} ...")
+        manifest_records = []
+        with manifest_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                record = color_manifest_record_from_payload(json.loads(line))
+                if args.item_id is not None and record.item_id != args.item_id:
+                    continue
+                if selected_item_ids and record.item_id not in selected_item_ids:
+                    continue
+                if (
+                    requested_item_types
+                    and record.item_type not in requested_item_types
+                ):
+                    continue
+                if not is_supported_item_type(record.item_type):
+                    continue
+                manifest_records.append(record)
+                if args.limit is not None and len(manifest_records) >= args.limit:
+                    break
+        manifest_stats: dict[str, int | str] = {
+            "source": "cached",
+            "skipped_count": 0,
+            "unsupported_type_count": 0,
+            "missing_icon_count": 0,
+        }
+    else:
+        print("Building color manifest ...")
+        manifest_records, manifest_stats = build_color_manifest(
+            tracker_root=args.tracker_root,
+            config_root=args.config_root,
+            sync_report_path=args.sync_report,
+            limit=args.limit,
+            item_id=args.item_id,
+            item_ids=selected_item_ids or None,
+            item_types=requested_item_types or None,
+        )
+        if not args.item_id and not selected_item_ids and not requested_item_types:
+            _write_jsonl(
+                manifest_path, [record.to_dict() for record in manifest_records]
+            )
+
+    if args.item_id is not None and not manifest_records:
+        print(
+            json.dumps({"item_id": args.item_id, "error": "item_not_found"}, indent=2)
+        )
+        return 1
+
+    color_cache = _load_record_cache(item_colors_path)
+    debug_cache = _load_record_cache(color_debug_path)
+    already_done = {
+        record.item_id
+        for record in manifest_records
+        if _is_complete_cached_color(
+            color_cache.get(record.item_id),
+            debug_cache.get(record.item_id),
+        )
+    }
+    if already_done:
+        print(f"Resuming: {len(already_done)} items already color-tagged.")
+
+    pending = [
+        record for record in manifest_records if record.item_id not in already_done
+    ]
+    print(f"Items to color-tag: {len(pending)} / {len(manifest_records)}")
+
+    for record in pending:
+        color_record, debug_record = extract_color_record(record)
+        color_payload = color_record.to_dict()
+        debug_payload = debug_record.to_dict()
+        color_cache[record.item_id] = color_payload
+        debug_cache[record.item_id] = debug_payload
+        _append_jsonl(item_colors_path, color_payload)
+        _append_jsonl(color_debug_path, debug_payload)
+
+    color_rows: list[dict[str, object]] = []
+    debug_rows: list[dict[str, object]] = []
+    report_rows: list[dict[str, object]] = []
+    review_count = 0
+
+    for record in manifest_records:
+        color_payload = color_cache.get(record.item_id)
+        debug_payload = debug_cache.get(record.item_id)
+        if color_payload is None or debug_payload is None:
+            continue
+        color_rows.append(color_payload)
+        debug_rows.append(debug_payload)
+        if color_payload.get("needs_review"):
+            review_count += 1
+        report_row = _build_color_report_row(color_payload, debug_payload)
+        if report_row is not None:
+            report_rows.append(report_row)
+
+    _write_jsonl(item_colors_path, color_rows)
+    _write_jsonl(color_debug_path, debug_rows)
+    _write_jsonl(color_report_path, report_rows)
+
+    finished_at = datetime.now(UTC)
+    summary = {
+        "item_count": len(color_rows),
+        "skipped_count": int(manifest_stats["skipped_count"]),
+        "unsupported_type_count": int(manifest_stats["unsupported_type_count"]),
+        "missing_icon_count": int(manifest_stats["missing_icon_count"]),
+        "review_required_count": review_count,
+        "build_started_at": started_at.isoformat(),
+        "build_finished_at": finished_at.isoformat(),
+        "duration_seconds": (finished_at - started_at).total_seconds(),
+        "item_colors_path": str(item_colors_path),
+        "color_report_path": str(color_report_path),
+    }
+    _write_json(summary_path, summary)
+
+    print(json.dumps({"summary_path": str(summary_path), **summary}, indent=2))
+    return 0
+
+
 def run_build_index(args: argparse.Namespace) -> int:
     from constants.structured import expand_item_type_filters, is_supported_item_type
-    from pipeline.finalize import (
-        apply_curated_override,
-        build_structured_payload_from_item_attributes,
-        load_curated_override_map,
-    )
-    from pipeline.manifest import build_manifest
     from pipeline.extraction import (
         GeminiExtractorConfig,
         GeminiStructuredExtractor,
         StructuredExtractorConfig,
         VisionStructuredExtractor,
     )
+    from pipeline.finalize import (
+        apply_curated_override,
+        build_structured_payload_from_item_attributes,
+        load_curated_override_map,
+    )
+    from pipeline.manifest import build_manifest
 
     output_root = Path(args.output_root or _default_output_root())
     manifest_root = Path(args.manifest_root or _default_manifest_root())
@@ -323,7 +510,7 @@ def run_build_index(args: argparse.Namespace) -> int:
     structured_debug_path = output_root / "item-structured-debug.jsonl"
     search_report_path = output_root / "item-search-report.jsonl"
     summary_path = output_root / "build-summary.json"
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
     selected_item_ids = _parse_item_ids(getattr(args, "item_ids", None))
     requested_item_types = expand_item_type_filters(getattr(args, "types", None))
     is_single_item_debug = (
@@ -509,7 +696,7 @@ def run_build_index(args: argparse.Namespace) -> int:
     _write_jsonl(structured_debug_path, debug_rows)
     _write_jsonl(search_report_path, search_report_rows)
 
-    finished_at = datetime.now(timezone.utc)
+    finished_at = datetime.now(UTC)
     summary = BuildSummary(
         extraction_model_id=extractor.model_id,
         item_count=len(item_attribute_rows),
@@ -628,7 +815,7 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
 
     _write_jsonl(item_attributes_path, item_attribute_rows)
     _write_jsonl(search_report_path, search_report_rows)
-    refreshed_at = datetime.now(timezone.utc).isoformat()
+    refreshed_at = datetime.now(UTC).isoformat()
     _write_json(
         summary_path,
         {
@@ -754,6 +941,34 @@ def build_parser() -> argparse.ArgumentParser:
     )
     refresh_parser.add_argument("--output-root", default=str(_default_output_root()))
     refresh_parser.set_defaults(func=run_refresh_derived)
+
+    color_parser = subparsers.add_parser(
+        "colors",
+        help="Build standalone icon-derived item color tags for all synced items",
+    )
+    color_parser.add_argument("--item-id", type=int, default=None)
+    color_parser.add_argument("--item-ids", nargs="+", type=int, default=None)
+    color_parser.add_argument(
+        "--type",
+        action="append",
+        dest="types",
+        metavar="TYPE",
+        help="Filter by item type (repeatable, supports special values clothing/accessories)",
+    )
+    color_parser.add_argument("--limit", type=int, default=None)
+    color_parser.add_argument("--tracker-root", default=os.getenv("TRACKER_ROOT"))
+    color_parser.add_argument(
+        "--config-root", default=os.getenv("CONFIG_DECODER_OUTPUT")
+    )
+    color_parser.add_argument("--sync-report", default=None)
+    color_parser.add_argument("--output-root", default=str(_default_output_root()))
+    color_parser.add_argument("--manifest-root", default=str(_default_manifest_root()))
+    color_parser.add_argument(
+        "--regen-manifest",
+        action="store_true",
+        help="Regenerate color manifest even if one already exists",
+    )
+    color_parser.set_defaults(func=run_build_colors)
 
     return parser
 

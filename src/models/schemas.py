@@ -53,6 +53,62 @@ class ItemAttributesRecord:
 
 
 @dataclass
+class ColorManifestRecord:
+    item_id: int
+    item_type: str
+    icon_path: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(cast(Any, self))
+
+
+@dataclass
+class ColorSwatch:
+    label: str
+    hex: str
+    weight: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(cast(Any, self))
+
+
+@dataclass
+class ItemColorsRecord:
+    item_id: int
+    item_type: str
+    primary_colors: list[str] = field(default_factory=list)
+    secondary_colors: list[str] = field(default_factory=list)
+    color_tags: list[str] = field(default_factory=list)
+    swatches: list[ColorSwatch] = field(default_factory=list)
+    needs_review: bool = False
+    review_reasons: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(cast(Any, self))
+        payload["swatches"] = [swatch.to_dict() for swatch in self.swatches]
+        return payload
+
+
+@dataclass
+class ColorDebugRecord:
+    item_id: int
+    item_type: str
+    image_path: str
+    visible_pixel_count: int = 0
+    sampled_pixel_count: int = 0
+    ignored_pixel_count: int = 0
+    color_weights: dict[str, float] = field(default_factory=dict)
+    swatches: list[ColorSwatch] = field(default_factory=list)
+    needs_review: bool = False
+    review_reasons: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(cast(Any, self))
+        payload["swatches"] = [swatch.to_dict() for swatch in self.swatches]
+        return payload
+
+
+@dataclass
 class BuildSummary:
     extraction_model_id: str
     item_count: int

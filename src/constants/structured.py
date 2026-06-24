@@ -51,14 +51,21 @@ _STRUCTURE_ALIASES: tuple[tuple[str, str], ...] = (
     ("ruffle", "ruffled"),
     ("ruffles", "ruffled"),
     ("ruffled_hem", "ruffled"),
+    ("scalloped_edge", "scalloped"),
     ("smock", "smocked"),
     ("smocking", "smocked"),
+    ("sphere", "spherical"),
     ("strapped", "strap"),
     ("straps", "strap"),
+    ("strappy", "strap"),
+    ("swirl", "spiral"),
+    ("wing_shaped", "wing"),
 )
+_MATERIAL_ALIASES: tuple[tuple[str, str], ...] = (("beaded", "bead"),)
 _PATTERN_ALIASES: tuple[tuple[str, str], ...] = (
     ("butterfly_wing", "butterfly"),
     ("leopard_print", "leopard"),
+    ("moon_phases", "moon"),
 )
 _ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
     ("binder_clip", "clip"),
@@ -66,6 +73,8 @@ _ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
     ("beads", "bead"),
     ("feathers", "feather"),
     ("flowers", "flower"),
+    ("flame", "fire"),
+    ("floral_embroidery", "embroidery"),
     ("gem", "gemstone"),
     ("lightbulb", "light_bulb"),
     ("pearls", "pearl"),
@@ -73,6 +82,9 @@ _ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
     ("pompom", "pom_pom"),
     ("pom_poms", "pom_pom"),
     ("pompoms", "pom_pom"),
+    ("rhinestones", "rhinestone"),
+    ("seashell", "shell"),
+    ("sequins", "sequin"),
     ("studs", "stud"),
     ("wings", "wing"),
 )
@@ -131,6 +143,7 @@ _FIELD_ALIASES: dict[str, tuple[tuple[str, str], ...]] = {
     "category": _CATEGORY_ALIASES,
     "subcategory": _SUBCATEGORY_ALIASES,
     "garment_feature": _GARMENT_FEATURE_ALIASES,
+    "material": _MATERIAL_ALIASES,
     "ornament": _ORNAMENT_ALIASES,
     "pattern": _PATTERN_ALIASES,
     "structure": _STRUCTURE_ALIASES,
@@ -251,4 +264,3 @@ def schema_definition_for_item_type(item_type: str) -> StructuredSchemaDefinitio
 
 def is_supported_item_type(item_type: str) -> bool:
     return normalize_supported_item_type(item_type) in WEARABLE_ITEM_TYPES
-

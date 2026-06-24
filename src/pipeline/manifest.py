@@ -12,8 +12,8 @@ from constants.items import (
     TYPE_KEY_MAP,
 )
 from constants.settings import PROJECT_ROOT
-from constants.tracker_export import normalize_supported_item_type
 from constants.structured import is_supported_item_type
+from constants.tracker_export import normalize_supported_item_type
 from models.schemas import ManifestRecord
 
 DEFAULT_TRACKER_ROOT = PROJECT_ROOT.parent / "gongeo.us-nikki-tracker"

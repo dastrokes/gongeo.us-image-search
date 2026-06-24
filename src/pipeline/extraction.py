@@ -10,20 +10,20 @@ from typing import Any
 
 from PIL import Image
 
-from constants.settings import (
-    DEFAULT_EXTRACTION_MODEL_ID,
-    DEFAULT_GEMINI_MODEL,
-    DEFAULT_MODEL_QUANTIZATION,
-)
 from constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
     FILTERED_CANONICAL_ATTRIBUTE_FIELDS,
-    SUBCATEGORY_HIERARCHY,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
+    SUBCATEGORY_HIERARCHY,
     build_extraction_user_message,
     get_subcategory_ancestors,
     normalise_token,
+)
+from constants.settings import (
+    DEFAULT_EXTRACTION_MODEL_ID,
+    DEFAULT_GEMINI_MODEL,
+    DEFAULT_MODEL_QUANTIZATION,
 )
 from constants.structured import (
     StructuredFieldDefinition,
@@ -118,17 +118,25 @@ _CROSS_FIELD_TOKEN_OWNERSHIP: dict[
 ] = {
     "ornament": {
         "paper": ("material", "paper"),
+        "water_splash": ("structure", "splash"),
+        "whipped_cream": (None, None),
     },
     "pattern": {
         "filigree": ("ornament", "filigree"),
         "snowflake": ("ornament", "snowflake"),
     },
     "structure": {
+        "buckle": ("ornament", "buckle"),
         "cage": ("ornament", "cage"),
+        "cloud_shaped": ("ornament", "cloud"),
         "cross": ("pattern", "cross"),
+        "fingerless": (None, None),
         "filigree": ("ornament", "filigree"),
+        "goggles": (None, None),
+        "house": (None, None),
         "mesh": ("material", "mesh"),
         "net": (None, None),
+        "spiked": ("ornament", "spike"),
     },
 }
 
@@ -420,7 +428,6 @@ class VisionStructuredExtractor:
             normalized_values.append(normalized)
         return normalized_values
 
-
     @classmethod
     def _normalize_cross_field_concepts(
         cls,
@@ -550,7 +557,7 @@ class VisionStructuredExtractor:
 
         generated_ids_trimmed = [
             out_ids[len(in_ids) :]
-            for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
+            for in_ids, out_ids in zip(inputs["input_ids"], generated_ids, strict=False)
         ]
         decoded = self.processor.batch_decode(
             generated_ids_trimmed,
@@ -633,6 +640,30 @@ class VisionStructuredExtractor:
         return normalized
 
     @staticmethod
+    def _normalize_scalar_ownership(
+        normalized: dict[str, object],
+    ) -> dict[str, object]:
+        if (
+            normalized.get("neckline") == "off_shoulder"
+            and normalized.get("shoulder_style") == "off_shoulder"
+        ):
+            normalized["neckline"] = None
+        return normalized
+
+    @staticmethod
+    def _normalize_shoe_fields(
+        item_type: str,
+        normalized: dict[str, object],
+    ) -> dict[str, object]:
+        if (
+            item_type == "shoes"
+            and normalized.get("heel_height") == "flat"
+            and not normalized.get("heel_type")
+        ):
+            normalized["heel_height"] = None
+        return normalized
+
+    @staticmethod
     def _normalize_bottom_length_for_category(
         normalized: dict[str, object],
     ) -> dict[str, object]:
@@ -682,7 +713,9 @@ class VisionStructuredExtractor:
             normalized,
             field_definitions,
         )
+        normalized = cls._normalize_scalar_ownership(normalized)
         normalized = cls._normalize_taxonomy_fields(item_type, normalized)
+        normalized = cls._normalize_shoe_fields(item_type, normalized)
         return cls._normalize_bottom_length_for_category(normalized)
 
     @classmethod
