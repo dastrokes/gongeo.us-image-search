@@ -152,11 +152,7 @@ def _hair_pixel_multiplier(
     horizontal_center = abs((x / max(1, width - 1)) - 0.5)
     vertical = y / max(1, height - 1)
     in_avatar_core = horizontal_center < 0.32 and 0.14 < vertical < 0.82
-    likely_skin = (
-        r > g * 1.03
-        and g > b * 1.05
-        and r > 135
-    )
+    likely_skin = r > g * 1.03 and g > b * 1.05 and r > 135
     likely_face_highlight = min(rgb) >= 220 and max(rgb) - min(rgb) <= 48
     if in_avatar_core and (likely_skin or likely_face_highlight):
         return 1.0 / _HAIR_CENTER_FACE_BIAS

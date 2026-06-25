@@ -75,8 +75,8 @@ _ITEM_TYPE_FIELD_GUIDANCE: dict[str, str] = {
     ),
     "shoes": (
         "SHOES FIELD RULES\n"
-        "- heel_type and heel_height only when a distinct heel is present; otherwise null.\n"
-        "- sole_height only for visibly thick, platform, or elevated soles.\n"
+        "- heel_type only when a distinct heel is present; heel_height is flat otherwise, or null when the heel component is absent.\n"
+        "- sole_height is low or high for visibly thick, platform, or elevated soles; otherwise flat, or null when the sole component is absent.\n"
         "- shaft_height only for boots; otherwise null."
     ),
 }

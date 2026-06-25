@@ -655,12 +655,16 @@ class VisionStructuredExtractor:
         item_type: str,
         normalized: dict[str, object],
     ) -> dict[str, object]:
-        if (
-            item_type == "shoes"
-            and normalized.get("heel_height") == "flat"
-            and not normalized.get("heel_type")
-        ):
-            normalized["heel_height"] = None
+        if item_type != "shoes":
+            return normalized
+
+        if normalized.get("category") == "barefoot":
+            return normalized
+
+        if not normalized.get("heel_height"):
+            normalized["heel_height"] = "flat"
+        if not normalized.get("sole_height"):
+            normalized["sole_height"] = "flat"
         return normalized
 
     @staticmethod
