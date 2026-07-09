@@ -13,12 +13,12 @@ from PIL import Image
 from constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
+    DETAIL_FIELD_OWNER_BY_TOKEN,
     FILTERED_CANONICAL_ATTRIBUTE_FIELDS,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
     SUBCATEGORY_HIERARCHY,
     build_extraction_user_message,
     get_subcategory_ancestors,
-    normalise_token,
 )
 from constants.settings import (
     DEFAULT_EXTRACTION_MODEL_ID,
@@ -475,6 +475,47 @@ class VisionStructuredExtractor:
         return normalized
 
     @staticmethod
+    def _normalize_detail_field_ownership(
+        normalized: dict[str, object],
+        field_definitions: dict[str, StructuredFieldDefinition],
+    ) -> dict[str, object]:
+        moves: dict[str, list[str]] = {}
+        for source_field in ("pattern", "material", "structure", "ornament"):
+            source_definition = field_definitions.get(source_field)
+            source_values = normalized.get(source_field)
+            if (
+                source_definition is None
+                or source_definition.kind != "array"
+                or not isinstance(source_values, list)
+            ):
+                continue
+
+            kept_values: list[str] = []
+            for value in source_values:
+                target_field = DETAIL_FIELD_OWNER_BY_TOKEN.get(value)
+                target_definition = field_definitions.get(target_field or "")
+                if (
+                    target_field is None
+                    or target_field == source_field
+                    or target_definition is None
+                    or target_definition.kind != "array"
+                ):
+                    kept_values.append(value)
+                    continue
+                moves.setdefault(target_field, []).append(value)
+            normalized[source_field] = kept_values
+
+        for target_field, values in moves.items():
+            destination = normalized.get(target_field)
+            if not isinstance(destination, list):
+                destination = []
+                normalized[target_field] = destination
+            for value in values:
+                if value not in destination:
+                    destination.append(value)
+        return normalized
+
+    @staticmethod
     def _output_template(
         schema_definition: StructuredSchemaDefinition,
     ) -> dict[str, object]:
@@ -717,6 +758,10 @@ class VisionStructuredExtractor:
             normalized,
             field_definitions,
         )
+        normalized = cls._normalize_detail_field_ownership(
+            normalized,
+            field_definitions,
+        )
         normalized = cls._normalize_scalar_ownership(normalized)
         normalized = cls._normalize_taxonomy_fields(item_type, normalized)
         normalized = cls._normalize_shoe_fields(item_type, normalized)
@@ -844,8 +889,7 @@ class VisionStructuredExtractor:
             if not canonical_tokens:
                 continue
             for token in normalized_values:
-                canonical_token = normalise_token(token)
-                if canonical_token not in canonical_tokens:
+                if token not in canonical_tokens:
                     non_canonical.append(
                         {
                             "field": field_name,

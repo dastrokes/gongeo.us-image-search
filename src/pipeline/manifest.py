@@ -6,11 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from constants.items import (
-    BASE_ITEM_PREFIX_RANGES,
-    IMAGE_EXTENSIONS,
-    TYPE_KEY_MAP,
-)
+from constants.items import IMAGE_EXTENSIONS, TYPE_KEY_MAP
 from constants.settings import PROJECT_ROOT
 from constants.structured import is_supported_item_type
 from constants.tracker_export import normalize_supported_item_type
@@ -27,10 +23,6 @@ DEFAULT_SYNC_REPORT = (
     / "database-sync-report.json"
 )
 DEFAULT_ITEM_ATTRIBUTES_MANIFEST = PROJECT_ROOT / "manifest" / "item-attributes.jsonl"
-
-
-def _is_base_item(item_id: int) -> bool:
-    return any(lower <= item_id <= upper for lower, upper in BASE_ITEM_PREFIX_RANGES)
 
 
 @dataclass(slots=True)
@@ -75,7 +67,7 @@ def resolve_manifest_paths(
     )
 
 
-def _load_json(path: Path) -> dict[str, Any]:
+def _load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
@@ -95,6 +87,30 @@ def _load_existing_item_ids(path: Path) -> set[int]:
             except (KeyError, TypeError, ValueError, json.JSONDecodeError):
                 continue
     return item_ids
+
+
+def _load_catalog_item_root_ids(tracker_root: Path) -> dict[int, int]:
+    catalog_dir = tracker_root / "public" / "catalog"
+    catalog_index = _load_json(catalog_dir / "index.json")
+    item_file = catalog_index.get("files", {}).get("items", {}).get("path")
+    if not isinstance(item_file, str) or not item_file.startswith("/catalog/"):
+        raise ValueError("Tracker catalog is missing its item asset path")
+
+    rows = _load_json(tracker_root / "public" / item_file.lstrip("/"))
+    if not isinstance(rows, list):
+        raise ValueError("Tracker item catalog has an unsupported format")
+
+    root_ids: dict[int, int] = {}
+    for row in rows:
+        if not isinstance(row, list) or not row:
+            continue
+        ids = row[0] if isinstance(row[0], list) else [row[0]]
+        family_root_id = row[6] if len(row) > 6 and isinstance(row[6], int) else None
+        for item_id in ids:
+            if isinstance(item_id, int):
+                root_ids[item_id] = family_root_id if family_root_id is not None else item_id
+
+    return root_ids
 
 
 def _resolve_theme_sync_report_path(sync_report_path: Path) -> Path:
@@ -164,6 +180,7 @@ def build_manifest(
     sync_report = _load_json(paths.sync_report_path)
     item_config = _load_json(paths.item_config_path)
     minor_type_info = _load_json(paths.minor_type_path)
+    catalog_item_root_ids = _load_catalog_item_root_ids(paths.tracker_root)
     items = sync_report.get("syncedDetails", {}).get("items", [])
     processor_excluded_item_ids = _load_processor_excluded_item_ids(
         paths.sync_report_path
@@ -201,7 +218,7 @@ def build_manifest(
             int_stats["processor_excluded_count"] += 1
             continue
 
-        if not _is_base_item(current_item_id):
+        if catalog_item_root_ids.get(current_item_id) != current_item_id:
             int_stats["non_base_skipped_count"] += 1
             continue
 

@@ -14,6 +14,7 @@ STRUCTURED_EXTRACTION_SYSTEM_PROMPT = (
     "- Scalars: one token or null.\n"
     "- Arrays: unique tokens or [].\n"
     "- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n"
+    "- A known detail token belongs only in the field where it appears in CLOSED LISTS; never repeat it across pattern, material, structure, or ornament.\n"
     "- Each field must represent a single concept only.\n"
     "- Do not combine multiple attributes into one token.\n\n"
     "TAXONOMY\n"
@@ -93,6 +94,23 @@ CANONICAL_ATTRIBUTE_TOKENS: dict[str, tuple[str, ...]] = {
     str(field_name): tuple(str(value) for value in values or [])
     for field_name, values in _shared_terms.items()
 }
+_DETAIL_FIELD_NAMES = ("pattern", "material", "structure", "ornament")
+
+
+def _build_detail_field_owner_by_token() -> dict[str, str]:
+    owners: dict[str, str] = {}
+    for field_name in _DETAIL_FIELD_NAMES:
+        for token in CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ()):
+            existing_owner = owners.setdefault(token, field_name)
+            if existing_owner != field_name:
+                raise RuntimeError(
+                    f"tracker detail token '{token}' belongs to both "
+                    f"{existing_owner} and {field_name}"
+                )
+    return owners
+
+
+DETAIL_FIELD_OWNER_BY_TOKEN = _build_detail_field_owner_by_token()
 FILTERED_CANONICAL_ATTRIBUTE_FIELDS: frozenset[str] = frozenset(
     str(field_name)
     for field_name, kind in (_field_kind_by_name or {}).items()
@@ -298,6 +316,7 @@ __all__ = [
     "CANONICAL_ATTRIBUTE_TOKENS",
     "CANONICAL_CATEGORY_TOKENS",
     "CANONICAL_SUBCATEGORY_TOKENS",
+    "DETAIL_FIELD_OWNER_BY_TOKEN",
     "FILTERED_CANONICAL_ATTRIBUTE_FIELDS",
     "STRUCTURED_EXTRACTION_SYSTEM_PROMPT",
     "SUBCATEGORY_HIERARCHY",

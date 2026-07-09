@@ -233,9 +233,18 @@ def _build_search_report_row(
     final_data: dict[str, object],
     debug_record: StructuredDebugRecord | None = None,
 ) -> dict[str, object] | None:
-    filter_report = _compact_filter_report(
-        debug_record.filter_report if debug_record is not None else None
-    )
+    raw_filter_report = None
+    if debug_record is not None and debug_record.raw_payload is not None:
+        from pipeline.extraction import VisionStructuredExtractor
+
+        raw_filter_report = VisionStructuredExtractor.build_filter_report(
+            item_type,
+            debug_record.raw_payload,
+            normalized_data,
+        )
+    elif debug_record is not None:
+        raw_filter_report = debug_record.filter_report
+    filter_report = _compact_filter_report(raw_filter_report)
     raw_payload_changes = _build_change_rows(
         debug_record.raw_payload if debug_record is not None else None,
         normalized_data,

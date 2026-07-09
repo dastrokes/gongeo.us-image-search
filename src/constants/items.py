@@ -2,16 +2,6 @@ from __future__ import annotations
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
 
-# Base-item ID ranges, mirrored from the tracker's
-# server/api/items/index.get.ts BASE_ITEM_PREFIX_RANGES.
-# Prefixes 1022–1027 are variation tiers (glow-up / evo1–evo3) and are excluded.
-BASE_ITEM_PREFIX_RANGES: tuple[tuple[int, int], ...] = (
-    (1020_000_000, 1020_999_999),
-    (1021_000_000, 1021_999_999),
-    (1028_000_000, 1028_999_999),
-    (1029_000_000, 1029_999_999),
-)
-
 TYPE_KEY_MAP = {
     "LGS03_1": "hair",
     "LGS03_2": "outerwear",
