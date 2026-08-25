@@ -3,7 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 from constants.structured import schema_definition_for_item_type
-from constants.tracker_export import load_tracker_overrides
+from constants.tracker_export import (
+    load_tracker_overrides,
+    normalize_supported_item_type,
+)
 from models.schemas import ItemAttributesRecord, StructuredItemRecord
 
 
@@ -90,13 +93,43 @@ def apply_curated_override(
     record: StructuredItemRecord,
     override_entry: dict[str, Any] | None,
 ) -> ItemAttributesRecord:
-    base_record = build_item_attributes_record(record)
+    from pipeline.extraction import VisionStructuredExtractor
+
+    base_record = build_item_attributes_record(
+        StructuredItemRecord(
+            item_id=record.item_id,
+            item_type=record.item_type,
+            data=VisionStructuredExtractor.normalize_payload(
+                record.item_type,
+                record.data,
+            ),
+            parse_error=record.parse_error,
+        )
+    )
     if not override_entry:
         return base_record
 
-    from pipeline.extraction import VisionStructuredExtractor
-
     if "item_id" in override_entry or "item_type" in override_entry:
+        try:
+            override_item_id = int(override_entry.get("item_id"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("curated override has an invalid item_id") from exc
+        if override_item_id != record.item_id:
+            raise ValueError(
+                f"curated override item_id {override_item_id} does not match "
+                f"record {record.item_id}"
+            )
+
+        override_item_type = normalize_supported_item_type(
+            str(override_entry.get("item_type") or "")
+        )
+        record_item_type = normalize_supported_item_type(record.item_type)
+        if override_item_type != record_item_type:
+            raise ValueError(
+                f"curated override item_type {override_item_type or '<empty>'} "
+                f"does not match record {record_item_type}"
+            )
+
         override_payload = {
             "category": override_entry.get("category"),
             "subcategory": override_entry.get("subcategory"),

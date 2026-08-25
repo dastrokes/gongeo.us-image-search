@@ -34,6 +34,8 @@ def _field(
 
 
 _STRUCTURE_ALIASES: tuple[tuple[str, str], ...] = (
+    ("corset", "boned"),
+    ("corset_style", "boned"),
     ("drape", "draped"),
     ("draping", "draped"),
     ("gather", "gathered"),
@@ -64,6 +66,7 @@ _STRUCTURE_ALIASES: tuple[tuple[str, str], ...] = (
 _MATERIAL_ALIASES: tuple[tuple[str, str], ...] = (("beaded", "bead"),)
 _PATTERN_ALIASES: tuple[tuple[str, str], ...] = (
     ("butterfly_wing", "butterfly"),
+    ("diamond_grid", "lattice"),
     ("leopard_print", "leopard"),
     ("moon_phases", "moon"),
 )
@@ -71,13 +74,18 @@ _ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
     ("binder_clip", "clip"),
     ("bird_figurine", "bird"),
     ("beads", "bead"),
+    ("charms", "charm"),
+    ("claws", "claw"),
+    ("drop", "dangle"),
     ("feathers", "feather"),
     ("flowers", "flower"),
     ("flame", "fire"),
     ("floral_embroidery", "embroidery"),
     ("gem", "gemstone"),
+    ("gemstones", "gemstone"),
     ("lightbulb", "light_bulb"),
     ("pearls", "pearl"),
+    ("pins", "pin"),
     ("plush_animal", "plushie"),
     ("pompom", "pom_pom"),
     ("pom_poms", "pom_pom"),

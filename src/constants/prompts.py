@@ -14,17 +14,24 @@ STRUCTURED_EXTRACTION_SYSTEM_PROMPT = (
     "- Scalars: one token or null.\n"
     "- Arrays: unique tokens or [].\n"
     "- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n"
-    "- A known detail token belongs only in the field where it appears in CLOSED LISTS; never repeat it across pattern, material, structure, or ornament.\n"
+    "- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n"
     "- Each field must represent a single concept only.\n"
     "- Do not combine multiple attributes into one token.\n\n"
     "TAXONOMY\n"
-    "- category = the main visible item class, chosen at the schema root level rather than a more specific child type.\n"
-    "- category must be one of the values in CLOSED LISTS.\n"
-    "- subcategory should be a concise direct child refinement of the chosen category, or null.\n"
+    "- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n"
+    "- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n"
+    "- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n"
+    "- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n"
     "- Prefer the listed child examples when they fit, but subcategory is open-list.\n"
     "- If no listed child term fits well, you may use a new concise child refinement or null.\n"
+    "- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n"
     "- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n"
     "- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n"
+    "- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n"
+    "- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n"
+    "- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n"
+    "- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n"
+    "- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n"
     "- Do not repeat category in subcategory.\n"
     "- Do not compose multiple attributes into subcategory.\n\n"
 )
@@ -99,15 +106,17 @@ _DETAIL_FIELD_NAMES = ("pattern", "material", "structure", "ornament")
 
 def _build_detail_field_owner_by_token() -> dict[str, str]:
     owners: dict[str, str] = {}
+    ambiguous: set[str] = set()
     for field_name in _DETAIL_FIELD_NAMES:
         for token in CANONICAL_ATTRIBUTE_TOKENS.get(field_name, ()):
             existing_owner = owners.setdefault(token, field_name)
             if existing_owner != field_name:
-                raise RuntimeError(
-                    f"tracker detail token '{token}' belongs to both "
-                    f"{existing_owner} and {field_name}"
-                )
-    return owners
+                ambiguous.add(token)
+    return {
+        token: field_name
+        for token, field_name in owners.items()
+        if token not in ambiguous
+    }
 
 
 DETAIL_FIELD_OWNER_BY_TOKEN = _build_detail_field_owner_by_token()
@@ -308,6 +317,37 @@ def _validate_taxonomy_config() -> None:
             problems.append(f"extra={extra}")
         joined = "; ".join(problems)
         raise RuntimeError(f"tracker export taxonomy mismatch: {joined}")
+
+    taxonomy_problems: list[str] = []
+    for item_type in sorted(expected_item_types):
+        categories = set(CANONICAL_CATEGORY_TOKENS.get(item_type, ()))
+        subcategories = set(CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ()))
+        hierarchy = SUBCATEGORY_HIERARCHY.get(item_type, {})
+        mapped_subcategories = set(hierarchy)
+
+        missing_parents = sorted(subcategories - mapped_subcategories)
+        stale_mappings = sorted(mapped_subcategories - subcategories)
+        invalid_parents = sorted(
+            f"{child}->{parent}"
+            for child, parent in hierarchy.items()
+            if parent not in categories
+        )
+        if missing_parents:
+            taxonomy_problems.append(
+                f"{item_type} missing parents={','.join(missing_parents)}"
+            )
+        if stale_mappings:
+            taxonomy_problems.append(
+                f"{item_type} stale mappings={','.join(stale_mappings)}"
+            )
+        if invalid_parents:
+            taxonomy_problems.append(
+                f"{item_type} invalid parents={','.join(invalid_parents)}"
+            )
+    if taxonomy_problems:
+        raise RuntimeError(
+            "tracker export taxonomy mismatch: " + "; ".join(taxonomy_problems)
+        )
 
 
 _validate_taxonomy_config()

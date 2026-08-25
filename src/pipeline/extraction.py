@@ -13,6 +13,7 @@ from PIL import Image
 from constants.prompts import (
     CANONICAL_ATTRIBUTE_TOKENS,
     CANONICAL_CATEGORY_TOKENS,
+    CANONICAL_SUBCATEGORY_TOKENS,
     DETAIL_FIELD_OWNER_BY_TOKEN,
     FILTERED_CANONICAL_ATTRIBUTE_FIELDS,
     STRUCTURED_EXTRACTION_SYSTEM_PROMPT,
@@ -30,6 +31,7 @@ from constants.structured import (
     StructuredSchemaDefinition,
     schema_definition_for_item_type,
 )
+from constants.tracker_export import normalize_supported_item_type
 from models.schemas import (
     ManifestRecord,
     StructuredDebugRecord,
@@ -116,13 +118,15 @@ _CROSS_FIELD_TOKEN_OWNERSHIP: dict[
     str,
     dict[str, tuple[str | None, str | None]],
 ] = {
+    "material": {},
     "ornament": {
+        "metal_ornament": ("material", "metal"),
         "paper": ("material", "paper"),
         "water_splash": ("structure", "splash"),
-        "whipped_cream": (None, None),
     },
     "pattern": {
         "filigree": ("ornament", "filigree"),
+        "musical_notation": ("ornament", "musical_note"),
         "snowflake": ("ornament", "snowflake"),
     },
     "structure": {
@@ -130,12 +134,11 @@ _CROSS_FIELD_TOKEN_OWNERSHIP: dict[
         "cage": ("ornament", "cage"),
         "cloud_shaped": ("ornament", "cloud"),
         "cross": ("pattern", "cross"),
-        "fingerless": (None, None),
+        "cuff": ("ornament", "cuff"),
+        "engraved": ("ornament", "engraving"),
         "filigree": ("ornament", "filigree"),
-        "goggles": (None, None),
-        "house": (None, None),
         "mesh": ("material", "mesh"),
-        "net": (None, None),
+        "pinecone": ("ornament", "pinecone"),
         "spiked": ("ornament", "spike"),
     },
 }
@@ -445,6 +448,13 @@ class VisionStructuredExtractor:
 
             kept_values: list[str] = []
             for value in source_values:
+                if source_field == "material" and value == "braided_cord":
+                    kept_values.append("cord")
+                    structure = normalized.get("structure")
+                    if isinstance(structure, list) and "braided" not in structure:
+                        structure.append("braided")
+                    continue
+
                 ownership = ownership_map.get(value)
                 if ownership is None:
                     kept_values.append(value)
@@ -678,12 +688,24 @@ class VisionStructuredExtractor:
 
         if subcategory and subcategory == category:
             normalized["subcategory"] = None
+
+        identity_values = {normalized.get("category"), normalized.get("subcategory")}
+        for field_name in ("pattern", "material", "structure", "ornament"):
+            values = normalized.get(field_name)
+            if isinstance(values, list):
+                normalized[field_name] = [
+                    value for value in values if value not in identity_values
+                ]
         return normalized
 
     @staticmethod
     def _normalize_scalar_ownership(
         normalized: dict[str, object],
     ) -> dict[str, object]:
+        if normalized.get("neckline") == "strapless":
+            if not normalized.get("shoulder_style"):
+                normalized["shoulder_style"] = "strapless"
+            normalized["neckline"] = None
         if (
             normalized.get("neckline") == "off_shoulder"
             and normalized.get("shoulder_style") == "off_shoulder"
@@ -733,6 +755,7 @@ class VisionStructuredExtractor:
         item_type: str,
         payload: dict[str, object] | None,
     ) -> dict[str, object]:
+        item_type = normalize_supported_item_type(item_type)
         schema_definition = schema_definition_for_item_type(item_type)
         normalized = cls._output_template(schema_definition)
         if not isinstance(payload, dict):
@@ -754,11 +777,11 @@ class VisionStructuredExtractor:
                 normalized[field_name] = cls._normalize_scalar(
                     raw_value, field_definition
                 )
-        normalized = cls._normalize_cross_field_concepts(
+        normalized = cls._normalize_detail_field_ownership(
             normalized,
             field_definitions,
         )
-        normalized = cls._normalize_detail_field_ownership(
+        normalized = cls._normalize_cross_field_concepts(
             normalized,
             field_definitions,
         )
@@ -853,10 +876,13 @@ class VisionStructuredExtractor:
         subcategory = str(normalized_payload.get("subcategory") or "").strip()
         if not subcategory:
             return None
-
-        # Subcategory is intentionally open-list. Tracker terms are preferred
-        # examples, not a canonical-only validation gate.
-        return None
+        if subcategory in CANONICAL_SUBCATEGORY_TOKENS.get(item_type, ()):
+            return None
+        return {
+            "item_type": item_type,
+            "category": str(normalized_payload.get("category") or "").strip(),
+            "subcategory": subcategory,
+        }
 
     @classmethod
     def build_filter_report(
@@ -865,6 +891,7 @@ class VisionStructuredExtractor:
         raw_payload: dict[str, object] | None,
         normalized_payload: dict[str, object],
     ) -> dict[str, object]:
+        item_type = normalize_supported_item_type(item_type)
         if not isinstance(raw_payload, dict):
             raw_payload = {}
 
@@ -1006,8 +1033,6 @@ def _get_mime_type(image_path: str | Path) -> str:
 class GeminiExtractorConfig:
     model_id: str = DEFAULT_GEMINI_MODEL
     api_key: str | None = None
-    thinking_budget: int = 0
-    temperature: float = 0.0
     rpm_limit: int = 15
     tracker_root: str | None = None
 
@@ -1070,12 +1095,7 @@ class GeminiStructuredExtractor:
             )
         parts.append(prompt)
 
-        cfg: dict[str, Any] = {
-            "temperature": self.config.temperature,
-            "response_mime_type": "application/json",
-        }
-        if self.config.thinking_budget >= 0:
-            cfg["thinking_config"] = {"thinking_budget": self.config.thinking_budget}
+        cfg: dict[str, Any] = {"response_mime_type": "application/json"}
 
         for attempt in range(max_retries + 1):
             # Enforce RPM limit

@@ -108,7 +108,9 @@ def _load_catalog_item_root_ids(tracker_root: Path) -> dict[int, int]:
         family_root_id = row[6] if len(row) > 6 and isinstance(row[6], int) else None
         for item_id in ids:
             if isinstance(item_id, int):
-                root_ids[item_id] = family_root_id if family_root_id is not None else item_id
+                root_ids[item_id] = (
+                    family_root_id if family_root_id is not None else item_id
+                )
 
     return root_ids
 
