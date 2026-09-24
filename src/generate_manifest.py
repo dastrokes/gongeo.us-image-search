@@ -57,7 +57,7 @@ def main() -> int:
     parser.add_argument(
         "--item-attributes-path",
         default=str(PROJECT_ROOT / "manifest" / "item-attributes.jsonl"),
-        help="Canonical item-attributes JSONL snapshot of already-published items to skip if present; only item_id is read",
+        help="Required D1 item-attributes JSONL snapshot of already-published IDs (unless --include-indexed)",
     )
     parser.add_argument(
         "--include-indexed",

@@ -7,10 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from constants.settings import (
-    DEFAULT_EXTRACTION_BACKEND,
-    DEFAULT_EXTRACTION_MODEL_ID,
+    DEFAULT_EXTRACTION_PROVIDER,
     DEFAULT_GEMINI_MODEL,
-    DEFAULT_MODEL_QUANTIZATION,
+    DEFAULT_VERCEL_MODEL,
     PROJECT_ROOT,
 )
 from models.schemas import (
@@ -123,14 +122,14 @@ def _load_record_cache(path: Path) -> dict[int, dict]:
 
 
 def _structured_record_from_payload(payload: dict[str, object]) -> StructuredItemRecord:
-    from pipeline.extraction import VisionStructuredExtractor
+    from pipeline.extraction import StructuredExtractionSupport
 
     item_type = str(payload["item_type"])
     data = dict(payload.get("data", {}) or {})
     return StructuredItemRecord(
         item_id=int(payload["item_id"]),
         item_type=item_type,
-        data=VisionStructuredExtractor.normalize_payload(item_type, data),
+        data=StructuredExtractionSupport.normalize_payload(item_type, data),
         parse_error=(
             str(payload["parse_error"])
             if payload.get("parse_error") is not None
@@ -235,9 +234,9 @@ def _build_search_report_row(
 ) -> dict[str, object] | None:
     raw_filter_report = None
     if debug_record is not None and debug_record.raw_payload is not None:
-        from pipeline.extraction import VisionStructuredExtractor
+        from pipeline.extraction import StructuredExtractionSupport
 
-        raw_filter_report = VisionStructuredExtractor.build_filter_report(
+        raw_filter_report = StructuredExtractionSupport.build_filter_report(
             item_type,
             debug_record.raw_payload,
             normalized_data,
@@ -500,15 +499,19 @@ def run_build_index(args: argparse.Namespace) -> int:
     from pipeline.extraction import (
         GeminiExtractorConfig,
         GeminiStructuredExtractor,
-        StructuredExtractorConfig,
-        VisionStructuredExtractor,
+        VercelGatewayExtractorConfig,
+        VercelGatewayStructuredExtractor,
     )
     from pipeline.finalize import (
         apply_curated_override,
         build_structured_payload_from_item_attributes,
         load_curated_override_map,
     )
-    from pipeline.manifest import build_manifest
+    from pipeline.manifest import (
+        DEFAULT_ITEM_ATTRIBUTES_MANIFEST,
+        build_manifest,
+        load_existing_item_ids,
+    )
 
     output_root = Path(args.output_root or _default_output_root())
     manifest_root = Path(args.manifest_root or _default_manifest_root())
@@ -524,6 +527,15 @@ def run_build_index(args: argparse.Namespace) -> int:
     requested_item_types = expand_item_type_filters(getattr(args, "types", None))
     is_single_item_debug = (
         args.item_id is not None and not selected_item_ids and not requested_item_types
+    )
+    if args.include_indexed and not args.regen_manifest:
+        raise ValueError("--include-indexed requires --regen-manifest")
+    indexed_item_ids = (
+        load_existing_item_ids(
+            Path(args.item_attributes_path or DEFAULT_ITEM_ATTRIBUTES_MANIFEST)
+        )
+        if args.item_id is None and not selected_item_ids and not args.include_indexed
+        else set()
     )
 
     if (
@@ -547,6 +559,11 @@ def run_build_index(args: argparse.Namespace) -> int:
                     continue
                 if not is_supported_item_type(record.item_type):
                     continue
+                if record.item_id in indexed_item_ids:
+                    raise ValueError(
+                        f"Cached manifest includes published item {record.item_id}; "
+                        "rerun with --regen-manifest and the verified D1 snapshot"
+                    )
                 manifest_records.append(record)
                 if args.limit is not None and len(manifest_records) >= args.limit:
                     break
@@ -566,6 +583,8 @@ def run_build_index(args: argparse.Namespace) -> int:
             item_id=args.item_id,
             item_ids=selected_item_ids or None,
             item_types=requested_item_types or None,
+            item_attributes_path=args.item_attributes_path,
+            skip_indexed=not args.include_indexed,
         )
         if (
             not is_single_item_debug
@@ -576,33 +595,39 @@ def run_build_index(args: argparse.Namespace) -> int:
                 manifest_path, [record.to_dict() for record in manifest_records]
             )
 
+    print(f"Manifest contains {len(manifest_records)} items for extraction.")
+    if args.max_items < 1:
+        raise ValueError("--max-items must be positive")
+    if len(manifest_records) > args.max_items:
+        raise ValueError(
+            f"Manifest has {len(manifest_records)} items, above the "
+            f"--max-items {args.max_items} extraction ceiling. "
+            "Inspect the published-ID snapshot and manifest count before raising it."
+        )
+
     if is_single_item_debug and not manifest_records:
         print(
             json.dumps({"item_id": args.item_id, "error": "item_not_found"}, indent=2)
         )
         return 1
 
-    backend: str = (
-        getattr(args, "backend", DEFAULT_EXTRACTION_BACKEND)
-        or DEFAULT_EXTRACTION_BACKEND
+    provider: str = (
+        getattr(args, "provider", DEFAULT_EXTRACTION_PROVIDER)
+        or DEFAULT_EXTRACTION_PROVIDER
     )
-    if backend == "gemini":
-        extractor: GeminiStructuredExtractor | VisionStructuredExtractor = (
+    if provider == "google":
+        extractor: GeminiStructuredExtractor | VercelGatewayStructuredExtractor = (
             GeminiStructuredExtractor(
                 GeminiExtractorConfig(
-                    model_id=args.gemini_model,
-                    api_key=getattr(args, "gemini_api_key", None) or None,
+                    model_id=args.model or DEFAULT_GEMINI_MODEL,
                     tracker_root=args.tracker_root,
                 )
             )
         )
     else:
-        extractor = VisionStructuredExtractor(
-            StructuredExtractorConfig(
-                model_id=args.extraction_model,
-                device=args.device,
-                quantization=args.quantization,
-                inference_batch_size=args.extraction_inference_batch_size,
+        extractor = VercelGatewayStructuredExtractor(
+            VercelGatewayExtractorConfig(
+                model_id=args.model or DEFAULT_VERCEL_MODEL,
                 tracker_root=args.tracker_root,
             )
         )
@@ -645,16 +670,10 @@ def run_build_index(args: argparse.Namespace) -> int:
 
     try:
         for batch in _chunk_records(pending, args.batch_size):
-            if backend == "gemini":
-                for record in batch:
-                    structured_record, debug_record = extractor.extract_record(record)
-                    _checkpoint_extracted_record(structured_record, debug_record)
-                    done_so_far += 1
-            else:
-                extracted = extractor.extract_records_batch(batch)
-                for structured_record, debug_record in extracted:
-                    _checkpoint_extracted_record(structured_record, debug_record)
-                    done_so_far += 1
+            for record in batch:
+                structured_record, debug_record = extractor.extract_record(record)
+                _checkpoint_extracted_record(structured_record, debug_record)
+                done_so_far += 1
             print(f"  extracted {done_so_far}/{len(manifest_records)}", flush=True)
     except Exception:
         print(
@@ -788,7 +807,7 @@ def run_refresh_derived(args: argparse.Namespace) -> int:
         except (OSError, json.JSONDecodeError):
             summary_payload = {}
     extraction_model_id = str(
-        summary_payload.get("extraction_model_id", DEFAULT_EXTRACTION_MODEL_ID)
+        summary_payload.get("extraction_model_id", DEFAULT_GEMINI_MODEL)
     )
 
     override_map = load_curated_override_map()
@@ -871,7 +890,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     build_parser = subparsers.add_parser(
         "index",
-        help="Build local structured extraction artifacts and canonical item attributes",
+        help="Build structured extraction artifacts and canonical item attributes",
     )
     build_parser.add_argument("--item-id", type=int, default=None)
     build_parser.add_argument("--item-ids", nargs="+", type=int, default=None)
@@ -883,15 +902,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Filter by item type (repeatable, supports special values clothing/accessories)",
     )
     build_parser.add_argument("--limit", type=int, default=None)
-    build_parser.add_argument("--batch-size", type=int, default=10)
-    build_parser.add_argument("--extraction-inference-batch-size", type=int, default=2)
-    build_parser.add_argument("--device", default="auto")
     build_parser.add_argument(
-        "--quantization",
-        choices=("none", "8bit", "4bit"),
-        default=DEFAULT_MODEL_QUANTIZATION,
+        "--max-items",
+        type=int,
+        default=500,
+        help="Stop before extraction if the manifest exceeds this count (default: 500)",
     )
-    build_parser.add_argument("--extraction-model", default=DEFAULT_EXTRACTION_MODEL_ID)
+    build_parser.add_argument("--batch-size", type=int, default=10)
     build_parser.add_argument("--tracker-root", default=os.getenv("TRACKER_ROOT"))
     build_parser.add_argument(
         "--config-root", default=os.getenv("CONFIG_DECODER_OUTPUT")
@@ -900,26 +917,31 @@ def build_parser() -> argparse.ArgumentParser:
     build_parser.add_argument("--output-root", default=str(_default_output_root()))
     build_parser.add_argument("--manifest-root", default=str(_default_manifest_root()))
     build_parser.add_argument(
+        "--item-attributes-path",
+        default=None,
+        help="Verified D1 item-attributes JSONL used to skip published IDs; defaults to manifest/item-attributes.jsonl",
+    )
+    build_parser.add_argument(
+        "--include-indexed",
+        action="store_true",
+        help="Intentionally include already published items when regenerating a full manifest",
+    )
+    build_parser.add_argument(
         "--regen-manifest",
         action="store_true",
         help="Regenerate manifest even if one already exists",
     )
-    # Extraction backend selection
+    # Remote extraction provider selection
     build_parser.add_argument(
-        "--backend",
-        choices=("local", "gemini"),
-        default=DEFAULT_EXTRACTION_BACKEND,
-        help=f"Extraction backend: 'local' (Qwen) or 'gemini' (Google AI Studio, default: {DEFAULT_EXTRACTION_BACKEND})",
+        "--provider",
+        choices=("google", "vercel"),
+        default=DEFAULT_EXTRACTION_PROVIDER,
+        help=f"Remote extraction provider (default: {DEFAULT_EXTRACTION_PROVIDER})",
     )
     build_parser.add_argument(
-        "--gemini-model",
-        default=DEFAULT_GEMINI_MODEL,
-        help="Gemini model ID to use when --backend=gemini",
-    )
-    build_parser.add_argument(
-        "--gemini-api-key",
+        "--model",
         default=None,
-        help="Google API key (overrides GOOGLE_API_KEY env var)",
+        help="Provider-specific model ID; defaults to the configured Google or Vercel model",
     )
     build_parser.set_defaults(func=run_build_index)
 

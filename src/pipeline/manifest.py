@@ -72,20 +72,36 @@ def _load_json(path: Path) -> Any:
         return json.load(handle)
 
 
-def _load_existing_item_ids(path: Path) -> set[int]:
+def load_existing_item_ids(path: Path) -> set[int]:
     item_ids: set[int] = set()
-    if not path.exists():
-        return item_ids
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Published item attributes snapshot not found: {path}. "
+            "Pass --item-attributes-path to a verified D1 export, "
+            "or --include-indexed for an intentional full index."
+        )
     with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
+        for line_number, line in enumerate(handle, start=1):
             line = line.strip()
             if not line:
                 continue
             try:
                 payload = json.loads(line)
-                item_ids.add(int(payload["item_id"]))
-            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
-                continue
+                item_id = payload["item_id"]
+                if isinstance(item_id, bool) or not isinstance(item_id, int):
+                    raise ValueError("item_id must be an integer")
+                if item_id <= 0 or item_id in item_ids:
+                    raise ValueError("invalid or duplicate item_id")
+                item_ids.add(item_id)
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                raise ValueError(
+                    f"Invalid published item attributes at {path}:{line_number}"
+                ) from exc
+    if not item_ids:
+        raise ValueError(
+            f"Published item attributes snapshot is empty: {path}. "
+            "Use --include-indexed for an intentional full index."
+        )
     return item_ids
 
 
@@ -194,7 +210,7 @@ def build_manifest(
     if item_id is not None:
         selected_item_ids.add(item_id)
     indexed_item_ids = (
-        _load_existing_item_ids(
+        load_existing_item_ids(
             Path(item_attributes_path or DEFAULT_ITEM_ATTRIBUTES_MANIFEST)
         )
         if skip_indexed and not selected_item_ids

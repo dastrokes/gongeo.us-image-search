@@ -39,9 +39,9 @@ def build_structured_payload_from_item_attributes(
         **dict(record.metadata or {}),
     }
 
-    from pipeline.extraction import VisionStructuredExtractor
+    from pipeline.extraction import StructuredExtractionSupport
 
-    return VisionStructuredExtractor.normalize_payload(record.item_type, payload)
+    return StructuredExtractionSupport.normalize_payload(record.item_type, payload)
 
 
 def build_item_attributes_record(
@@ -93,13 +93,13 @@ def apply_curated_override(
     record: StructuredItemRecord,
     override_entry: dict[str, Any] | None,
 ) -> ItemAttributesRecord:
-    from pipeline.extraction import VisionStructuredExtractor
+    from pipeline.extraction import StructuredExtractionSupport
 
     base_record = build_item_attributes_record(
         StructuredItemRecord(
             item_id=record.item_id,
             item_type=record.item_type,
-            data=VisionStructuredExtractor.normalize_payload(
+            data=StructuredExtractionSupport.normalize_payload(
                 record.item_type,
                 record.data,
             ),
@@ -143,7 +143,7 @@ def apply_curated_override(
             **_normalize_override_payload(override_entry.get("metadata")),
         }
 
-    final_data = VisionStructuredExtractor.normalize_payload(
+    final_data = StructuredExtractionSupport.normalize_payload(
         record.item_type,
         override_payload,
     )
