@@ -51,8 +51,8 @@ Structured extraction supports two remote providers:
 - `google` (default) calls Google AI Studio with `GOOGLE_API_KEY`.
 - `vercel` calls Vercel AI Gateway with `AI_GATEWAY_API_KEY`.
 
-Both providers default to Gemini 3.5 Flash Lite. Vercel model IDs include the
-provider prefix, such as `google/gemini-3.5-flash-lite`.
+Direct Google defaults to Gemini 3.5 Flash Lite. Vercel defaults to Gemini 2.5
+Flash for free-tier use; Gateway model IDs include the provider prefix.
 
 ## Environment
 
@@ -75,7 +75,7 @@ uv run python cli.py index --item-id 1020123456   # single-item debug
 uv run python cli.py index --type dresses --type outerwear
 uv run python cli.py index --item-ids 1020100001 1020100002
 uv run python cli.py index --provider vercel --limit 10
-uv run python cli.py index --provider vercel --model google/gemini-3.5-flash-lite --limit 10
+uv run python cli.py index --provider vercel --model google/gemini-2.5-flash --limit 10
 
 # Rebuild canonical item attributes from cached extraction (no re-extraction)
 uv run python cli.py refresh

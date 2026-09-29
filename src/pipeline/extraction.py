@@ -356,6 +356,11 @@ class StructuredExtractionSupport:
 
     @classmethod
     def build_prompt(cls, item_type: str) -> str:
+        system_prompt, user_prompt = cls.build_prompt_parts(item_type)
+        return f"{system_prompt}\n{user_prompt}"
+
+    @classmethod
+    def build_prompt_parts(cls, item_type: str) -> tuple[str, str]:
         user_message = build_extraction_user_message(
             item_type,
             field_names=tuple(
@@ -365,7 +370,28 @@ class StructuredExtractionSupport:
                 ).fields
             ),
         )
-        return f"{STRUCTURED_EXTRACTION_SYSTEM_PROMPT}\n{user_message}"
+        return STRUCTURED_EXTRACTION_SYSTEM_PROMPT, user_message
+
+    @staticmethod
+    def build_response_schema(item_type: str) -> dict[str, object]:
+        properties: dict[str, object] = {}
+        required: list[str] = []
+        for field_definition in schema_definition_for_item_type(item_type).fields:
+            required.append(field_definition.name)
+            if field_definition.kind == "array":
+                properties[field_definition.name] = {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "uniqueItems": True,
+                }
+            else:
+                properties[field_definition.name] = {"type": ["string", "null"]}
+        return {
+            "type": "object",
+            "properties": properties,
+            "required": required,
+            "additionalProperties": False,
+        }
 
     @staticmethod
     def _parse_json_object(
@@ -753,9 +779,10 @@ class GeminiStructuredExtractor:
 
         client = self._get_client()
 
-        # Build content parts: one image part per image, then the text prompt.
+        # Label each image so the evidence-priority rule in the prompt is actionable.
         parts: list[Any] = []
-        for _label, image_path in image_specs:
+        for label, image_path in image_specs:
+            parts.append(f"IMAGE: {label}")
             image_bytes = Path(image_path).read_bytes()
             parts.append(
                 types.Part.from_bytes(
@@ -875,7 +902,9 @@ class VercelGatewayStructuredExtractor:
     def _call_api(
         self,
         image_specs: list[tuple[str, str | Path]],
-        prompt: str,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: dict[str, object],
         max_retries: int = 5,
     ) -> str:
         import os
@@ -889,8 +918,9 @@ class VercelGatewayStructuredExtractor:
                 "Either pass --api-key or export AI_GATEWAY_API_KEY."
             )
 
-        content: list[dict[str, object]] = [{"type": "text", "text": prompt}]
-        for _label, image_path in image_specs:
+        content: list[dict[str, object]] = [{"type": "text", "text": user_prompt}]
+        for label, image_path in image_specs:
+            content.append({"type": "text", "text": f"IMAGE: {label}"})
             image_bytes = Path(image_path).read_bytes()
             encoded = base64.b64encode(image_bytes).decode("ascii")
             content.append(
@@ -904,9 +934,22 @@ class VercelGatewayStructuredExtractor:
 
         payload = {
             "model": self.config.model_id,
-            "messages": [{"role": "user", "content": content}],
-            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": content},
+            ],
+            "temperature": 0,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "item_attributes",
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            },
         }
+        if self.config.model_id.startswith("openai/gpt-6"):
+            payload["reasoning"] = {"effort": "minimal"}
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -932,7 +975,13 @@ class VercelGatewayStructuredExtractor:
 
             retryable = response.status_code == 429 or response.status_code >= 500
             if not retryable or attempt >= max_retries:
-                response.raise_for_status()
+                detail = response.text.strip()
+                if len(detail) > 1000:
+                    detail = detail[:1000] + "..."
+                raise RuntimeError(
+                    f"Vercel AI Gateway returned {response.status_code}: "
+                    f"{detail or response.reason}"
+                )
             retry_after = response.headers.get("Retry-After")
             try:
                 delay = float(retry_after) if retry_after else 2.0 * (2**attempt)
@@ -958,8 +1007,16 @@ class VercelGatewayStructuredExtractor:
             record.item_id,
             self.config.tracker_root,
         )
-        prompt = StructuredExtractionSupport.build_prompt(record.item_type)
-        raw_response = self._call_api(image_specs, prompt)
+        system_prompt, user_prompt = StructuredExtractionSupport.build_prompt_parts(
+            record.item_type
+        )
+        prompt = f"{system_prompt}\n{user_prompt}"
+        raw_response = self._call_api(
+            image_specs,
+            system_prompt,
+            user_prompt,
+            StructuredExtractionSupport.build_response_schema(record.item_type),
+        )
         raw_payload, parse_error = StructuredExtractionSupport._parse_json_object(
             raw_response
         )

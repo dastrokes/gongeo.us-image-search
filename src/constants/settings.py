@@ -7,4 +7,4 @@ PROJECT_ROOT = PACKAGE_ROOT.parent
 
 DEFAULT_EXTRACTION_PROVIDER = "google"
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
-DEFAULT_VERCEL_MODEL = "google/gemini-3.5-flash-lite"
+DEFAULT_VERCEL_MODEL = "google/gemini-2.5-flash"
