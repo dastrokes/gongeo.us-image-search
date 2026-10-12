@@ -88,9 +88,11 @@ _ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
     ("flame", "fire"),
     ("floral_embroidery", "embroidery"),
     ("gem", "gemstone"),
+    ("gems", "gemstone"),
     ("gemstones", "gemstone"),
     ("lightbulb", "light_bulb"),
     ("pearls", "pearl"),
+    ("pendants", "pendant"),
     ("pins", "pin"),
     ("plush_animal", "plushie"),
     ("pompom", "pom_pom"),
@@ -101,6 +103,9 @@ _ORNAMENT_ALIASES: tuple[tuple[str, str], ...] = (
     ("sequins", "sequin"),
     ("straps", "strap"),
     ("studs", "stud"),
+    ("spikes", "spike"),
+    ("toe_ring", "ring"),
+    ("droplet", "water_droplet"),
     ("wings", "wing"),
 )
 _CATEGORY_ALIASES: tuple[tuple[str, str], ...] = (
