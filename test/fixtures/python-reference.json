@@ -1,0 +1,2703 @@
+{
+  "format_version": 1,
+  "extraction": [
+    {
+      "name": "hair-alias",
+      "raw": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "data": {
+          "category": "Twin Tail",
+          "subcategory": "high_twin_tails",
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "haircut": null,
+          "texture": "straight"
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = hair\n\nSCHEMA TEMPLATE\n{\n  \"bangs\": null,\n  \"category\": null,\n  \"hair_length\": null,\n  \"haircut\": null,\n  \"subcategory\": null,\n  \"texture\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nHAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.\n\nCLOSED LISTS\n  category: braid, bun, half_up, loose, ponytail, twin_tails, updo\n  bangs: blunt_bangs, curtain_bangs, no_bangs, side_swept_bangs, wispy_bangs\n  hair_length: long, medium, short, very_long\n  haircut: blunt_cut, bob, hime_cut, layered_cut, lob, pixie_cut, shag, wolf_cut\n  texture: curly, straight, wavy\n\nPREFERRED SUBCATEGORY EXAMPLES\n  braid: crown_braid, side_braid, twin_braids\n  bun: high_bun, side_bun, space_buns, top_knot\n  half_up: half_up_braid, half_up_bun, half_up_ponytail\n  loose: null\n  ponytail: high_ponytail, low_ponytail, side_ponytail\n  twin_tails: drill_twin_tails, high_twin_tails, low_twin_tails\n  updo: chignon, double_ring_bun, flying_immortal_bun\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"Twin Tail\",\"subcategory\":\"high_twin_tails\",\"bangs\":\"blunt_bangs\",\"hair_length\":\"long\",\"haircut\":null,\"texture\":\"straight\"}",
+        "raw_payload": {
+          "category": "Twin Tail",
+          "subcategory": "high_twin_tails",
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "haircut": null,
+          "texture": "straight"
+        },
+        "normalized_data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "category": "twin_tails",
+        "subcategory": "high_twin_tails",
+        "metadata": {
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "texture": "straight"
+        }
+      },
+      "report": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "source_raw_payload": {
+          "category": "Twin Tail",
+          "subcategory": "high_twin_tails",
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "haircut": null,
+          "texture": "straight"
+        },
+        "normalized_data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "final_data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "category",
+            "from": "Twin Tail",
+            "to": "twin_tails"
+          }
+        ]
+      }
+    },
+    {
+      "name": "garment-field-ownership",
+      "raw": {
+        "item_id": 1020200310,
+        "item_type": "outerwear",
+        "data": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "paper",
+            "fur",
+            "fur"
+          ],
+          "ornament": [
+            "gems",
+            "pendants",
+            "spikes",
+            "toe_ring",
+            "droplet"
+          ],
+          "pattern": [
+            "filigree"
+          ],
+          "structure": [
+            "buckle",
+            "gathers"
+          ],
+          "neckline": "strapless",
+          "garment_feature": [
+            "hoodie"
+          ],
+          "unrecognized_field": "review_me"
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1020200310,
+        "item_type": "outerwear",
+        "data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "pattern": [],
+          "shoulder_style": "strapless",
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [
+            "gathered"
+          ],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020200310,
+        "item_type": "outerwear",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = outerwear\n\nSCHEMA TEMPLATE\n{\n  \"category\": null,\n  \"collar_style\": null,\n  \"fit\": null,\n  \"garment_feature\": [],\n  \"material\": [],\n  \"neckline\": null,\n  \"ornament\": [],\n  \"pattern\": [],\n  \"shoulder_style\": null,\n  \"sleeve_length\": null,\n  \"sleeve_style\": null,\n  \"structure\": [],\n  \"subcategory\": null,\n  \"top_length\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\n- garment_feature = visible functional garment features or closures such as hooded, belted, button_up, lace_up, or zip_up; do not use purely decorative buttons, bows, or lacing. Examples: hooded, belted, button_up, lace_up, zip_up.\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: cape, cardigan, coat, jacket, robe, shawl, vest\n  collar_style: collared, cross_collar, duijin_collar, mandarin_collar, peter_pan_collar, right_cross_collar, sailor_collar\n  fit: bodycon, fitted, loose, oversized, regular\n  neckline: boat_neck, cowl_neck, crew_neck, halter_neck, keyhole_neck, mock_neck, scoop_neck, square_neck, sweetheart_neck, turtleneck, v_neck\n  shoulder_style: cold_shoulder, halter, off_shoulder, one_shoulder, strapless\n  sleeve_length: elbow, extra_long, long, short, sleeveless, three_quarter\n  sleeve_style: bell_sleeve, bishop_sleeve, cap_sleeve, daxiu_sleeve, detached_sleeves, flare_sleeve, puff_sleeve, raglan_sleeve, shuixiu_sleeve, slit_sleeve, split_sleeve\n  top_length: crop, floor_length, hip_length, maxi, mid_thigh, ultra_crop, upper_thigh, waist_length\n\nPREFERRED SUBCATEGORY EXAMPLES\n  cape: capelet, cloak, hooded_cape, poncho\n  cardigan: long_cardigan, shrug\n  coat: fur_coat\n  jacket: blazer, bolero, bomber_jacket, hoodie, military_jacket, shirt_jacket, windbreaker\n  robe: beizi, daxiushan\n  shawl: stole\n  vest: hooded_vest, waistcoat\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"jacket\",\"subcategory\":\"bolero\",\"material\":[\"paper\",\"fur\",\"fur\"],\"ornament\":[\"gems\",\"pendants\",\"spikes\",\"toe_ring\",\"droplet\"],\"pattern\":[\"filigree\"],\"structure\":[\"buckle\",\"gathers\"],\"neckline\":\"strapless\",\"garment_feature\":[\"hoodie\"],\"unrecognized_field\":\"review_me\"}",
+        "raw_payload": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "paper",
+            "fur",
+            "fur"
+          ],
+          "ornament": [
+            "gems",
+            "pendants",
+            "spikes",
+            "toe_ring",
+            "droplet"
+          ],
+          "pattern": [
+            "filigree"
+          ],
+          "structure": [
+            "buckle",
+            "gathers"
+          ],
+          "neckline": "strapless",
+          "garment_feature": [
+            "hoodie"
+          ],
+          "unrecognized_field": "review_me"
+        },
+        "normalized_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "pattern": [],
+          "shoulder_style": "strapless",
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [
+            "gathered"
+          ],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [
+            {
+              "field": "pattern",
+              "token": "filigree",
+              "target_field": "ornament",
+              "target_token": "filigree"
+            },
+            {
+              "field": "structure",
+              "token": "buckle",
+              "target_field": "ornament",
+              "target_token": "buckle"
+            }
+          ],
+          "cross_field_ownership_count": 2,
+          "non_canonical": [
+            {
+              "field": "neckline",
+              "token": "strapless"
+            }
+          ],
+          "non_canonical_count": 1,
+          "unknown_fields": [
+            "unrecognized_field"
+          ],
+          "unknown_field_count": 1,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1020200310,
+        "item_type": "outerwear",
+        "category": "jacket",
+        "subcategory": "bolero",
+        "metadata": {
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "shoulder_style": "strapless",
+          "structure": [
+            "gathered"
+          ]
+        }
+      },
+      "report": {
+        "item_id": 1020200310,
+        "item_type": "outerwear",
+        "filter_report": {
+          "cross_field_ownership": [
+            {
+              "field": "pattern",
+              "token": "filigree",
+              "target_field": "ornament",
+              "target_token": "filigree"
+            },
+            {
+              "field": "structure",
+              "token": "buckle",
+              "target_field": "ornament",
+              "target_token": "buckle"
+            }
+          ],
+          "non_canonical": [
+            {
+              "field": "neckline",
+              "token": "strapless"
+            }
+          ],
+          "unknown_fields": [
+            "unrecognized_field"
+          ]
+        },
+        "source_raw_payload": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "paper",
+            "fur",
+            "fur"
+          ],
+          "ornament": [
+            "gems",
+            "pendants",
+            "spikes",
+            "toe_ring",
+            "droplet"
+          ],
+          "pattern": [
+            "filigree"
+          ],
+          "structure": [
+            "buckle",
+            "gathers"
+          ],
+          "neckline": "strapless",
+          "garment_feature": [
+            "hoodie"
+          ],
+          "unrecognized_field": "review_me"
+        },
+        "normalized_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "pattern": [],
+          "shoulder_style": "strapless",
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [
+            "gathered"
+          ],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "final_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "pattern": [],
+          "shoulder_style": "strapless",
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [
+            "gathered"
+          ],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "garment_feature",
+            "from": [
+              "hoodie"
+            ],
+            "to": [
+              "hooded"
+            ]
+          },
+          {
+            "field": "material",
+            "from": [
+              "paper",
+              "fur",
+              "fur"
+            ],
+            "to": [
+              "paper",
+              "fur"
+            ]
+          },
+          {
+            "field": "neckline",
+            "from": "strapless",
+            "to": null
+          },
+          {
+            "field": "ornament",
+            "from": [
+              "gems",
+              "pendants",
+              "spikes",
+              "toe_ring",
+              "droplet"
+            ],
+            "to": [
+              "gemstone",
+              "pendant",
+              "spike",
+              "ring",
+              "water_droplet",
+              "filigree",
+              "buckle"
+            ]
+          },
+          {
+            "field": "pattern",
+            "from": [
+              "filigree"
+            ],
+            "to": []
+          },
+          {
+            "field": "shoulder_style",
+            "from": null,
+            "to": "strapless"
+          },
+          {
+            "field": "structure",
+            "from": [
+              "buckle",
+              "gathers"
+            ],
+            "to": [
+              "gathered"
+            ]
+          },
+          {
+            "field": "unrecognized_field",
+            "from": "review_me",
+            "to": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "accessory-open-vocabulary",
+      "raw": {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "data": {
+          "category": "earring",
+          "subcategory": "drop_earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal_motif",
+            "gems"
+          ],
+          "pattern": [],
+          "structure": []
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "data": {
+          "category": "earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "drop_earrings"
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = earrings\n\nSCHEMA TEMPLATE\n{\n  \"category\": null,\n  \"material\": [],\n  \"ornament\": [],\n  \"pattern\": [],\n  \"structure\": [],\n  \"subcategory\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: ear_cuff, earring\n\nPREFERRED SUBCATEGORY EXAMPLES\n  ear_cuff: null\n  earring: chandelier_earrings, drop_earrings, hoop_earrings, stud_earrings\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"earring\",\"subcategory\":\"drop_earring\",\"material\":[\"metal\"],\"ornament\":[\"novel_crystal_motif\",\"gems\"],\"pattern\":[],\"structure\":[]}",
+        "raw_payload": {
+          "category": "earring",
+          "subcategory": "drop_earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal_motif",
+            "gems"
+          ],
+          "pattern": [],
+          "structure": []
+        },
+        "normalized_data": {
+          "category": "earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "drop_earrings"
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "category": "earring",
+        "subcategory": "drop_earrings",
+        "metadata": {
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ]
+        }
+      },
+      "report": {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "source_raw_payload": {
+          "category": "earring",
+          "subcategory": "drop_earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal_motif",
+            "gems"
+          ],
+          "pattern": [],
+          "structure": []
+        },
+        "normalized_data": {
+          "category": "earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "drop_earrings"
+        },
+        "final_data": {
+          "category": "earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "drop_earrings"
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "ornament",
+            "from": [
+              "novel_crystal_motif",
+              "gems"
+            ],
+            "to": [
+              "novel_crystal",
+              "gemstone"
+            ]
+          },
+          {
+            "field": "subcategory",
+            "from": "drop_earring",
+            "to": "drop_earrings"
+          }
+        ]
+      }
+    },
+    {
+      "name": "full-override-removes-fields",
+      "raw": {
+        "item_id": 1020200311,
+        "item_type": "outerwear",
+        "data": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "fur"
+          ],
+          "ornament": [
+            "bow",
+            "heart"
+          ],
+          "top_length": "crop"
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1020200311,
+        "item_type": "outerwear",
+        "data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "bow",
+            "heart"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": "crop"
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020200311,
+        "item_type": "outerwear",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = outerwear\n\nSCHEMA TEMPLATE\n{\n  \"category\": null,\n  \"collar_style\": null,\n  \"fit\": null,\n  \"garment_feature\": [],\n  \"material\": [],\n  \"neckline\": null,\n  \"ornament\": [],\n  \"pattern\": [],\n  \"shoulder_style\": null,\n  \"sleeve_length\": null,\n  \"sleeve_style\": null,\n  \"structure\": [],\n  \"subcategory\": null,\n  \"top_length\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\n- garment_feature = visible functional garment features or closures such as hooded, belted, button_up, lace_up, or zip_up; do not use purely decorative buttons, bows, or lacing. Examples: hooded, belted, button_up, lace_up, zip_up.\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: cape, cardigan, coat, jacket, robe, shawl, vest\n  collar_style: collared, cross_collar, duijin_collar, mandarin_collar, peter_pan_collar, right_cross_collar, sailor_collar\n  fit: bodycon, fitted, loose, oversized, regular\n  neckline: boat_neck, cowl_neck, crew_neck, halter_neck, keyhole_neck, mock_neck, scoop_neck, square_neck, sweetheart_neck, turtleneck, v_neck\n  shoulder_style: cold_shoulder, halter, off_shoulder, one_shoulder, strapless\n  sleeve_length: elbow, extra_long, long, short, sleeveless, three_quarter\n  sleeve_style: bell_sleeve, bishop_sleeve, cap_sleeve, daxiu_sleeve, detached_sleeves, flare_sleeve, puff_sleeve, raglan_sleeve, shuixiu_sleeve, slit_sleeve, split_sleeve\n  top_length: crop, floor_length, hip_length, maxi, mid_thigh, ultra_crop, upper_thigh, waist_length\n\nPREFERRED SUBCATEGORY EXAMPLES\n  cape: capelet, cloak, hooded_cape, poncho\n  cardigan: long_cardigan, shrug\n  coat: fur_coat\n  jacket: blazer, bolero, bomber_jacket, hoodie, military_jacket, shirt_jacket, windbreaker\n  robe: beizi, daxiushan\n  shawl: stole\n  vest: hooded_vest, waistcoat\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"jacket\",\"subcategory\":\"bolero\",\"material\":[\"fur\"],\"ornament\":[\"bow\",\"heart\"],\"top_length\":\"crop\"}",
+        "raw_payload": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "fur"
+          ],
+          "ornament": [
+            "bow",
+            "heart"
+          ],
+          "top_length": "crop"
+        },
+        "normalized_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "bow",
+            "heart"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": "crop"
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1020200311,
+        "item_type": "outerwear",
+        "category": "jacket",
+        "subcategory": "bolero",
+        "metadata": {
+          "ornament": [
+            "bow"
+          ]
+        }
+      },
+      "report": {
+        "item_id": 1020200311,
+        "item_type": "outerwear",
+        "source_raw_payload": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "fur"
+          ],
+          "ornament": [
+            "bow",
+            "heart"
+          ],
+          "top_length": "crop"
+        },
+        "normalized_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "bow",
+            "heart"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": "crop"
+        },
+        "final_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [],
+          "neckline": null,
+          "ornament": [
+            "bow"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "normalized_to_final_changes": [
+          {
+            "field": "material",
+            "from": [
+              "fur"
+            ],
+            "to": []
+          },
+          {
+            "field": "ornament",
+            "from": [
+              "bow",
+              "heart"
+            ],
+            "to": [
+              "bow"
+            ]
+          },
+          {
+            "field": "top_length",
+            "from": "crop",
+            "to": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "legacy-override-merges-metadata",
+      "raw": {
+        "item_id": 1020200312,
+        "item_type": "outerwear",
+        "data": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "fur"
+          ],
+          "ornament": [
+            "heart"
+          ]
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1020200312,
+        "item_type": "outerwear",
+        "data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "heart"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020200312,
+        "item_type": "outerwear",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = outerwear\n\nSCHEMA TEMPLATE\n{\n  \"category\": null,\n  \"collar_style\": null,\n  \"fit\": null,\n  \"garment_feature\": [],\n  \"material\": [],\n  \"neckline\": null,\n  \"ornament\": [],\n  \"pattern\": [],\n  \"shoulder_style\": null,\n  \"sleeve_length\": null,\n  \"sleeve_style\": null,\n  \"structure\": [],\n  \"subcategory\": null,\n  \"top_length\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\n- garment_feature = visible functional garment features or closures such as hooded, belted, button_up, lace_up, or zip_up; do not use purely decorative buttons, bows, or lacing. Examples: hooded, belted, button_up, lace_up, zip_up.\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: cape, cardigan, coat, jacket, robe, shawl, vest\n  collar_style: collared, cross_collar, duijin_collar, mandarin_collar, peter_pan_collar, right_cross_collar, sailor_collar\n  fit: bodycon, fitted, loose, oversized, regular\n  neckline: boat_neck, cowl_neck, crew_neck, halter_neck, keyhole_neck, mock_neck, scoop_neck, square_neck, sweetheart_neck, turtleneck, v_neck\n  shoulder_style: cold_shoulder, halter, off_shoulder, one_shoulder, strapless\n  sleeve_length: elbow, extra_long, long, short, sleeveless, three_quarter\n  sleeve_style: bell_sleeve, bishop_sleeve, cap_sleeve, daxiu_sleeve, detached_sleeves, flare_sleeve, puff_sleeve, raglan_sleeve, shuixiu_sleeve, slit_sleeve, split_sleeve\n  top_length: crop, floor_length, hip_length, maxi, mid_thigh, ultra_crop, upper_thigh, waist_length\n\nPREFERRED SUBCATEGORY EXAMPLES\n  cape: capelet, cloak, hooded_cape, poncho\n  cardigan: long_cardigan, shrug\n  coat: fur_coat\n  jacket: blazer, bolero, bomber_jacket, hoodie, military_jacket, shirt_jacket, windbreaker\n  robe: beizi, daxiushan\n  shawl: stole\n  vest: hooded_vest, waistcoat\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"jacket\",\"subcategory\":\"bolero\",\"material\":[\"fur\"],\"ornament\":[\"heart\"]}",
+        "raw_payload": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "fur"
+          ],
+          "ornament": [
+            "heart"
+          ]
+        },
+        "normalized_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "heart"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1020200312,
+        "item_type": "outerwear",
+        "category": "jacket",
+        "subcategory": "bolero",
+        "metadata": {
+          "material": [
+            "fur"
+          ],
+          "ornament": [
+            "bow"
+          ]
+        }
+      },
+      "report": {
+        "item_id": 1020200312,
+        "item_type": "outerwear",
+        "source_raw_payload": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "fur"
+          ],
+          "ornament": [
+            "heart"
+          ]
+        },
+        "normalized_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "heart"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "final_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [],
+          "material": [
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "bow"
+          ],
+          "pattern": [],
+          "shoulder_style": null,
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "normalized_to_final_changes": [
+          {
+            "field": "ornament",
+            "from": [
+              "heart"
+            ],
+            "to": [
+              "bow"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "category-promotion",
+      "raw": {
+        "item_id": 1021000002,
+        "item_type": "earrings",
+        "data": {
+          "category": "hoop_earrings",
+          "subcategory": null
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1021000002,
+        "item_type": "earrings",
+        "data": {
+          "category": "earring",
+          "material": [],
+          "ornament": [],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "hoop_earrings"
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1021000002,
+        "item_type": "earrings",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = earrings\n\nSCHEMA TEMPLATE\n{\n  \"category\": null,\n  \"material\": [],\n  \"ornament\": [],\n  \"pattern\": [],\n  \"structure\": [],\n  \"subcategory\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: ear_cuff, earring\n\nPREFERRED SUBCATEGORY EXAMPLES\n  ear_cuff: null\n  earring: chandelier_earrings, drop_earrings, hoop_earrings, stud_earrings\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"hoop_earrings\",\"subcategory\":null}",
+        "raw_payload": {
+          "category": "hoop_earrings",
+          "subcategory": null
+        },
+        "normalized_data": {
+          "category": "earring",
+          "material": [],
+          "ornament": [],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "hoop_earrings"
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [
+            {
+              "field": "category",
+              "token": "hoop_earrings"
+            }
+          ],
+          "non_canonical_count": 1,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1021000002,
+        "item_type": "earrings",
+        "category": "earring",
+        "subcategory": "hoop_earrings",
+        "metadata": {}
+      },
+      "report": {
+        "item_id": 1021000002,
+        "item_type": "earrings",
+        "filter_report": {
+          "non_canonical": [
+            {
+              "field": "category",
+              "token": "hoop_earrings"
+            }
+          ]
+        },
+        "source_raw_payload": {
+          "category": "hoop_earrings",
+          "subcategory": null
+        },
+        "normalized_data": {
+          "category": "earring",
+          "material": [],
+          "ornament": [],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "hoop_earrings"
+        },
+        "final_data": {
+          "category": "earring",
+          "material": [],
+          "ornament": [],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "hoop_earrings"
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "category",
+            "from": "hoop_earrings",
+            "to": "earring"
+          },
+          {
+            "field": "subcategory",
+            "from": null,
+            "to": "hoop_earrings"
+          }
+        ]
+      }
+    },
+    {
+      "name": "malformed-json",
+      "raw": {
+        "item_id": 1020100311,
+        "item_type": "hair",
+        "data": {},
+        "parse_error": "json_decode_error:Expecting value"
+      },
+      "structured": {
+        "item_id": 1020100311,
+        "item_type": "hair",
+        "data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "parse_error": "json_decode_error:Expecting value"
+      },
+      "debug": {
+        "item_id": 1020100311,
+        "item_type": "hair",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = hair\n\nSCHEMA TEMPLATE\n{\n  \"bangs\": null,\n  \"category\": null,\n  \"hair_length\": null,\n  \"haircut\": null,\n  \"subcategory\": null,\n  \"texture\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nHAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.\n\nCLOSED LISTS\n  category: braid, bun, half_up, loose, ponytail, twin_tails, updo\n  bangs: blunt_bangs, curtain_bangs, no_bangs, side_swept_bangs, wispy_bangs\n  hair_length: long, medium, short, very_long\n  haircut: blunt_cut, bob, hime_cut, layered_cut, lob, pixie_cut, shag, wolf_cut\n  texture: curly, straight, wavy\n\nPREFERRED SUBCATEGORY EXAMPLES\n  braid: crown_braid, side_braid, twin_braids\n  bun: high_bun, side_bun, space_buns, top_knot\n  half_up: half_up_braid, half_up_bun, half_up_ponytail\n  loose: null\n  ponytail: high_ponytail, low_ponytail, side_ponytail\n  twin_tails: drill_twin_tails, high_twin_tails, low_twin_tails\n  updo: chignon, double_ring_bun, flying_immortal_bun\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":",
+        "raw_payload": null,
+        "normalized_data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": "json_decode_error:Expecting value"
+      },
+      "attributes": {
+        "item_id": 1020100311,
+        "item_type": "hair",
+        "category": null,
+        "subcategory": null,
+        "metadata": {}
+      },
+      "report": null
+    },
+    {
+      "name": "non-object-json",
+      "raw": {
+        "item_id": 1020100312,
+        "item_type": "hair",
+        "data": {},
+        "parse_error": "json_root_not_object"
+      },
+      "structured": {
+        "item_id": 1020100312,
+        "item_type": "hair",
+        "data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "parse_error": "json_root_not_object"
+      },
+      "debug": {
+        "item_id": 1020100312,
+        "item_type": "hair",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = hair\n\nSCHEMA TEMPLATE\n{\n  \"bangs\": null,\n  \"category\": null,\n  \"hair_length\": null,\n  \"haircut\": null,\n  \"subcategory\": null,\n  \"texture\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nHAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.\n\nCLOSED LISTS\n  category: braid, bun, half_up, loose, ponytail, twin_tails, updo\n  bangs: blunt_bangs, curtain_bangs, no_bangs, side_swept_bangs, wispy_bangs\n  hair_length: long, medium, short, very_long\n  haircut: blunt_cut, bob, hime_cut, layered_cut, lob, pixie_cut, shag, wolf_cut\n  texture: curly, straight, wavy\n\nPREFERRED SUBCATEGORY EXAMPLES\n  braid: crown_braid, side_braid, twin_braids\n  bun: high_bun, side_bun, space_buns, top_knot\n  half_up: half_up_braid, half_up_bun, half_up_ponytail\n  loose: null\n  ponytail: high_ponytail, low_ponytail, side_ponytail\n  twin_tails: drill_twin_tails, high_twin_tails, low_twin_tails\n  updo: chignon, double_ring_bun, flying_immortal_bun\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "[]",
+        "raw_payload": null,
+        "normalized_data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": "json_root_not_object"
+      },
+      "attributes": {
+        "item_id": 1020100312,
+        "item_type": "hair",
+        "category": null,
+        "subcategory": null,
+        "metadata": {}
+      },
+      "report": null
+    },
+    {
+      "name": "empty-response",
+      "raw": {
+        "item_id": 1020100313,
+        "item_type": "hair",
+        "data": {},
+        "parse_error": "empty_response"
+      },
+      "structured": {
+        "item_id": 1020100313,
+        "item_type": "hair",
+        "data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "parse_error": "empty_response"
+      },
+      "debug": {
+        "item_id": 1020100313,
+        "item_type": "hair",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = hair\n\nSCHEMA TEMPLATE\n{\n  \"bangs\": null,\n  \"category\": null,\n  \"hair_length\": null,\n  \"haircut\": null,\n  \"subcategory\": null,\n  \"texture\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nHAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.\n\nCLOSED LISTS\n  category: braid, bun, half_up, loose, ponytail, twin_tails, updo\n  bangs: blunt_bangs, curtain_bangs, no_bangs, side_swept_bangs, wispy_bangs\n  hair_length: long, medium, short, very_long\n  haircut: blunt_cut, bob, hime_cut, layered_cut, lob, pixie_cut, shag, wolf_cut\n  texture: curly, straight, wavy\n\nPREFERRED SUBCATEGORY EXAMPLES\n  braid: crown_braid, side_braid, twin_braids\n  bun: high_bun, side_bun, space_buns, top_knot\n  half_up: half_up_braid, half_up_bun, half_up_ponytail\n  loose: null\n  ponytail: high_ponytail, low_ponytail, side_ponytail\n  twin_tails: drill_twin_tails, high_twin_tails, low_twin_tails\n  updo: chignon, double_ring_bun, flying_immortal_bun\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": " ",
+        "raw_payload": null,
+        "normalized_data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": "empty_response"
+      },
+      "attributes": {
+        "item_id": 1020100313,
+        "item_type": "hair",
+        "category": null,
+        "subcategory": null,
+        "metadata": {}
+      },
+      "report": null
+    },
+    {
+      "name": "shoe-defaults-and-category-alias",
+      "raw": {
+        "item_id": 1020700001,
+        "item_type": "shoes",
+        "data": {
+          "category": "sneaker",
+          "subcategory": null,
+          "ornament": [
+            "toe_ring"
+          ]
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1020700001,
+        "item_type": "shoes",
+        "data": {
+          "category": "sneakers",
+          "heel_height": "flat",
+          "heel_type": null,
+          "material": [],
+          "ornament": [
+            "ring"
+          ],
+          "pattern": [],
+          "shaft_height": null,
+          "sole_height": "flat",
+          "structure": [],
+          "subcategory": null
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020700001,
+        "item_type": "shoes",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = shoes\n\nSCHEMA TEMPLATE\n{\n  \"category\": null,\n  \"heel_height\": null,\n  \"heel_type\": null,\n  \"material\": [],\n  \"ornament\": [],\n  \"pattern\": [],\n  \"shaft_height\": null,\n  \"sole_height\": null,\n  \"structure\": [],\n  \"subcategory\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nSHOES FIELD RULES\n- heel_type only when a distinct heel is present; heel_height is flat otherwise, or null when the heel component is absent.\n- sole_height is low or high for visibly thick, platform, or elevated soles; otherwise flat, or null when the sole component is absent.\n- shaft_height only for boots; otherwise null.\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: barefoot, boots, flats, heels, loafers, mary_janes, mules, sandals, slippers, sneakers\n  heel_height: flat, high, low\n  heel_type: block, kitten, sculptural, stiletto, wedge\n  shaft_height: ankle, knee_high, mid_calf, over_knee\n  sole_height: flat, high, low\n\nPREFERRED SUBCATEGORY EXAMPLES\n  barefoot: null\n  boots: combat_boots, cowboy_boots, riding_boots\n  flats: ballet_flats, lace_up_flats, traditional_chinese_flats\n  heels: ankle_strap_heels, dorsay_heels, pumps, slingback_heels, t_strap_heels\n  loafers: penny_loafers\n  mary_janes: null\n  mules: clogs\n  sandals: gladiator_sandals\n  slippers: null\n  sneakers: high_top_sneakers, low_top_sneakers\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"sneaker\",\"subcategory\":null,\"ornament\":[\"toe_ring\"]}",
+        "raw_payload": {
+          "category": "sneaker",
+          "subcategory": null,
+          "ornament": [
+            "toe_ring"
+          ]
+        },
+        "normalized_data": {
+          "category": "sneakers",
+          "heel_height": "flat",
+          "heel_type": null,
+          "material": [],
+          "ornament": [
+            "ring"
+          ],
+          "pattern": [],
+          "shaft_height": null,
+          "sole_height": "flat",
+          "structure": [],
+          "subcategory": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1020700001,
+        "item_type": "shoes",
+        "category": "sneakers",
+        "subcategory": null,
+        "metadata": {
+          "heel_height": "flat",
+          "ornament": [
+            "ring"
+          ],
+          "sole_height": "flat"
+        }
+      },
+      "report": {
+        "item_id": 1020700001,
+        "item_type": "shoes",
+        "source_raw_payload": {
+          "category": "sneaker",
+          "subcategory": null,
+          "ornament": [
+            "toe_ring"
+          ]
+        },
+        "normalized_data": {
+          "category": "sneakers",
+          "heel_height": "flat",
+          "heel_type": null,
+          "material": [],
+          "ornament": [
+            "ring"
+          ],
+          "pattern": [],
+          "shaft_height": null,
+          "sole_height": "flat",
+          "structure": [],
+          "subcategory": null
+        },
+        "final_data": {
+          "category": "sneakers",
+          "heel_height": "flat",
+          "heel_type": null,
+          "material": [],
+          "ornament": [
+            "ring"
+          ],
+          "pattern": [],
+          "shaft_height": null,
+          "sole_height": "flat",
+          "structure": [],
+          "subcategory": null
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "category",
+            "from": "sneaker",
+            "to": "sneakers"
+          },
+          {
+            "field": "heel_height",
+            "from": null,
+            "to": "flat"
+          },
+          {
+            "field": "ornament",
+            "from": [
+              "toe_ring"
+            ],
+            "to": [
+              "ring"
+            ]
+          },
+          {
+            "field": "sole_height",
+            "from": null,
+            "to": "flat"
+          }
+        ]
+      }
+    },
+    {
+      "name": "barefoot-has-no-heel-defaults",
+      "raw": {
+        "item_id": 1020700002,
+        "item_type": "shoes",
+        "data": {
+          "category": "barefoot"
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1020700002,
+        "item_type": "shoes",
+        "data": {
+          "category": "barefoot",
+          "heel_height": null,
+          "heel_type": null,
+          "material": [],
+          "ornament": [],
+          "pattern": [],
+          "shaft_height": null,
+          "sole_height": null,
+          "structure": [],
+          "subcategory": null
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020700002,
+        "item_type": "shoes",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = shoes\n\nSCHEMA TEMPLATE\n{\n  \"category\": null,\n  \"heel_height\": null,\n  \"heel_type\": null,\n  \"material\": [],\n  \"ornament\": [],\n  \"pattern\": [],\n  \"shaft_height\": null,\n  \"sole_height\": null,\n  \"structure\": [],\n  \"subcategory\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nSHOES FIELD RULES\n- heel_type only when a distinct heel is present; heel_height is flat otherwise, or null when the heel component is absent.\n- sole_height is low or high for visibly thick, platform, or elevated soles; otherwise flat, or null when the sole component is absent.\n- shaft_height only for boots; otherwise null.\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: barefoot, boots, flats, heels, loafers, mary_janes, mules, sandals, slippers, sneakers\n  heel_height: flat, high, low\n  heel_type: block, kitten, sculptural, stiletto, wedge\n  shaft_height: ankle, knee_high, mid_calf, over_knee\n  sole_height: flat, high, low\n\nPREFERRED SUBCATEGORY EXAMPLES\n  barefoot: null\n  boots: combat_boots, cowboy_boots, riding_boots\n  flats: ballet_flats, lace_up_flats, traditional_chinese_flats\n  heels: ankle_strap_heels, dorsay_heels, pumps, slingback_heels, t_strap_heels\n  loafers: penny_loafers\n  mary_janes: null\n  mules: clogs\n  sandals: gladiator_sandals\n  slippers: null\n  sneakers: high_top_sneakers, low_top_sneakers\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"barefoot\"}",
+        "raw_payload": {
+          "category": "barefoot"
+        },
+        "normalized_data": {
+          "category": "barefoot",
+          "heel_height": null,
+          "heel_type": null,
+          "material": [],
+          "ornament": [],
+          "pattern": [],
+          "shaft_height": null,
+          "sole_height": null,
+          "structure": [],
+          "subcategory": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1020700002,
+        "item_type": "shoes",
+        "category": "barefoot",
+        "subcategory": null,
+        "metadata": {}
+      },
+      "report": null
+    },
+    {
+      "name": "bottom-length-and-cord-ownership",
+      "raw": {
+        "item_id": 1020400001,
+        "item_type": "bottoms",
+        "data": {
+          "category": "pants",
+          "bottom_length": "mini",
+          "material": [
+            "braided_cord"
+          ],
+          "structure": [
+            "ribbing"
+          ]
+        },
+        "parse_error": null
+      },
+      "structured": {
+        "item_id": 1020400001,
+        "item_type": "bottoms",
+        "data": {
+          "bottom_length": "knee_length",
+          "category": "pants",
+          "garment_feature": [],
+          "material": [
+            "cord"
+          ],
+          "ornament": [],
+          "pant_shape": null,
+          "pattern": [],
+          "skirt_silhouette": null,
+          "structure": [
+            "ribbed",
+            "braided"
+          ],
+          "subcategory": null,
+          "waist_height": null
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020400001,
+        "item_type": "bottoms",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = bottoms\n\nSCHEMA TEMPLATE\n{\n  \"bottom_length\": null,\n  \"category\": null,\n  \"garment_feature\": [],\n  \"material\": [],\n  \"ornament\": [],\n  \"pant_shape\": null,\n  \"pattern\": [],\n  \"skirt_silhouette\": null,\n  \"structure\": [],\n  \"subcategory\": null,\n  \"waist_height\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nBOTTOMS FIELD RULES\n- skirt_silhouette only when category = skirt or skort; otherwise null.\n- pant_shape only when category = pants or overalls; otherwise null.\n- waist_height only when the waistband or rise is visible; otherwise null.\n- garment_feature = visible functional garment features or closures such as hooded, belted, button_up, lace_up, or zip_up; do not use purely decorative buttons, bows, or lacing. Examples: hooded, belted, button_up, lace_up, zip_up.\n- material = visible fabric or surface type. Examples: lace, leather, knit, satin, sheer.\n- ornament = attached or applied decorative detail, not an edge or band finish. Examples: bow, button, chain, embroidery, ruffle.\n- pattern = repeated surface motif or print. Examples: floral, plaid, solid, star, striped.\n- structure = built-in fabric shaping, formation, or visible surface texture. Examples: cutout, draped, gathered, pleated, ribbed.\n\nCLOSED LISTS\n  category: overalls, pants, shorts, skirt, skort\n  bottom_length: ankle_length, floor_length, knee_length, maxi, mid_calf, mid_thigh, midi, mini, upper_thigh\n  pant_shape: flared, slim, straight, tapered, wide_leg\n  skirt_silhouette: a_line, asymmetric, bubble, circle, pencil, straight, trumpet\n  waist_height: high_rise, low_rise, mid_rise\n\nPREFERRED SUBCATEGORY EXAMPLES\n  overalls: bib_overalls, overall_shorts, overall_skirt\n  pants: cargo_pants, chaps, harem_pants, jeans, joggers, palazzo_pants\n  shorts: athletic_shorts, bermuda_shorts, bloomers, denim_shorts, ruffle_shorts, tailored_shorts\n  skirt: apron_skirt, ma_mian_skirt, wrap_skirt\n  skort: null\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"pants\",\"bottom_length\":\"mini\",\"material\":[\"braided_cord\"],\"structure\":[\"ribbing\"]}",
+        "raw_payload": {
+          "category": "pants",
+          "bottom_length": "mini",
+          "material": [
+            "braided_cord"
+          ],
+          "structure": [
+            "ribbing"
+          ]
+        },
+        "normalized_data": {
+          "bottom_length": "knee_length",
+          "category": "pants",
+          "garment_feature": [],
+          "material": [
+            "cord"
+          ],
+          "ornament": [],
+          "pant_shape": null,
+          "pattern": [],
+          "skirt_silhouette": null,
+          "structure": [
+            "ribbed",
+            "braided"
+          ],
+          "subcategory": null,
+          "waist_height": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "attributes": {
+        "item_id": 1020400001,
+        "item_type": "bottoms",
+        "category": "pants",
+        "subcategory": null,
+        "metadata": {
+          "bottom_length": "knee_length",
+          "material": [
+            "cord"
+          ],
+          "structure": [
+            "ribbed",
+            "braided"
+          ]
+        }
+      },
+      "report": {
+        "item_id": 1020400001,
+        "item_type": "bottoms",
+        "source_raw_payload": {
+          "category": "pants",
+          "bottom_length": "mini",
+          "material": [
+            "braided_cord"
+          ],
+          "structure": [
+            "ribbing"
+          ]
+        },
+        "normalized_data": {
+          "bottom_length": "knee_length",
+          "category": "pants",
+          "garment_feature": [],
+          "material": [
+            "cord"
+          ],
+          "ornament": [],
+          "pant_shape": null,
+          "pattern": [],
+          "skirt_silhouette": null,
+          "structure": [
+            "ribbed",
+            "braided"
+          ],
+          "subcategory": null,
+          "waist_height": null
+        },
+        "final_data": {
+          "bottom_length": "knee_length",
+          "category": "pants",
+          "garment_feature": [],
+          "material": [
+            "cord"
+          ],
+          "ornament": [],
+          "pant_shape": null,
+          "pattern": [],
+          "skirt_silhouette": null,
+          "structure": [
+            "ribbed",
+            "braided"
+          ],
+          "subcategory": null,
+          "waist_height": null
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "bottom_length",
+            "from": "mini",
+            "to": "knee_length"
+          },
+          {
+            "field": "material",
+            "from": [
+              "braided_cord"
+            ],
+            "to": [
+              "cord"
+            ]
+          },
+          {
+            "field": "structure",
+            "from": [
+              "ribbing"
+            ],
+            "to": [
+              "ribbed",
+              "braided"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "manifest": [
+    {
+      "name": "incremental",
+      "rows": [
+        {
+          "item_id": 1020100003,
+          "item_type": "hair"
+        },
+        {
+          "item_id": 1020200001,
+          "item_type": "outerwear"
+        },
+        {
+          "item_id": 1021000001,
+          "item_type": "earrings"
+        },
+        {
+          "item_id": 1021500001,
+          "item_type": "handhelds"
+        }
+      ],
+      "stats": {
+        "skipped_count": 2,
+        "non_base_skipped_count": 1,
+        "indexed_skipped_count": 1,
+        "missing_icon_count": 2,
+        "missing_overview_count": 3,
+        "processor_excluded_count": 1
+      }
+    },
+    {
+      "name": "include-indexed",
+      "rows": [
+        {
+          "item_id": 1020100003,
+          "item_type": "hair"
+        },
+        {
+          "item_id": 1020200001,
+          "item_type": "outerwear"
+        },
+        {
+          "item_id": 1021000001,
+          "item_type": "earrings"
+        },
+        {
+          "item_id": 1020100001,
+          "item_type": "hair"
+        },
+        {
+          "item_id": 1021500001,
+          "item_type": "handhelds"
+        }
+      ],
+      "stats": {
+        "skipped_count": 2,
+        "non_base_skipped_count": 1,
+        "indexed_skipped_count": 0,
+        "missing_icon_count": 2,
+        "missing_overview_count": 3,
+        "processor_excluded_count": 1
+      }
+    },
+    {
+      "name": "explicit-published-id",
+      "rows": [
+        {
+          "item_id": 1020100001,
+          "item_type": "hair"
+        }
+      ],
+      "stats": {
+        "skipped_count": 0,
+        "non_base_skipped_count": 0,
+        "indexed_skipped_count": 0,
+        "missing_icon_count": 0,
+        "missing_overview_count": 0,
+        "processor_excluded_count": 0
+      }
+    },
+    {
+      "name": "type-filter",
+      "rows": [
+        {
+          "item_id": 1020200001,
+          "item_type": "outerwear"
+        }
+      ],
+      "stats": {
+        "skipped_count": 2,
+        "non_base_skipped_count": 1,
+        "indexed_skipped_count": 0,
+        "missing_icon_count": 2,
+        "missing_overview_count": 1,
+        "processor_excluded_count": 1
+      }
+    },
+    {
+      "name": "limit-after-exclusion",
+      "rows": [
+        {
+          "item_id": 1020100003,
+          "item_type": "hair"
+        },
+        {
+          "item_id": 1020200001,
+          "item_type": "outerwear"
+        }
+      ],
+      "stats": {
+        "skipped_count": 0,
+        "non_base_skipped_count": 0,
+        "indexed_skipped_count": 0,
+        "missing_icon_count": 1,
+        "missing_overview_count": 0,
+        "processor_excluded_count": 0
+      }
+    }
+  ],
+  "color_manifest": {
+    "rows": [
+      {
+        "item_id": 1020100003,
+        "item_type": "hair",
+        "icon_path": "icons/1020100003.png"
+      },
+      {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "icon_path": "icons/1021000001.png"
+      },
+      {
+        "item_id": 1020100001,
+        "item_type": "hair",
+        "icon_path": "icons/1020100001.png"
+      },
+      {
+        "item_id": 1020100002,
+        "item_type": "hair",
+        "icon_path": "icons/1020100002.png"
+      },
+      {
+        "item_id": 1020200003,
+        "item_type": "outerwear",
+        "icon_path": "icons/1020200003.png"
+      },
+      {
+        "item_id": 1021500001,
+        "item_type": "handhelds",
+        "icon_path": "icons/1021500001.png"
+      }
+    ],
+    "stats": {
+      "skipped_count": 3,
+      "unsupported_type_count": 1,
+      "missing_icon_count": 2
+    }
+  },
+  "colors": [
+    {
+      "name": "alpha-and-highlight",
+      "record": {
+        "item_id": 1,
+        "item_type": "outerwear",
+        "primary_colors": [
+          "blue",
+          "red",
+          "white"
+        ],
+        "secondary_colors": [],
+        "color_tags": [
+          "blue",
+          "red",
+          "white",
+          "multicolor"
+        ],
+        "swatches": [
+          {
+            "label": "blue",
+            "hex": "#557fc1",
+            "weight": 0.3333
+          },
+          {
+            "label": "red",
+            "hex": "#b73432",
+            "weight": 0.3333
+          },
+          {
+            "label": "white",
+            "hex": "#f2f2ee",
+            "weight": 0.3333
+          }
+        ],
+        "needs_review": false,
+        "review_reasons": []
+      },
+      "debug": {
+        "item_id": 1,
+        "item_type": "outerwear",
+        "image_path": "alpha-and-highlight.png",
+        "visible_pixel_count": 4,
+        "sampled_pixel_count": 3,
+        "ignored_pixel_count": 2,
+        "color_weights": {
+          "blue": 0.3333,
+          "red": 0.3333,
+          "white": 0.3333
+        },
+        "swatches": [
+          {
+            "label": "blue",
+            "hex": "#557fc1",
+            "weight": 0.3333
+          },
+          {
+            "label": "red",
+            "hex": "#b73432",
+            "weight": 0.3333
+          },
+          {
+            "label": "white",
+            "hex": "#f2f2ee",
+            "weight": 0.3333
+          }
+        ],
+        "needs_review": false,
+        "review_reasons": []
+      }
+    },
+    {
+      "name": "transparent",
+      "record": {
+        "item_id": 2,
+        "item_type": "earrings",
+        "primary_colors": [],
+        "secondary_colors": [],
+        "color_tags": [],
+        "swatches": [],
+        "needs_review": true,
+        "review_reasons": [
+          "no_color_tags"
+        ]
+      },
+      "debug": {
+        "item_id": 2,
+        "item_type": "earrings",
+        "image_path": "transparent.png",
+        "visible_pixel_count": 0,
+        "sampled_pixel_count": 0,
+        "ignored_pixel_count": 2,
+        "color_weights": {},
+        "swatches": [],
+        "needs_review": true,
+        "review_reasons": [
+          "no_color_tags"
+        ]
+      }
+    },
+    {
+      "name": "hair-composite",
+      "record": {
+        "item_id": 3,
+        "item_type": "hair",
+        "primary_colors": [
+          "black"
+        ],
+        "secondary_colors": [],
+        "color_tags": [
+          "black"
+        ],
+        "swatches": [
+          {
+            "label": "black",
+            "hex": "#202020",
+            "weight": 0.9897
+          }
+        ],
+        "needs_review": true,
+        "review_reasons": [
+          "hair_icon_composite"
+        ]
+      },
+      "debug": {
+        "item_id": 3,
+        "item_type": "hair",
+        "image_path": "hair-composite.png",
+        "visible_pixel_count": 9,
+        "sampled_pixel_count": 9,
+        "ignored_pixel_count": 0,
+        "color_weights": {
+          "black": 0.9897,
+          "beige": 0.0103
+        },
+        "swatches": [
+          {
+            "label": "black",
+            "hex": "#202020",
+            "weight": 0.9897
+          },
+          {
+            "label": "beige",
+            "hex": "#dcb9a0",
+            "weight": 0.0103
+          }
+        ],
+        "needs_review": true,
+        "review_reasons": [
+          "hair_icon_composite"
+        ]
+      }
+    },
+    {
+      "name": "ties-to-even",
+      "record": {
+        "item_id": 4,
+        "item_type": "outerwear",
+        "primary_colors": [
+          "black"
+        ],
+        "secondary_colors": [],
+        "color_tags": [
+          "black"
+        ],
+        "swatches": [
+          {
+            "label": "black",
+            "hex": "#202020",
+            "weight": 1.0
+          }
+        ],
+        "needs_review": false,
+        "review_reasons": []
+      },
+      "debug": {
+        "item_id": 4,
+        "item_type": "outerwear",
+        "image_path": "ties-to-even.png",
+        "visible_pixel_count": 2,
+        "sampled_pixel_count": 2,
+        "ignored_pixel_count": 0,
+        "color_weights": {
+          "black": 1.0
+        },
+        "swatches": [
+          {
+            "label": "black",
+            "hex": "#202020",
+            "weight": 1.0
+          }
+        ],
+        "needs_review": false,
+        "review_reasons": []
+      }
+    },
+    {
+      "name": "hair-taupe-merge",
+      "record": {
+        "item_id": 5,
+        "item_type": "hair",
+        "primary_colors": [
+          "beige"
+        ],
+        "secondary_colors": [],
+        "color_tags": [
+          "beige"
+        ],
+        "swatches": [
+          {
+            "label": "beige",
+            "hex": "#959471",
+            "weight": 1.0
+          }
+        ],
+        "needs_review": true,
+        "review_reasons": [
+          "hair_icon_composite"
+        ]
+      },
+      "debug": {
+        "item_id": 5,
+        "item_type": "hair",
+        "image_path": "hair-taupe-merge.png",
+        "visible_pixel_count": 10,
+        "sampled_pixel_count": 10,
+        "ignored_pixel_count": 0,
+        "color_weights": {
+          "beige": 1.0
+        },
+        "swatches": [
+          {
+            "label": "beige",
+            "hex": "#959471",
+            "weight": 1.0
+          }
+        ],
+        "needs_review": true,
+        "review_reasons": [
+          "hair_icon_composite"
+        ]
+      }
+    }
+  ],
+  "cache_completion": [
+    {
+      "name": "complete",
+      "structured": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "parse_error": null
+      },
+      "debug": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = hair\n\nSCHEMA TEMPLATE\n{\n  \"bangs\": null,\n  \"category\": null,\n  \"hair_length\": null,\n  \"haircut\": null,\n  \"subcategory\": null,\n  \"texture\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nHAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.\n\nCLOSED LISTS\n  category: braid, bun, half_up, loose, ponytail, twin_tails, updo\n  bangs: blunt_bangs, curtain_bangs, no_bangs, side_swept_bangs, wispy_bangs\n  hair_length: long, medium, short, very_long\n  haircut: blunt_cut, bob, hime_cut, layered_cut, lob, pixie_cut, shag, wolf_cut\n  texture: curly, straight, wavy\n\nPREFERRED SUBCATEGORY EXAMPLES\n  braid: crown_braid, side_braid, twin_braids\n  bun: high_bun, side_bun, space_buns, top_knot\n  half_up: half_up_braid, half_up_bun, half_up_ponytail\n  loose: null\n  ponytail: high_ponytail, low_ponytail, side_ponytail\n  twin_tails: drill_twin_tails, high_twin_tails, low_twin_tails\n  updo: chignon, double_ring_bun, flying_immortal_bun\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"Twin Tail\",\"subcategory\":\"high_twin_tails\",\"bangs\":\"blunt_bangs\",\"hair_length\":\"long\",\"haircut\":null,\"texture\":\"straight\"}",
+        "raw_payload": {
+          "category": "Twin Tail",
+          "subcategory": "high_twin_tails",
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "haircut": null,
+          "texture": "straight"
+        },
+        "normalized_data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "complete": true
+    },
+    {
+      "name": "missing-debug",
+      "structured": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "parse_error": null
+      },
+      "debug": null,
+      "complete": false
+    },
+    {
+      "name": "missing-structured",
+      "structured": null,
+      "debug": {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = hair\n\nSCHEMA TEMPLATE\n{\n  \"bangs\": null,\n  \"category\": null,\n  \"hair_length\": null,\n  \"haircut\": null,\n  \"subcategory\": null,\n  \"texture\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nHAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.\n\nCLOSED LISTS\n  category: braid, bun, half_up, loose, ponytail, twin_tails, updo\n  bangs: blunt_bangs, curtain_bangs, no_bangs, side_swept_bangs, wispy_bangs\n  hair_length: long, medium, short, very_long\n  haircut: blunt_cut, bob, hime_cut, layered_cut, lob, pixie_cut, shag, wolf_cut\n  texture: curly, straight, wavy\n\nPREFERRED SUBCATEGORY EXAMPLES\n  braid: crown_braid, side_braid, twin_braids\n  bun: high_bun, side_bun, space_buns, top_knot\n  half_up: half_up_braid, half_up_bun, half_up_ponytail\n  loose: null\n  ponytail: high_ponytail, low_ponytail, side_ponytail\n  twin_tails: drill_twin_tails, high_twin_tails, low_twin_tails\n  updo: chignon, double_ring_bun, flying_immortal_bun\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":\"Twin Tail\",\"subcategory\":\"high_twin_tails\",\"bangs\":\"blunt_bangs\",\"hair_length\":\"long\",\"haircut\":null,\"texture\":\"straight\"}",
+        "raw_payload": {
+          "category": "Twin Tail",
+          "subcategory": "high_twin_tails",
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "haircut": null,
+          "texture": "straight"
+        },
+        "normalized_data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": null
+      },
+      "complete": false
+    },
+    {
+      "name": "parse-failure",
+      "structured": {
+        "item_id": 1020100311,
+        "item_type": "hair",
+        "data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "parse_error": "json_decode_error:Expecting value"
+      },
+      "debug": {
+        "item_id": 1020100311,
+        "item_type": "hair",
+        "image_paths": {
+          "overview": null,
+          "icon": null
+        },
+        "prompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n\nITEM TYPE\n- slot = hair\n\nSCHEMA TEMPLATE\n{\n  \"bangs\": null,\n  \"category\": null,\n  \"hair_length\": null,\n  \"haircut\": null,\n  \"subcategory\": null,\n  \"texture\": null\n}\n\nEVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.\n\nHAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.\n\nCLOSED LISTS\n  category: braid, bun, half_up, loose, ponytail, twin_tails, updo\n  bangs: blunt_bangs, curtain_bangs, no_bangs, side_swept_bangs, wispy_bangs\n  hair_length: long, medium, short, very_long\n  haircut: blunt_cut, bob, hime_cut, layered_cut, lob, pixie_cut, shag, wolf_cut\n  texture: curly, straight, wavy\n\nPREFERRED SUBCATEGORY EXAMPLES\n  braid: crown_braid, side_braid, twin_braids\n  bun: high_bun, side_bun, space_buns, top_knot\n  half_up: half_up_braid, half_up_bun, half_up_ponytail\n  loose: null\n  ponytail: high_ponytail, low_ponytail, side_ponytail\n  twin_tails: drill_twin_tails, high_twin_tails, low_twin_tails\n  updo: chignon, double_ring_bun, flying_immortal_bun\n\nOUTPUT\n- Return exactly one JSON object matching the schema template.\n- Preserve the field order shown in SCHEMA TEMPLATE.\n- Use null or [] when unsupported, invisible, or uncertain.",
+        "raw_response": "{\"category\":",
+        "raw_payload": null,
+        "normalized_data": {
+          "bangs": null,
+          "category": null,
+          "hair_length": null,
+          "haircut": null,
+          "subcategory": null,
+          "texture": null
+        },
+        "filter_report": {
+          "cross_field_ownership": [],
+          "cross_field_ownership_count": 0,
+          "non_canonical": [],
+          "non_canonical_count": 0,
+          "unknown_fields": [],
+          "unknown_field_count": 0,
+          "parent_child_mismatch": null,
+          "parent_child_mismatch_count": 0,
+          "subcategory_not_in_list": null,
+          "subcategory_not_in_list_count": 0
+        },
+        "parse_error": "json_decode_error:Expecting value"
+      },
+      "complete": false
+    },
+    {
+      "name": "empty-data",
+      "structured": {
+        "data": {},
+        "parse_error": null
+      },
+      "debug": {},
+      "complete": false
+    }
+  ],
+  "refresh": {
+    "attributes": [
+      {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "category": "earring",
+        "subcategory": "drop_earrings",
+        "metadata": {
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ]
+        }
+      },
+      {
+        "item_id": 1020200310,
+        "item_type": "outerwear",
+        "category": "jacket",
+        "subcategory": "bolero",
+        "metadata": {
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "shoulder_style": "strapless",
+          "structure": [
+            "gathered"
+          ]
+        }
+      },
+      {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "category": "twin_tails",
+        "subcategory": "high_twin_tails",
+        "metadata": {
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "texture": "straight"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "item_id": 1021000001,
+        "item_type": "earrings",
+        "source_raw_payload": {
+          "category": "earring",
+          "subcategory": "drop_earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal_motif",
+            "gems"
+          ],
+          "pattern": [],
+          "structure": []
+        },
+        "normalized_data": {
+          "category": "earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "drop_earrings"
+        },
+        "final_data": {
+          "category": "earring",
+          "material": [
+            "metal"
+          ],
+          "ornament": [
+            "novel_crystal",
+            "gemstone"
+          ],
+          "pattern": [],
+          "structure": [],
+          "subcategory": "drop_earrings"
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "ornament",
+            "from": [
+              "novel_crystal_motif",
+              "gems"
+            ],
+            "to": [
+              "novel_crystal",
+              "gemstone"
+            ]
+          },
+          {
+            "field": "subcategory",
+            "from": "drop_earring",
+            "to": "drop_earrings"
+          }
+        ]
+      },
+      {
+        "item_id": 1020200310,
+        "item_type": "outerwear",
+        "filter_report": {
+          "cross_field_ownership": [
+            {
+              "field": "pattern",
+              "token": "filigree",
+              "target_field": "ornament",
+              "target_token": "filigree"
+            },
+            {
+              "field": "structure",
+              "token": "buckle",
+              "target_field": "ornament",
+              "target_token": "buckle"
+            }
+          ],
+          "non_canonical": [
+            {
+              "field": "neckline",
+              "token": "strapless"
+            }
+          ],
+          "unknown_fields": [
+            "unrecognized_field"
+          ]
+        },
+        "source_raw_payload": {
+          "category": "jacket",
+          "subcategory": "bolero",
+          "material": [
+            "paper",
+            "fur",
+            "fur"
+          ],
+          "ornament": [
+            "gems",
+            "pendants",
+            "spikes",
+            "toe_ring",
+            "droplet"
+          ],
+          "pattern": [
+            "filigree"
+          ],
+          "structure": [
+            "buckle",
+            "gathers"
+          ],
+          "neckline": "strapless",
+          "garment_feature": [
+            "hoodie"
+          ],
+          "unrecognized_field": "review_me"
+        },
+        "normalized_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "pattern": [],
+          "shoulder_style": "strapless",
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [
+            "gathered"
+          ],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "final_data": {
+          "category": "jacket",
+          "collar_style": null,
+          "fit": null,
+          "garment_feature": [
+            "hooded"
+          ],
+          "material": [
+            "paper",
+            "fur"
+          ],
+          "neckline": null,
+          "ornament": [
+            "gemstone",
+            "pendant",
+            "spike",
+            "ring",
+            "water_droplet",
+            "filigree",
+            "buckle"
+          ],
+          "pattern": [],
+          "shoulder_style": "strapless",
+          "sleeve_length": null,
+          "sleeve_style": null,
+          "structure": [
+            "gathered"
+          ],
+          "subcategory": "bolero",
+          "top_length": null
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "garment_feature",
+            "from": [
+              "hoodie"
+            ],
+            "to": [
+              "hooded"
+            ]
+          },
+          {
+            "field": "material",
+            "from": [
+              "paper",
+              "fur",
+              "fur"
+            ],
+            "to": [
+              "paper",
+              "fur"
+            ]
+          },
+          {
+            "field": "neckline",
+            "from": "strapless",
+            "to": null
+          },
+          {
+            "field": "ornament",
+            "from": [
+              "gems",
+              "pendants",
+              "spikes",
+              "toe_ring",
+              "droplet"
+            ],
+            "to": [
+              "gemstone",
+              "pendant",
+              "spike",
+              "ring",
+              "water_droplet",
+              "filigree",
+              "buckle"
+            ]
+          },
+          {
+            "field": "pattern",
+            "from": [
+              "filigree"
+            ],
+            "to": []
+          },
+          {
+            "field": "shoulder_style",
+            "from": null,
+            "to": "strapless"
+          },
+          {
+            "field": "structure",
+            "from": [
+              "buckle",
+              "gathers"
+            ],
+            "to": [
+              "gathered"
+            ]
+          },
+          {
+            "field": "unrecognized_field",
+            "from": "review_me",
+            "to": null
+          }
+        ]
+      },
+      {
+        "item_id": 1020100310,
+        "item_type": "hair",
+        "source_raw_payload": {
+          "category": "Twin Tail",
+          "subcategory": "high_twin_tails",
+          "bangs": "blunt_bangs",
+          "hair_length": "long",
+          "haircut": null,
+          "texture": "straight"
+        },
+        "normalized_data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "final_data": {
+          "bangs": "blunt_bangs",
+          "category": "twin_tails",
+          "hair_length": "long",
+          "haircut": null,
+          "subcategory": "high_twin_tails",
+          "texture": "straight"
+        },
+        "raw_to_normalized_changes": [
+          {
+            "field": "category",
+            "from": "Twin Tail",
+            "to": "twin_tails"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "extraction_model_id": "fixture-model",
+      "item_count": 3,
+      "skipped_count": 0,
+      "missing_icon_count": 0,
+      "missing_overview_count": 0,
+      "structured_parse_fail_count": 0,
+      "build_started_at": "2000-01-01T00:00:00+00:00",
+      "build_finished_at": "<timestamp>",
+      "duration_seconds": 0.0,
+      "search_report_path": "item-search-report.jsonl",
+      "item_attributes_path": "item-attributes.jsonl"
+    }
+  }
+}

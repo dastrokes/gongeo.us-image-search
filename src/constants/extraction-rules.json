@@ -1,0 +1,706 @@
+{
+  "fieldAliases": {
+    "category": [
+      [
+        "apron_dress",
+        "pinafore_dress"
+      ],
+      [
+        "boot",
+        "boots"
+      ],
+      [
+        "flat",
+        "flats"
+      ],
+      [
+        "fur_stole",
+        "stole"
+      ],
+      [
+        "glove",
+        "gloves"
+      ],
+      [
+        "heel",
+        "heels"
+      ],
+      [
+        "loafer",
+        "loafers"
+      ],
+      [
+        "mary_jane",
+        "mary_janes"
+      ],
+      [
+        "overall_dress",
+        "pinafore_dress"
+      ],
+      [
+        "playsuit",
+        "romper"
+      ],
+      [
+        "sandal",
+        "sandals"
+      ],
+      [
+        "shawl_wrap",
+        "shawl"
+      ],
+      [
+        "sneaker",
+        "sneakers"
+      ],
+      [
+        "sock",
+        "socks"
+      ],
+      [
+        "stocking",
+        "stockings"
+      ],
+      [
+        "stole",
+        "shawl"
+      ],
+      [
+        "tee",
+        "t_shirt"
+      ],
+      [
+        "tshirt",
+        "t_shirt"
+      ],
+      [
+        "twin_tail",
+        "twin_tails"
+      ]
+    ],
+    "subcategory": [
+      [
+        "apron_dress",
+        "pinafore_dress"
+      ],
+      [
+        "chandelier_earring",
+        "chandelier_earrings"
+      ],
+      [
+        "drop_earring",
+        "drop_earrings"
+      ],
+      [
+        "fingerless_glove",
+        "fingerless_gloves"
+      ],
+      [
+        "fur_stole",
+        "stole"
+      ],
+      [
+        "half_up_braids",
+        "half_up_braid"
+      ],
+      [
+        "hoop_earring",
+        "hoop_earrings"
+      ],
+      [
+        "lace_glove",
+        "lace_gloves"
+      ],
+      [
+        "opera_glove",
+        "opera_gloves"
+      ],
+      [
+        "overall_dress",
+        "pinafore_dress"
+      ],
+      [
+        "playsuit",
+        "romper"
+      ],
+      [
+        "shawl",
+        "stole"
+      ],
+      [
+        "side_buns",
+        "side_bun"
+      ],
+      [
+        "stud_earring",
+        "stud_earrings"
+      ]
+    ],
+    "garment_feature": [
+      [
+        "belt",
+        "belted"
+      ],
+      [
+        "buttoned",
+        "button_up"
+      ],
+      [
+        "buttoned_up",
+        "button_up"
+      ],
+      [
+        "button_front",
+        "button_up"
+      ],
+      [
+        "hood",
+        "hooded"
+      ],
+      [
+        "hoodie",
+        "hooded"
+      ],
+      [
+        "laced",
+        "lace_up"
+      ],
+      [
+        "laced_up",
+        "lace_up"
+      ],
+      [
+        "zip_front",
+        "zip_up"
+      ],
+      [
+        "zipped",
+        "zip_up"
+      ],
+      [
+        "zippered",
+        "zip_up"
+      ]
+    ],
+    "material": [
+      [
+        "beaded",
+        "bead"
+      ]
+    ],
+    "ornament": [
+      [
+        "binder_clip",
+        "clip"
+      ],
+      [
+        "bird_figurine",
+        "bird"
+      ],
+      [
+        "beads",
+        "bead"
+      ],
+      [
+        "buttons",
+        "button"
+      ],
+      [
+        "charms",
+        "charm"
+      ],
+      [
+        "claws",
+        "claw"
+      ],
+      [
+        "drop",
+        "dangle"
+      ],
+      [
+        "feathers",
+        "feather"
+      ],
+      [
+        "fringes",
+        "fringe"
+      ],
+      [
+        "flowers",
+        "flower"
+      ],
+      [
+        "floral",
+        "flower"
+      ],
+      [
+        "flame",
+        "fire"
+      ],
+      [
+        "floral_embroidery",
+        "embroidery"
+      ],
+      [
+        "gem",
+        "gemstone"
+      ],
+      [
+        "gems",
+        "gemstone"
+      ],
+      [
+        "gemstones",
+        "gemstone"
+      ],
+      [
+        "lightbulb",
+        "light_bulb"
+      ],
+      [
+        "pearls",
+        "pearl"
+      ],
+      [
+        "pendants",
+        "pendant"
+      ],
+      [
+        "pins",
+        "pin"
+      ],
+      [
+        "plush_animal",
+        "plushie"
+      ],
+      [
+        "pompom",
+        "pom_pom"
+      ],
+      [
+        "pom_poms",
+        "pom_pom"
+      ],
+      [
+        "pompoms",
+        "pom_pom"
+      ],
+      [
+        "rhinestones",
+        "rhinestone"
+      ],
+      [
+        "seashell",
+        "shell"
+      ],
+      [
+        "sequins",
+        "sequin"
+      ],
+      [
+        "straps",
+        "strap"
+      ],
+      [
+        "studs",
+        "stud"
+      ],
+      [
+        "spikes",
+        "spike"
+      ],
+      [
+        "toe_ring",
+        "ring"
+      ],
+      [
+        "droplet",
+        "water_droplet"
+      ],
+      [
+        "wings",
+        "wing"
+      ]
+    ],
+    "pattern": [
+      [
+        "butterfly_wing",
+        "butterfly"
+      ],
+      [
+        "diamond_grid",
+        "lattice"
+      ],
+      [
+        "leopard_print",
+        "leopard"
+      ],
+      [
+        "moon_phases",
+        "moon"
+      ]
+    ],
+    "structure": [
+      [
+        "asymmetrical",
+        "asymmetric"
+      ],
+      [
+        "corset",
+        "boned"
+      ],
+      [
+        "corset_style",
+        "boned"
+      ],
+      [
+        "drape",
+        "draped"
+      ],
+      [
+        "draping",
+        "draped"
+      ],
+      [
+        "gather",
+        "gathered"
+      ],
+      [
+        "gathers",
+        "gathered"
+      ],
+      [
+        "gathering",
+        "gathered"
+      ],
+      [
+        "laces",
+        "lace_up"
+      ],
+      [
+        "pleat",
+        "pleated"
+      ],
+      [
+        "pleats",
+        "pleated"
+      ],
+      [
+        "pleating",
+        "pleated"
+      ],
+      [
+        "quilt",
+        "quilted"
+      ],
+      [
+        "quilting",
+        "quilted"
+      ],
+      [
+        "rib",
+        "ribbed"
+      ],
+      [
+        "ribbing",
+        "ribbed"
+      ],
+      [
+        "round",
+        "circular"
+      ],
+      [
+        "ruche",
+        "ruched"
+      ],
+      [
+        "ruching",
+        "ruched"
+      ],
+      [
+        "ruffle",
+        "ruffled"
+      ],
+      [
+        "ruffles",
+        "ruffled"
+      ],
+      [
+        "ruffled_hem",
+        "ruffled"
+      ],
+      [
+        "scalloped_edge",
+        "scalloped"
+      ],
+      [
+        "smock",
+        "smocked"
+      ],
+      [
+        "smocking",
+        "smocked"
+      ],
+      [
+        "sphere",
+        "spherical"
+      ],
+      [
+        "strapped",
+        "strap"
+      ],
+      [
+        "straps",
+        "strap"
+      ],
+      [
+        "strappy",
+        "strap"
+      ],
+      [
+        "swirl",
+        "spiral"
+      ],
+      [
+        "wing_shaped",
+        "wing"
+      ]
+    ]
+  },
+  "bottomLengthAliases": {
+    "dress": {
+      "micro": "mini",
+      "upper_thigh": "mini",
+      "mid_thigh": "mini",
+      "mid_calf": "midi",
+      "ankle_length": "maxi"
+    },
+    "jumpsuit": {
+      "micro": "upper_thigh",
+      "mini": "upper_thigh",
+      "midi": "ankle_length",
+      "maxi": "ankle_length",
+      "floor_length": "ankle_length"
+    },
+    "skirt": {
+      "micro": "mini",
+      "upper_thigh": "mini",
+      "mid_thigh": "mini",
+      "mid_calf": "midi",
+      "ankle_length": "maxi"
+    },
+    "shorts": {
+      "micro": "upper_thigh",
+      "mini": "upper_thigh",
+      "midi": "knee_length",
+      "maxi": "knee_length",
+      "ankle_length": "knee_length",
+      "floor_length": "knee_length"
+    },
+    "skort": {
+      "micro": "upper_thigh",
+      "mini": "upper_thigh",
+      "mid_calf": "midi",
+      "midi": "knee_length",
+      "maxi": "knee_length",
+      "ankle_length": "knee_length",
+      "floor_length": "knee_length"
+    },
+    "pants": {
+      "micro": "knee_length",
+      "mini": "knee_length",
+      "upper_thigh": "knee_length",
+      "mid_thigh": "knee_length",
+      "midi": "ankle_length",
+      "maxi": "ankle_length",
+      "floor_length": "ankle_length"
+    },
+    "leggings": {
+      "micro": "knee_length",
+      "mini": "knee_length",
+      "upper_thigh": "knee_length",
+      "mid_thigh": "knee_length",
+      "midi": "ankle_length",
+      "maxi": "ankle_length",
+      "floor_length": "ankle_length"
+    },
+    "overalls": {
+      "micro": "upper_thigh",
+      "mini": "upper_thigh",
+      "midi": "ankle_length",
+      "maxi": "ankle_length",
+      "floor_length": "ankle_length"
+    }
+  },
+  "crossFieldOwnership": {
+    "material": {},
+    "ornament": {
+      "metal_ornament": [
+        "material",
+        "metal"
+      ],
+      "paper": [
+        "material",
+        "paper"
+      ],
+      "water_splash": [
+        "structure",
+        "splash"
+      ]
+    },
+    "pattern": {
+      "filigree": [
+        "ornament",
+        "filigree"
+      ],
+      "musical_notation": [
+        "ornament",
+        "musical_note"
+      ],
+      "snowflake": [
+        "ornament",
+        "snowflake"
+      ]
+    },
+    "structure": {
+      "buckle": [
+        "ornament",
+        "buckle"
+      ],
+      "cage": [
+        "ornament",
+        "cage"
+      ],
+      "cloud_shaped": [
+        "ornament",
+        "cloud"
+      ],
+      "cross": [
+        "pattern",
+        "cross"
+      ],
+      "cuff": [
+        "ornament",
+        "cuff"
+      ],
+      "engraved": [
+        "ornament",
+        "engraving"
+      ],
+      "filigree": [
+        "ornament",
+        "filigree"
+      ],
+      "mesh": [
+        "material",
+        "mesh"
+      ],
+      "pinecone": [
+        "ornament",
+        "pinecone"
+      ],
+      "spiked": [
+        "ornament",
+        "spike"
+      ]
+    }
+  },
+  "ornamentSuffixes": [
+    "detail",
+    "motif",
+    "charm",
+    "emblem",
+    "applique"
+  ],
+  "systemPrompt": "You are a deterministic structured extraction engine for Infinity Nikki items.\n\nOutput exactly one raw JSON object. No markdown, no code fences, no prose.\nUse schema keys exactly as written. Do not add, rename, omit, or reorder keys.\n\nVALUE RULES\n- Non-null values must be lowercase underscore_tokens.\n- Scalars: one token or null.\n- Arrays: unique tokens or [].\n- Array fields are open-list: prefer known tokens when they fit, otherwise use a new concise token.\n- When a detail token appears in exactly one CLOSED LIST, use that owner field; never repeat it across pattern, material, structure, or ornament.\n- Each field must represent a single concept only.\n- Do not combine multiple attributes into one token.\n\nTAXONOMY\n- item_type is only the game-data namespace; do not use it as visual evidence for category or subcategory.\n- category = the broad visible object family, chosen at the schema root level rather than a more specific child type.\n- category should be one of the values in CLOSED LISTS; use a new concise broad category only when no listed value fits the visible item.\n- subcategory should be one primary, mutually exclusive object archetype directly under the chosen category, or null.\n- Prefer the listed child examples when they fit, but subcategory is open-list.\n- If no listed child term fits well, you may use a new concise child refinement or null.\n- Unlisted categories and subcategories are flagged for registry review; use one only for a stable, clearly visible object family or archetype.\n- subcategory should stay compatible with the selected category. If unsure, set subcategory = null.\n- subcategory should name a type refinement, not a silhouette, material, pattern, color, length, haircut, texture, or other dedicated-field concept.\n- Traits that can overlap with another archetype belong in their dedicated metadata fields, not in subcategory.\n- Use an overlap test: if an item can have a distinction while also belonging to another child archetype, keep that distinction in metadata and choose only the primary archetype for subcategory.\n- When a directly visible trait is not used as subcategory, still record it once in the appropriate metadata field; do not discard or duplicate it.\n- A descriptive or culturally specific child name may still be valid when the whole term denotes a stable, visually recognizable object type rather than a detachable trait.\n- Do not create a subcategory only to avoid null when existing metadata already describes the visible variation.\n- Do not repeat category in subcategory.\n- Do not compose multiple attributes into subcategory.\n\n",
+  "evidencePrompt": "EVIDENCE\n- Use only directly visible details from the provided images.\n- Do not infer hidden, back-side, off-frame, gameplay, or lore details.\n- If unclear, weak, or inapplicable, output null or [].\n- Prefer null over uncertain or weak signals.\n- If the images conflict, trust the overview image over the icon.",
+  "fieldGuidance": {
+    "pattern": "- pattern = repeated surface motif or print.",
+    "material": "- material = visible fabric or surface type.",
+    "structure": "- structure = built-in fabric shaping, formation, or visible surface texture.",
+    "ornament": "- ornament = attached or applied decorative detail, not an edge or band finish.",
+    "garment_feature": "- garment_feature = visible functional garment features or closures such as hooded, belted, button_up, lace_up, or zip_up; do not use purely decorative buttons, bows, or lacing."
+  },
+  "fieldExamples": {
+    "garment_feature": [
+      "hooded",
+      "belted",
+      "button_up",
+      "lace_up",
+      "zip_up"
+    ],
+    "material": [
+      "lace",
+      "leather",
+      "knit",
+      "satin",
+      "sheer"
+    ],
+    "ornament": [
+      "bow",
+      "button",
+      "chain",
+      "embroidery",
+      "ruffle"
+    ],
+    "pattern": [
+      "floral",
+      "plaid",
+      "solid",
+      "star",
+      "striped"
+    ],
+    "structure": [
+      "cutout",
+      "draped",
+      "gathered",
+      "pleated",
+      "ribbed"
+    ]
+  },
+  "itemTypeGuidance": {
+    "bottoms": "BOTTOMS FIELD RULES\n- skirt_silhouette only when category = skirt or skort; otherwise null.\n- pant_shape only when category = pants or overalls; otherwise null.\n- waist_height only when the waistband or rise is visible; otherwise null.",
+    "dresses": "DRESSES FIELD RULES\n- Stable ensemble-derived or style-family terms are allowed when they are the clearest visible type.\n- dress_silhouette and waistline only describe the main dress body; use null when category = jumpsuit.",
+    "hair": "HAIR FIELD RULES\n- category/subcategory describe the visible arrangement only.\n- haircut belongs only in haircut.\n- texture belongs only in texture.\n- bangs belongs only in bangs.\n- If no clear fringe crosses the forehead, use no_bangs.\n- Do not infer bangs from parting alone.",
+    "shoes": "SHOES FIELD RULES\n- heel_type only when a distinct heel is present; heel_height is flat otherwise, or null when the heel component is absent.\n- sole_height is low or high for visibly thick, platform, or elevated soles; otherwise flat, or null when the sole component is absent.\n- shaft_height only for boots; otherwise null."
+  },
+  "typeKeyMap": {
+    "LGS03_1": "hair",
+    "LGS03_2": "outerwear",
+    "LGS03_3": "tops",
+    "LGS03_4": "bottoms",
+    "LGS03_5": "bottoms",
+    "LGS03_6": "socks",
+    "LGS03_7": "shoes",
+    "LGS03_8": "hairAccessories",
+    "LGS03_9": "headwear",
+    "LGS03_10": "earrings",
+    "LGS03_11": "neckwear",
+    "LGS03_12": "bracelets",
+    "LGS03_13": "chokers",
+    "LGS03_14": "gloves",
+    "LGS03_15": "handhelds",
+    "LGS03_16": "bodyPaint",
+    "LGS03_17": "baseMakeup",
+    "LGS03_18": "eyebrows",
+    "LGS03_19": "eyelashes",
+    "LGS03_20": "contactLenses",
+    "LGS03_21": "lips",
+    "LGS03_22": "skinTones",
+    "LGS03_23": "dresses",
+    "LGS03_25": "faceDecorations",
+    "LGS03_26": "chestAccessories",
+    "LGS03_27": "pendants",
+    "LGS03_28": "backpieces",
+    "LGS03_29": "rings",
+    "LGS03_30": "armDecorations",
+    "LGS03_31": "fullMakeup",
+    "LGS03_32": "abilityHandhelds"
+  },
+  "imageExtensions": [
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp"
+  ]
+}

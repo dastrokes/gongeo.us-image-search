@@ -1,1 +1,0 @@
-"""Index-building pipeline modules."""

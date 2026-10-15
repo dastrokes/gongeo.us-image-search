@@ -1,56 +1,26 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
-pip-wheel-metadata/
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# Distribution / packaging
-*.whl
-*.tar.gz
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
-# Environment variables
+# Environment
 .env
 .env.*
 !.env.example
 
-# Output
+# Node
+node_modules/
+coverage/
+dist/
+*.tsbuildinfo
+
+# Generated artifacts
 manifest/*
-# Search indices
 index/
 index-*/
 
-
-# Model cache
-.cache/
-*.bin
-*.safetensors
-
-# IDE
+# Editors / OS
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Agents
+# Local agent guidance
 AGENTS.md

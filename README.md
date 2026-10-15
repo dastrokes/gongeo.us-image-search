@@ -1,121 +1,98 @@
 # Image Search
 
-Offline structured extraction for Infinity Nikki items.
+TypeScript CLI for Infinity Nikki visual attributes and icon colors. Requires
+Node 24.15+ and npm. Extraction uses direct Google or Vercel AI Gateway.
 
-## Layout
+Game-update preparation, review, D1 snapshots, and publication are documented
+centrally in the `game-data-update` skill. This project generates local
+artifacts; the data processor owns D1/Pinecone publication.
 
-Source lives under `src/` (added to `sys.path` by the root wrappers):
+## Setup
 
-- `src/constants/` — settings, structured field definitions, and extraction prompts
-- `src/models/` — dataclass schemas for manifests, structured records, and search documents
-- `src/pipeline/` — manifest ingestion, vision extraction, and canonical attribute generation
-
-Root `cli.py` and `manifest.py` are thin compatibility entry-points that prepend `src/` to `sys.path` before delegating.
-
-## What It Builds
-
-`index` reads:
-
-- `reports/database-sync-report.json` — synced item list and source version
-- `reports/theme-sync-report.json` — processor-side missing-theme item exclusions
-- `gongeo.us-config-decoder/cfg/config_output/item/TbItem.json` — item minor-type mapping
-- `gongeo.us-config-decoder/cfg/config_output/clothes/TbClothesMinorTypeInfo.json` — minor-type labels
-- `gongeo.us-nikki-tracker/data/item-search/generated/image-search-taxonomy.json` — canonical tracker-owned taxonomy/schema export
-- `gongeo.us-nikki-tracker/data/item-search/generated/overrides.json` — curated per-item maintainer overrides
-- verified D1 `item-attributes.jsonl` — published-ID snapshot used to skip already-published items when rebuilding the manifest
-- `gongeo.us-nikki-tracker/public/images/items/` — overview and icon images
-
-It produces:
-
-- `manifest/item-manifest.jsonl`
-- `manifest/item-color-manifest.jsonl` when running `colors`
-- `index/item-structured-raw.jsonl`
-- `index/item-structured-data.jsonl`
-- `index/item-attributes.jsonl`
-- `index/item-structured-debug.jsonl`
-- `index/item-search-report.jsonl`
-- `index/build-summary.json`
-- `index/item-colors.jsonl` when running `colors`
-- `index/item-color-debug.jsonl` when running `colors`
-- `index/item-color-report.jsonl` when running `colors`
-- `index/color-build-summary.json` when running `colors`
-
-## Install
-
-```bash
-uv sync
+```powershell
+npm ci
+npm run check
 ```
 
-Structured extraction supports two remote providers:
+Set `GOOGLE_API_KEY` for Google or `AI_GATEWAY_API_KEY` for
+`--provider vercel` in `.env` or the shell. Shell values take precedence.
+Defaults are `gemini-3.5-flash-lite` and `google/gemini-2.5-flash`,
+respectively; override with `--model`. Free-tier access is account-dependent.
 
-- `google` (default) calls Google AI Studio with `GOOGLE_API_KEY`.
-- `vercel` calls Vercel AI Gateway with `AI_GATEWAY_API_KEY`.
-
-Direct Google defaults to Gemini 3.5 Flash Lite. Vercel defaults to Gemini 2.5
-Flash for free-tier use; Gateway model IDs include the provider prefix.
-
-## Environment
-
-Set these in `.env` or your shell:
-
-- `GOOGLE_API_KEY` - required for `--provider google`
-- `AI_GATEWAY_API_KEY` - required for `--provider vercel`
-
-- `TRACKER_ROOT` — path to `gongeo.us-nikki-tracker` repo
-- `CONFIG_DECODER_OUTPUT` — path to `gongeo.us-config-decoder/cfg/config_output`
+Sibling checkouts supply decoded configs, processor reports, tracker taxonomy,
+overrides, and images. Optional path settings are in [.env.example](.env.example);
+CLI flags take precedence over environment settings and sibling defaults.
 
 ## Commands
 
-Keep dev runs capped at `--limit 10` unless intentionally wider.
+Keep development model runs capped at `--limit 10`. Use `--help` with
+any command for flags.
 
-```bash
-# Extract structured data and build canonical item attributes
-uv run python cli.py index --limit 10
-uv run python cli.py index --item-id 1020123456   # single-item debug
-uv run python cli.py index --type dresses --type outerwear
-uv run python cli.py index --item-ids 1020100001 1020100002
-uv run python cli.py index --provider vercel --limit 10
-uv run python cli.py index --provider vercel --model google/gemini-2.5-flash --limit 10
-
-# Rebuild canonical item attributes from cached extraction (no re-extraction)
-uv run python cli.py refresh
-uv run python cli.py refresh --type dresses
-uv run python cli.py refresh --item-id 1020100001
-
-# Regenerate the base-item manifest only
-uv run python manifest.py
-
-# Build standalone icon-derived color tags for all synced items
-uv run python cli.py colors --limit 10
-uv run python cli.py colors --type hair --limit 10
-uv run python cli.py colors --item-id 1020100001
+```powershell
+npm run manifest -- --item-attributes-path <D1-snapshot.jsonl> --limit 10
+npm run index -- --item-id 1020100310 --provider google
+npm run index -- --provider vercel --limit 10 --item-attributes-path <D1-snapshot.jsonl> --output-root index/review
+npm run refresh -- --structured-path index/review/item-structured-data.jsonl --structured-debug-path index/review/item-structured-debug.jsonl --output-root index/refreshed
+npm run colors -- --limit 10 --output-root index/colors-review
+npm run audit -- parse-errors --output-root index/review
+npm run audit -- normalizer-drift --attributes <D1-snapshot.jsonl>
+npm run audit -- missing-images --attributes <D1-snapshot.jsonl>
 ```
 
-For an incremental game update, follow `$game-data-update`. Pass the
-current verified D1-derived `item-attributes.jsonl` with
-`--item-attributes-path` to both manifest generation and indexing; the
-default local snapshot is only for ad hoc development.
+`manifest` selects incremental base items from the processor's synced-item
+report, decoded types, and tracker catalog. It excludes published IDs using
+the supplied D1 snapshot. `manifest/item-attributes.jsonl` is the development
+default; use the verified export explicitly for a game update. Use
+`--regen-manifest` on `index` to regenerate before extraction.
 
-`index --item-id <ID>` prints one JSON bundle: prompt, raw model response, parsed payload, and normalized structured output.
+`index --item-id` prints a debug bundle without writing batch artifacts.
+Batch extraction writes raw, normalized, debug, final attributes, review
+reports, and summary files beneath `--output-root`. The processor-facing
+artifact is `item-attributes.jsonl`:
 
-`refresh` rebuilds `index/item-attributes.jsonl`, `index/item-search-report.jsonl`, and `index/build-summary.json` from cached normalized structured data plus tracker overrides — use when override application or downstream normalization changes but re-extraction is not needed.
+```json
+{"item_id":1020100310,"item_type":"hair","category":"twin_tails","subcategory":"high_twin_tails","metadata":{"texture":"straight"}}
+```
 
-The in-place TypeScript conversion is tracked in
-[docs/typescript-migration.md](docs/typescript-migration.md). The migration
-keeps the JSONL contracts and review/publication handoff stable.
+Metadata omits inapplicable values and never repeats identity fields. Tracker
+owns taxonomy and curated overrides; extraction preserves reviewable
+open-vocabulary values rather than silently treating them as enums.
 
-## Notes
+`refresh` re-normalizes cached structured records and reapplies overrides
+without model calls. Its default inputs are in `index/`; pass both structured
+input paths for another batch. Smaller scopes refuse to overwrite an output
+containing other IDs: choose a separate output directory.
 
-- Imports use bare module names (`from constants.settings import ...`) because `src/` is prepended to `sys.path`.
-- The build now materializes three layers per item: raw extracted payload, normalized structured payload, and final canonical `item-attributes` payload after tracker overrides are applied.
-- Extraction uses item-type-specific prompts; only fields relevant to the slot are included.
-- `item-attributes.jsonl` is the only persisted final artifact.
-- `metadata` in `item-attributes.jsonl` contains only actual tag fields and does not repeat `item_id`, `item_type`, `slot`, `category`, or `subcategory`.
-- Search documents are derived from canonical item-attributes rows, not stored as a separate final artifact.
-- `manifest/item-attributes.jsonl` remains the default published-ID snapshot;
-  pass `--item-attributes-path` to use the current D1 export directly.
-- `colors` is intentionally separate from `index` and does not read or write `item-attributes.jsonl`.
-- Color tagging is not base-item restricted; it reads all synced items with available transparent icon PNGs.
-- Canonical color labels are `black`, `white`, `cream`, `gray`, `red`, `pink`, `orange`, `yellow`, `green`, `olive`, `teal`, `blue`, `navy`, `purple`, `brown`, `beige`, `gold`, `silver`; `multicolor` is derived when enough meaningful color roles are present.
-- Color rows expose `primary_colors` and `secondary_colors` arrays for color roles.
-- Hair color rows are flagged for review because hair icons can include face, skin, and clothing pixels.
+`colors` independently processes eligible local icons, including recolors.
+It writes `item-colors.jsonl`, debug/review reports, and a color build summary,
+never `item-attributes.jsonl`. Hair icons are flagged for review.
+Use `--regen-manifest` after source updates. Limited runs do not replace the
+shared color manifest.
+
+Audits are read-only: JSONL findings followed by a count summary. Findings
+keep exit code 0; invalid or missing required inputs fail nonzero. Parse-error
+counts include records in both structured files, not unique item IDs.
+
+## Resume and recovery
+
+Batch indexing stores `extraction-run.json` and atomic `.checkpoints/<id>.json`
+files in its output directory. Repeat the same scope, provider/model,
+prompt/schema, and images to resume. Changed inputs require a new directory.
+Older JSONL caches remain usable by offline refresh, but are not reused for
+new model requests without a verified run identity. Failed responses retain
+diagnostics and block final attributes.
+
+Colors use independent `.color-checkpoints/` files; unchanged icons resume
+and changed icons are recomputed. Check `run-status.json` or
+`color-run-status.json` for `complete` before consuming an artifact set.
+Individual files are written atomically; the whole set is not a transaction.
+
+## Development
+
+`npm run check` runs strict typechecking, Biome, and focused offline tests;
+`npm run format` applies formatting. No model access or sibling checkout is
+needed for tests. [Fixture notes](test/fixtures/README.md) explain the frozen
+compatibility baseline.
+
+Source is organized into `src/pipeline/`, `src/providers/`,
+`src/constants/`, shared artifact contracts, path resolution, and the CLI.

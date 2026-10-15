@@ -1,0 +1,111 @@
+{
+  "extraction": [
+    {
+      "name": "hair-alias",
+      "item_id": 1020100310,
+      "item_type": "hair",
+      "raw_response": "{\"category\":\"Twin Tail\",\"subcategory\":\"high_twin_tails\",\"bangs\":\"blunt_bangs\",\"hair_length\":\"long\",\"haircut\":null,\"texture\":\"straight\"}"
+    },
+    {
+      "name": "garment-field-ownership",
+      "item_id": 1020200310,
+      "item_type": "outerwear",
+      "raw_response": "{\"category\":\"jacket\",\"subcategory\":\"bolero\",\"material\":[\"paper\",\"fur\",\"fur\"],\"ornament\":[\"gems\",\"pendants\",\"spikes\",\"toe_ring\",\"droplet\"],\"pattern\":[\"filigree\"],\"structure\":[\"buckle\",\"gathers\"],\"neckline\":\"strapless\",\"garment_feature\":[\"hoodie\"],\"unrecognized_field\":\"review_me\"}"
+    },
+    {
+      "name": "accessory-open-vocabulary",
+      "item_id": 1021000001,
+      "item_type": "earrings",
+      "raw_response": "{\"category\":\"earring\",\"subcategory\":\"drop_earring\",\"material\":[\"metal\"],\"ornament\":[\"novel_crystal_motif\",\"gems\"],\"pattern\":[],\"structure\":[]}"
+    },
+    {
+      "name": "full-override-removes-fields",
+      "item_id": 1020200311,
+      "item_type": "outerwear",
+      "raw_response": "{\"category\":\"jacket\",\"subcategory\":\"bolero\",\"material\":[\"fur\"],\"ornament\":[\"bow\",\"heart\"],\"top_length\":\"crop\"}",
+      "override": {
+        "item_id": 1020200311,
+        "item_type": "outerwear",
+        "category": "jacket",
+        "subcategory": "bolero",
+        "metadata": {"ornament": ["bow"]}
+      }
+    },
+    {
+      "name": "legacy-override-merges-metadata",
+      "item_id": 1020200312,
+      "item_type": "outerwear",
+      "raw_response": "{\"category\":\"jacket\",\"subcategory\":\"bolero\",\"material\":[\"fur\"],\"ornament\":[\"heart\"]}",
+      "override": {"metadata": {"ornament": ["bow"]}}
+    },
+    {
+      "name": "category-promotion",
+      "item_id": 1021000002,
+      "item_type": "earrings",
+      "raw_response": "{\"category\":\"hoop_earrings\",\"subcategory\":null}"
+    },
+    {
+      "name": "malformed-json",
+      "item_id": 1020100311,
+      "item_type": "hair",
+      "raw_response": "{\"category\":"
+    },
+    {
+      "name": "non-object-json",
+      "item_id": 1020100312,
+      "item_type": "hair",
+      "raw_response": "[]"
+    },
+    {
+      "name": "empty-response",
+      "item_id": 1020100313,
+      "item_type": "hair",
+      "raw_response": " "
+    },
+    {
+      "name": "shoe-defaults-and-category-alias",
+      "item_id": 1020700001,
+      "item_type": "shoes",
+      "raw_response": "{\"category\":\"sneaker\",\"subcategory\":null,\"ornament\":[\"toe_ring\"]}"
+    },
+    {
+      "name": "barefoot-has-no-heel-defaults",
+      "item_id": 1020700002,
+      "item_type": "shoes",
+      "raw_response": "{\"category\":\"barefoot\"}"
+    },
+    {
+      "name": "bottom-length-and-cord-ownership",
+      "item_id": 1020400001,
+      "item_type": "bottoms",
+      "raw_response": "{\"category\":\"pants\",\"bottom_length\":\"mini\",\"material\":[\"braided_cord\"],\"structure\":[\"ribbing\"]}"
+    }
+  ],
+  "manifest": {
+    "items": [
+      {"id": 1020100003, "minor_type": 1, "images": ["icon", "overview"]},
+      {"id": 1020200001, "minor_type": 2, "images": ["overview"]},
+      {"id": 1021000001, "minor_type": 10, "images": ["icon"]},
+      {"id": 1020100001, "minor_type": 1, "images": ["icon", "overview"], "published": true},
+      {"id": 1020100002, "minor_type": 1, "images": ["icon"], "family_root": 1020100001},
+      {"id": 1020200002, "minor_type": 2, "images": []},
+      {"id": 1020200003, "minor_type": 2, "images": ["icon"], "excluded": true},
+      {"id": 1021700001, "minor_type": 17, "images": ["icon"]},
+      {"id": 1021500001, "minor_type": 32, "images": ["icon"]}
+    ],
+    "scenarios": [
+      {"name": "incremental", "options": {}},
+      {"name": "include-indexed", "options": {"skip_indexed": false}},
+      {"name": "explicit-published-id", "options": {"item_id": 1020100001}},
+      {"name": "type-filter", "options": {"item_types": ["outerwear"]}},
+      {"name": "limit-after-exclusion", "options": {"limit": 2}}
+    ]
+  },
+  "colors": [
+    {"name": "alpha-and-highlight", "item_id": 1, "item_type": "outerwear", "width": 5, "height": 1, "pixels": [[183,52,50,255],[85,127,193,255],[242,242,238,255],[238,238,238,128],[0,0,0,31]]},
+    {"name": "transparent", "item_id": 2, "item_type": "earrings", "width": 2, "height": 1, "pixels": [[0,0,0,0],[255,255,255,31]]},
+    {"name": "hair-composite", "item_id": 3, "item_type": "hair", "width": 3, "height": 3, "pixels": [[32,32,32,255],[32,32,32,255],[32,32,32,255],[32,32,32,255],[220,185,160,255],[32,32,32,255],[32,32,32,255],[32,32,32,255],[32,32,32,255]]},
+    {"name": "ties-to-even", "item_id": 4, "item_type": "outerwear", "width": 2, "height": 1, "pixels": [[32,32,32,255],[33,33,33,255]]},
+    {"name": "hair-taupe-merge", "item_id": 5, "item_type": "hair", "width": 10, "height": 1, "pixels": [[138,138,134,255],[138,138,134,255],[138,138,134,255],[138,138,134,255],[112,130,56,255],[112,130,56,255],[112,130,56,255],[200,181,142,255],[200,181,142,255],[200,181,142,255]]}
+  ]
+}
