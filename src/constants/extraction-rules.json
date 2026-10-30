@@ -320,6 +320,10 @@
       [
         "wings",
         "wing"
+      ],
+      [
+        "jewel",
+        "gemstone"
       ]
     ],
     "pattern": [
@@ -546,6 +550,30 @@
       "water_splash": [
         "structure",
         "splash"
+      ],
+      "faux_fur": [
+        "material",
+        "faux_fur"
+      ],
+      "metal_plating": [
+        "material",
+        "metal"
+      ],
+      "metal_trim": [
+        "material",
+        "metal"
+      ],
+      "cording": [
+        "material",
+        "cord"
+      ],
+      "trim": [
+        null,
+        null
+      ],
+      "ornament": [
+        null,
+        null
       ]
     },
     "pattern": {
@@ -560,6 +588,10 @@
       "snowflake": [
         "ornament",
         "snowflake"
+      ],
+      "ornate": [
+        null,
+        null
       ]
     },
     "structure": {
